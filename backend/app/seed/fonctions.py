@@ -211,6 +211,12 @@ FONCTIONS = {
             "PAIEMENT_MODIFIER",
             "NOTIFICATION_CONSULTER",
             "DEPENSE_CONSULTER",
+            "DEPENSE_CREER",
+            "DEPENSE_MODIFIER",
+            "DEPENSE_SUPPRIMER",
+            "AIDE_EXTERIEURE_CREER",
+            "AIDE_EXTERIEURE_MODIFIER",
+            "AIDE_EXTERIEURE_SUPPRIMER"
             "AIDE_EXTERIEURE_CONSULTER",
             "KOUREL_CONSULTER",
         ],

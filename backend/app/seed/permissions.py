@@ -443,6 +443,7 @@ PERMISSIONS = [
         "nom": "Consulter les finances",
         "description": "Permet de consulter les finances de la dahira",
     },
+    
 ]
 
 
