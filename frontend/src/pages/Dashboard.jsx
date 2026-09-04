@@ -11,13 +11,15 @@ import {
   ArrowDownCircle,
   Banknote,
   Landmark,
+  CreditCard,
+  CircleCheck,
+  AlertCircle,
 } from "lucide-react";
 
 import api from "../api/client";
 
 
 function Dashboard() {
-
   const [donnees, setDonnees] = useState(null);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState("");
@@ -28,7 +30,6 @@ function Dashboard() {
   // ============================================================
 
   function formaterMontant(montant) {
-
     const valeur = Number(montant ?? 0);
 
     return new Intl.NumberFormat("fr-FR", {
@@ -42,57 +43,35 @@ function Dashboard() {
   // ============================================================
 
   async function chargerDashboard() {
-
     try {
-
       setChargement(true);
       setErreur("");
 
       const response = await api.get("/dashboard");
 
-      console.log(
-        "DASHBOARD API :",
-        response.status
-      );
-
-      console.log(
-        "DASHBOARD DATA :",
-        response.data
-      );
+      console.log("DASHBOARD API :", response.status);
+      console.log("DASHBOARD DATA :", response.data);
 
       setDonnees(response.data);
-
     } catch (error) {
-
-      console.error(
-        "ERREUR DASHBOARD :",
-        error
-      );
+      console.error("ERREUR DASHBOARD :", error);
 
       if (error.response?.status === 401) {
-
         setErreur(
           "Votre session a expiré. Veuillez vous reconnecter."
         );
-
       } else if (error.response?.status === 403) {
-
         setErreur(
           "Vous n'avez pas la permission d'accéder au tableau de bord."
         );
-
       } else {
-
         setErreur(
           error.response?.data?.detail ||
-          "Impossible de charger le tableau de bord."
+            "Impossible de charger le tableau de bord."
         );
       }
-
     } finally {
-
       setChargement(false);
-
     }
   }
 
@@ -102,9 +81,7 @@ function Dashboard() {
   // ============================================================
 
   useEffect(() => {
-
     chargerDashboard();
-
   }, []);
 
 
@@ -113,13 +90,9 @@ function Dashboard() {
   // ============================================================
 
   if (chargement) {
-
     return (
-
       <div className="flex min-h-[60vh] items-center justify-center">
-
         <div className="text-center">
-
           <RefreshCw
             size={32}
             className="mx-auto mb-3 animate-spin text-emerald-700"
@@ -128,11 +101,8 @@ function Dashboard() {
           <p className="text-slate-500">
             Chargement du tableau de bord...
           </p>
-
         </div>
-
       </div>
-
     );
   }
 
@@ -142,21 +112,34 @@ function Dashboard() {
   // ============================================================
 
   if (erreur) {
-
     return (
-
       <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">
+        <div className="flex items-start gap-3">
+          <AlertCircle
+            size={22}
+            className="mt-0.5 shrink-0"
+          />
 
-        <p className="font-semibold">
-          Impossible de charger le tableau de bord
-        </p>
+          <div>
+            <p className="font-semibold">
+              Impossible de charger le tableau de bord
+            </p>
 
-        <p className="mt-1 text-sm">
-          {erreur}
-        </p>
+            <p className="mt-1 text-sm">
+              {erreur}
+            </p>
 
+            <button
+              type="button"
+              onClick={chargerDashboard}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-800"
+            >
+              <RefreshCw size={16} />
+              Réessayer
+            </button>
+          </div>
+        </div>
       </div>
-
     );
   }
 
@@ -177,52 +160,53 @@ function Dashboard() {
     donnees?.aides_exterieures ?? 0
   );
 
+  const paiementsEffectues = Number(
+    donnees?.paiements_effectues ?? 0
+  );
+
   const totalRecettes = Number(
     donnees?.total_recettes ??
-    cotisationsEncaissees + aidesExterieures
+      cotisationsEncaissees + aidesExterieures
   );
 
   const totalDepenses = Number(
-    donnees?.total_depenses ?? 0
+    donnees?.total_depenses ??
+      donnees?.depenses ??
+      0
   );
 
   const soldeDisponible = Number(
     donnees?.solde_disponible ??
-    totalRecettes - totalDepenses
+      totalRecettes - totalDepenses
   );
 
 
   // ============================================================
-  // RAPPORT RECETTES
+  // CALCULS
   // ============================================================
 
   const totalSourcesRecettes =
-    cotisationsEncaissees +
-    aidesExterieures;
+    cotisationsEncaissees + aidesExterieures;
 
   let pourcentageCotisations = 0;
   let pourcentageAides = 0;
 
   if (totalSourcesRecettes > 0) {
-
     pourcentageCotisations =
-      (cotisationsEncaissees /
-        totalSourcesRecettes) *
-      100;
+      (cotisationsEncaissees / totalSourcesRecettes) * 100;
 
     pourcentageAides =
-      (aidesExterieures /
-        totalSourcesRecettes) *
-      100;
+      (aidesExterieures / totalSourcesRecettes) * 100;
   }
+
+  const soldePositif = soldeDisponible >= 0;
 
 
   // ============================================================
-  // STATISTIQUES
+  // STATISTIQUES PRINCIPALES
   // ============================================================
 
   const statistiques = [
-
     {
       titre: "Membres actifs",
       valeur: formaterMontant(membresActifs),
@@ -233,19 +217,15 @@ function Dashboard() {
 
     {
       titre: "Cotisations encaissées",
-      valeur: `${formaterMontant(
-        cotisationsEncaissees
-      )} FCFA`,
-      description: "Paiements réellement reçus",
+      valeur: `${formaterMontant(cotisationsEncaissees)} FCFA`,
+      description: "Cotisations réellement reçues",
       icone: Wallet,
       couleur: "emerald",
     },
 
     {
       titre: "Aides extérieures",
-      valeur: `${formaterMontant(
-        aidesExterieures
-      )} FCFA`,
+      valeur: `${formaterMontant(aidesExterieures)} FCFA`,
       description: "Participations provenant de l'extérieur",
       icone: Banknote,
       couleur: "amber",
@@ -253,14 +233,11 @@ function Dashboard() {
 
     {
       titre: "Dépenses",
-      valeur: `${formaterMontant(
-        totalDepenses
-      )} FCFA`,
+      valeur: `${formaterMontant(totalDepenses)} FCFA`,
       description: "Total des sorties de caisse",
       icone: TrendingDown,
       couleur: "red",
     },
-
   ];
 
 
@@ -269,7 +246,6 @@ function Dashboard() {
   // ============================================================
 
   return (
-
     <div className="space-y-8">
 
 
@@ -280,7 +256,6 @@ function Dashboard() {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
 
         <div>
-
           <p className="text-sm font-semibold text-emerald-700">
             Administration
           </p>
@@ -292,7 +267,6 @@ function Dashboard() {
           <p className="mt-2 text-slate-500">
             Vue d'ensemble de la situation du Dahira.
           </p>
-
         </div>
 
 
@@ -300,20 +274,14 @@ function Dashboard() {
           type="button"
           onClick={chargerDashboard}
           disabled={chargement}
-          className="flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:opacity-60"
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
-
           <RefreshCw
             size={18}
-            className={
-              chargement
-                ? "animate-spin"
-                : ""
-            }
+            className={chargement ? "animate-spin" : ""}
           />
 
           Actualiser
-
         </button>
 
       </div>
@@ -326,11 +294,9 @@ function Dashboard() {
       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
 
         {statistiques.map((statistique) => {
-
           const Icon = statistique.icone;
 
           return (
-
             <div
               key={statistique.titre}
               className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg"
@@ -339,7 +305,6 @@ function Dashboard() {
               <div className="flex items-start justify-between">
 
                 <div>
-
                   <p className="text-sm font-medium text-slate-500">
                     {statistique.titre}
                   </p>
@@ -347,7 +312,6 @@ function Dashboard() {
                   <p className="mt-3 text-2xl font-bold text-slate-900">
                     {statistique.valeur}
                   </p>
-
                 </div>
 
 
@@ -355,7 +319,7 @@ function Dashboard() {
 
                   <Icon
                     size={22}
-                    className="text-slate-700 group-hover:text-emerald-700"
+                    className="text-slate-700 transition group-hover:text-emerald-700"
                   />
 
                 </div>
@@ -368,10 +332,116 @@ function Dashboard() {
               </p>
 
             </div>
-
           );
-
         })}
+
+      </div>
+
+
+      {/* ======================================================
+          RÉSUMÉ FINANCIER
+      ====================================================== */}
+
+      <div className="grid gap-5 lg:grid-cols-3">
+
+
+        {/* TOTAL RECETTES */}
+
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-6">
+
+          <div className="flex items-center justify-between">
+
+            <div>
+              <p className="text-sm font-medium text-emerald-700">
+                Total recettes
+              </p>
+
+              <p className="mt-2 text-3xl font-bold text-emerald-900">
+                {formaterMontant(totalRecettes)}
+              </p>
+
+              <p className="mt-1 text-sm text-emerald-700">
+                FCFA
+              </p>
+            </div>
+
+
+            <div className="rounded-xl bg-white p-3 shadow-sm">
+              <TrendingUp
+                size={25}
+                className="text-emerald-600"
+              />
+            </div>
+
+          </div>
+
+        </div>
+
+
+        {/* TOTAL DÉPENSES */}
+
+        <div className="rounded-2xl border border-red-100 bg-red-50 p-6">
+
+          <div className="flex items-center justify-between">
+
+            <div>
+              <p className="text-sm font-medium text-red-700">
+                Total dépenses
+              </p>
+
+              <p className="mt-2 text-3xl font-bold text-red-900">
+                {formaterMontant(totalDepenses)}
+              </p>
+
+              <p className="mt-1 text-sm text-red-700">
+                FCFA
+              </p>
+            </div>
+
+
+            <div className="rounded-xl bg-white p-3 shadow-sm">
+              <TrendingDown
+                size={25}
+                className="text-red-600"
+              />
+            </div>
+
+          </div>
+
+        </div>
+
+
+        {/* PAIEMENTS */}
+
+        <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6">
+
+          <div className="flex items-center justify-between">
+
+            <div>
+              <p className="text-sm font-medium text-blue-700">
+                Paiements effectués
+              </p>
+
+              <p className="mt-2 text-3xl font-bold text-blue-900">
+                {formaterMontant(paiementsEffectues)}
+              </p>
+
+              <p className="mt-1 text-sm text-blue-700">
+                FCFA
+              </p>
+            </div>
+
+
+            <div className="rounded-xl bg-white p-3 shadow-sm">
+              <CreditCard
+                size={25}
+                className="text-blue-600"
+              />
+            </div>
+
+          </div>
+
+        </div>
 
       </div>
 
@@ -383,6 +453,7 @@ function Dashboard() {
       <div className="overflow-hidden rounded-3xl bg-slate-950 shadow-xl">
 
         <div className="grid lg:grid-cols-2">
+
 
           {/* GAUCHE */}
 
@@ -398,6 +469,7 @@ function Dashboard() {
                 />
 
               </div>
+
 
               <div>
 
@@ -416,17 +488,49 @@ function Dashboard() {
 
             <div className="mt-8">
 
-              <p className="text-4xl font-bold tracking-tight text-white">
+              <p
+                className={`text-4xl font-bold tracking-tight ${
+                  soldePositif
+                    ? "text-white"
+                    : "text-red-400"
+                }`}
+              >
+                {formaterMontant(soldeDisponible)}
 
-                {formaterMontant(
-                  soldeDisponible
-                )}{" "}
-
-                <span className="text-xl text-slate-400">
+                <span className="ml-2 text-xl text-slate-400">
                   FCFA
                 </span>
-
               </p>
+
+
+              <div className="mt-4 flex items-center gap-2">
+
+                {soldePositif ? (
+                  <>
+                    <CircleCheck
+                      size={17}
+                      className="text-emerald-400"
+                    />
+
+                    <p className="text-sm text-emerald-400">
+                      Situation financière positive
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle
+                      size={17}
+                      className="text-red-400"
+                    />
+
+                    <p className="text-sm text-red-400">
+                      Attention : solde négatif
+                    </p>
+                  </>
+                )}
+
+              </div>
+
 
               <p className="mt-3 text-sm text-slate-400">
                 Total recettes − total dépenses
@@ -442,6 +546,7 @@ function Dashboard() {
           <div className="border-t border-white/10 p-8 lg:border-l lg:border-t-0 lg:p-10">
 
             <div className="space-y-6">
+
 
               {/* RECETTES */}
 
@@ -464,13 +569,9 @@ function Dashboard() {
 
                 </div>
 
+
                 <span className="font-bold text-emerald-400">
-
-                  {formaterMontant(
-                    totalRecettes
-                  )}{" "}
-                  FCFA
-
+                  {formaterMontant(totalRecettes)} FCFA
                 </span>
 
               </div>
@@ -497,14 +598,35 @@ function Dashboard() {
 
                 </div>
 
+
                 <span className="font-bold text-red-400">
-
-                  {formaterMontant(
-                    totalDepenses
-                  )}{" "}
-                  FCFA
-
+                  {formaterMontant(totalDepenses)} FCFA
                 </span>
+
+              </div>
+
+
+              {/* SOLDE */}
+
+              <div className="border-t border-white/10 pt-5">
+
+                <div className="flex items-center justify-between">
+
+                  <span className="font-semibold text-white">
+                    Solde disponible
+                  </span>
+
+                  <span
+                    className={`text-lg font-bold ${
+                      soldePositif
+                        ? "text-emerald-400"
+                        : "text-red-400"
+                    }`}
+                  >
+                    {formaterMontant(soldeDisponible)} FCFA
+                  </span>
+
+                </div>
 
               </div>
 
@@ -518,7 +640,7 @@ function Dashboard() {
 
 
       {/* ======================================================
-          DÉTAIL DES RECETTES
+          COMPOSITION DES RECETTES
       ====================================================== */}
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -536,7 +658,7 @@ function Dashboard() {
         </div>
 
 
-        <div className="space-y-6">
+        <div className="space-y-7">
 
 
           {/* COTISATIONS */}
@@ -556,14 +678,18 @@ function Dashboard() {
 
               </span>
 
-              <span className="font-semibold text-emerald-700">
 
-                {formaterMontant(
-                  cotisationsEncaissees
-                )}{" "}
-                FCFA
+              <div className="text-right">
 
-              </span>
+                <span className="font-semibold text-emerald-700">
+                  {formaterMontant(cotisationsEncaissees)} FCFA
+                </span>
+
+                <span className="ml-2 text-xs text-slate-400">
+                  ({pourcentageCotisations.toFixed(1)} %)
+                </span>
+
+              </div>
 
             </div>
 
@@ -575,7 +701,7 @@ function Dashboard() {
                 style={{
                   width: `${Math.min(
                     100,
-                    pourcentageCotisations
+                    Math.max(0, pourcentageCotisations)
                   )}%`,
                 }}
               />
@@ -602,14 +728,18 @@ function Dashboard() {
 
               </span>
 
-              <span className="font-semibold text-amber-700">
 
-                {formaterMontant(
-                  aidesExterieures
-                )}{" "}
-                FCFA
+              <div className="text-right">
 
-              </span>
+                <span className="font-semibold text-amber-700">
+                  {formaterMontant(aidesExterieures)} FCFA
+                </span>
+
+                <span className="ml-2 text-xs text-slate-400">
+                  ({pourcentageAides.toFixed(1)} %)
+                </span>
+
+              </div>
 
             </div>
 
@@ -621,7 +751,7 @@ function Dashboard() {
                 style={{
                   width: `${Math.min(
                     100,
-                    pourcentageAides
+                    Math.max(0, pourcentageAides)
                   )}%`,
                 }}
               />
@@ -639,13 +769,9 @@ function Dashboard() {
               Total recettes
             </span>
 
+
             <span className="text-xl font-bold text-slate-900">
-
-              {formaterMontant(
-                totalRecettes
-              )}{" "}
-              FCFA
-
+              {formaterMontant(totalRecettes)} FCFA
             </span>
 
           </div>
@@ -656,7 +782,7 @@ function Dashboard() {
 
 
       {/* ======================================================
-          RÉSUMÉ
+          RÉSUMÉ FINAL
       ====================================================== */}
 
       <div className="grid gap-5 md:grid-cols-3">
@@ -666,17 +792,26 @@ function Dashboard() {
 
         <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-6">
 
-          <p className="text-sm font-medium text-emerald-700">
-            Cotisations encaissées
-          </p>
+          <div className="flex items-center gap-3">
 
-          <p className="mt-2 text-2xl font-bold text-emerald-900">
+            <div className="rounded-lg bg-white p-2 shadow-sm">
 
-            {formaterMontant(
-              cotisationsEncaissees
-            )}{" "}
-            FCFA
+              <Wallet
+                size={20}
+                className="text-emerald-600"
+              />
 
+            </div>
+
+            <p className="text-sm font-medium text-emerald-700">
+              Cotisations encaissées
+            </p>
+
+          </div>
+
+
+          <p className="mt-4 text-2xl font-bold text-emerald-900">
+            {formaterMontant(cotisationsEncaissees)} FCFA
           </p>
 
         </div>
@@ -686,37 +821,55 @@ function Dashboard() {
 
         <div className="rounded-2xl border border-amber-100 bg-amber-50 p-6">
 
-          <p className="text-sm font-medium text-amber-700">
-            Aides extérieures
-          </p>
+          <div className="flex items-center gap-3">
 
-          <p className="mt-2 text-2xl font-bold text-amber-900">
+            <div className="rounded-lg bg-white p-2 shadow-sm">
 
-            {formaterMontant(
-              aidesExterieures
-            )}{" "}
-            FCFA
+              <Banknote
+                size={20}
+                className="text-amber-600"
+              />
 
+            </div>
+
+            <p className="text-sm font-medium text-amber-700">
+              Aides extérieures
+            </p>
+
+          </div>
+
+
+          <p className="mt-4 text-2xl font-bold text-amber-900">
+            {formaterMontant(aidesExterieures)} FCFA
           </p>
 
         </div>
 
 
-        {/* DÉPENSES */}
+        {/* PAIEMENTS */}
 
-        <div className="rounded-2xl border border-red-100 bg-red-50 p-6">
+        <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6">
 
-          <p className="text-sm font-medium text-red-700">
-            Dépenses
-          </p>
+          <div className="flex items-center gap-3">
 
-          <p className="mt-2 text-2xl font-bold text-red-900">
+            <div className="rounded-lg bg-white p-2 shadow-sm">
 
-            {formaterMontant(
-              totalDepenses
-            )}{" "}
-            FCFA
+              <CreditCard
+                size={20}
+                className="text-blue-600"
+              />
 
+            </div>
+
+            <p className="text-sm font-medium text-blue-700">
+              Paiements effectués
+            </p>
+
+          </div>
+
+
+          <p className="mt-4 text-2xl font-bold text-blue-900">
+            {formaterMontant(paiementsEffectues)} FCFA
           </p>
 
         </div>
@@ -729,4 +882,3 @@ function Dashboard() {
 
 
 export default Dashboard;
-
