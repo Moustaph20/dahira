@@ -48,11 +48,29 @@ class Fonction(Base):
         default=datetime.utcnow,
     )
 
+    # ============================================================
+    # UTILISATEURS
+    # ============================================================
+
     utilisateurs = relationship(
         "UtilisateurFonction",
         back_populates="fonction",
         cascade="all, delete-orphan",
     )
+
+    # ============================================================
+    # MEMBRES
+    # ============================================================
+
+    membres = relationship(
+        "MembreFonction",
+        back_populates="fonction",
+        cascade="all, delete-orphan",
+    )
+
+    # ============================================================
+    # PERMISSIONS
+    # ============================================================
 
     permissions = relationship(
         "FonctionPermission",
