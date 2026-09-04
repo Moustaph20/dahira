@@ -104,12 +104,6 @@ function RoutePrivee() {
 |
 | Vérifie qu'un utilisateur possède une permission précise.
 |
-| Exemple :
-|
-| <RoutePermission permission="MEMBRE_CONSULTER">
-|   <Membres />
-| </RoutePermission>
-|
 */
 
 function RoutePermission({
@@ -267,7 +261,11 @@ function RouteKourel({ children }) {
 | ROUTE DASHBOARD
 |--------------------------------------------------------------------------
 |
-| Le Dashboard général est réservé aux fonctions autorisées.
+| Le Dashboard est protégé par la permission
+| DASHBOARD_CONSULTER.
+|
+| On ne vérifie plus directement le nom de la fonction.
+| La permission est la source de vérité.
 |
 */
 
@@ -283,26 +281,20 @@ function RouteDashboard() {
     );
   }
 
-  const fonctions = Array.isArray(
-    utilisateur.fonctions
+  const permissions = Array.isArray(
+    utilisateur.permissions
   )
-    ? utilisateur.fonctions
+    ? utilisateur.permissions
     : [];
 
-  const fonctionsAutorisees = [
-  "ADMINISTRATEUR",
-  "SG",
-  "ADJOINT_SG",
-  "DIEUWRIGNE",
-  "RESPONSABLE_FINANCIER",
-  "ADJOINT_FINANCIER",
-];
+  const autorise = permissions.some(
+    (permission) =>
+      permission?.code === "DASHBOARD_CONSULTER"
+  );
 
-  const autorise = fonctions.some(
-    (fonction) =>
-      fonctionsAutorisees.includes(
-        fonction?.nom
-      )
+  console.log(
+    "[RouteDashboard] DASHBOARD_CONSULTER :",
+    autorise
   );
 
   if (!autorise) {
@@ -333,10 +325,6 @@ function App() {
   |--------------------------------------------------------------------------
   | CHARGEMENT INITIAL
   |--------------------------------------------------------------------------
-  |
-  | Tant que AuthContext vérifie la session utilisateur, on affiche
-  | un écran de chargement.
-  |
   */
 
   if (chargement) {
@@ -543,17 +531,17 @@ function App() {
           ======================================================== */}
 
           <Route
-  path="/programme-religieux"
-  element={
-    <RoutePermission
-      permission="KOUREL_CONSULTER"
-    >
-      <RouteKourel>
-        <ProgrammeReligieux />
-      </RouteKourel>
-    </RoutePermission>
-  }
-/>
+            path="/programme-religieux"
+            element={
+              <RoutePermission
+                permission="KOUREL_CONSULTER"
+              >
+                <RouteKourel>
+                  <ProgrammeReligieux />
+                </RouteKourel>
+              </RoutePermission>
+            }
+          />
 
           {/* ========================================================
               COMMUNICATIONS
@@ -571,34 +559,34 @@ function App() {
           />
 
           {/* ========================================================
-    GALERIE
-======================================================== */}
+              GALERIE
+          ======================================================== */}
 
-<Route
-  path="/galerie"
-  element={
-    <RoutePermission
-      permission="GALERIE_CONSULTER"
-    >
-      <Galerie />
-    </RoutePermission>
-  }
-/>
+          <Route
+            path="/galerie"
+            element={
+              <RoutePermission
+                permission="GALERIE_CONSULTER"
+              >
+                <Galerie />
+              </RoutePermission>
+            }
+          />
 
           {/* ========================================================
               NOTIFICATIONS
           ======================================================== */}
 
           <Route
-  path="/notifications"
-  element={
-    <RoutePermission
-      permission="NOTIFICATION_CONSULTER"
-    >
-      <Notifications />
-    </RoutePermission>
-  }
-/>
+            path="/notifications"
+            element={
+              <RoutePermission
+                permission="NOTIFICATION_CONSULTER"
+              >
+                <Notifications />
+              </RoutePermission>
+            }
+          />
 
           {/* ========================================================
               MON KOUREL

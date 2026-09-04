@@ -668,7 +668,7 @@ function Layout() {
         nom: "Aides extérieures",
         description:
           "Aides et contributions externes",
-        chemin: "/aides-exterieures",
+        chemin: "/finances",
         permission:
           "AIDE_EXTERIEURE_CONSULTER",
         icone: Landmark,

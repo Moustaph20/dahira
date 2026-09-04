@@ -5,10 +5,13 @@ from app.models.fonction_permission import FonctionPermission
 
 
 # ============================================================
-# FONCTIONS ET LEURS PERMISSIONS
+# DÉFINITION DES FONCTIONS ET DE LEURS PERMISSIONS
 # ============================================================
 
 FONCTIONS = {
+    # ========================================================
+    # ADMINISTRATEUR
+    # ========================================================
     "ADMINISTRATEUR": {
         "nom": "Administrateur",
         "description": "Administrateur du système",
@@ -69,6 +72,9 @@ FONCTIONS = {
         ],
     },
 
+    # ========================================================
+    # SECRÉTAIRE GÉNÉRAL
+    # ========================================================
     "SG": {
         "nom": "Secrétaire Général",
         "description": "Secrétaire Général",
@@ -103,6 +109,9 @@ FONCTIONS = {
         ],
     },
 
+    # ========================================================
+    # ADJOINT SECRÉTAIRE GÉNÉRAL
+    # ========================================================
     "ADJOINT_SG": {
         "nom": "Adjoint au Secrétaire Général",
         "description": "Adjoint au Secrétaire Général",
@@ -130,6 +139,9 @@ FONCTIONS = {
         ],
     },
 
+    # ========================================================
+    # DIEUWRIGNE
+    # ========================================================
     "DIEUWRIGNE": {
         "nom": "Dieuwrigne",
         "description": "Responsable général du Dahira",
@@ -137,65 +149,98 @@ FONCTIONS = {
             "MEMBRE_CREER",
             "MEMBRE_MODIFIER",
             "MEMBRE_CONSULTER",
+
             "COTISATION_CREER",
             "COTISATION_CONSULTER",
+
             "PAIEMENT_CREER",
             "PAIEMENT_CONSULTER",
+
             "COMMUNICATION_CONSULTER",
             "PROFIL_MODIFIER",
+
+            # Finance + Dashboard
+            "FINANCE_CONSULTER",
             "DASHBOARD_CONSULTER",
+
             "MEMBRE_DESACTIVER",
+
             "COTISATION_ENREGISTRER",
             "COTISATION_MODIFIER",
+
             "PAIEMENT_ENREGISTRER",
             "PAIEMENT_MODIFIER",
+
             "REUNION_CONSULTER",
             "REUNION_CREER",
             "REUNION_MODIFIER",
+
             "PROGRAMME_CONSULTER",
             "PROGRAMME_CREER",
             "PROGRAMME_MODIFIER",
             "PROGRAMME_VALIDER",
+
             "EVENEMENT_CONSULTER",
             "EVENEMENT_CREER",
             "EVENEMENT_MODIFIER",
+
             "NOTIFICATION_CONSULTER",
             "NOTIFICATION_CREER",
+
             "DEPENSE_CONSULTER",
-            "AIDE_EXTERIEURE_CONSULTER",
-            "KOUREL_CONSULTER",
-            "AIDE_EXTERIEURE_CREER",
-            "AIDE_EXTERIEURE_MODIFIER",
-            "AIDE_EXTERIEURE_SUPPRIMER",
             "DEPENSE_CREER",
             "DEPENSE_MODIFIER",
             "DEPENSE_SUPPRIMER",
+
+            "AIDE_EXTERIEURE_CONSULTER",
+            "AIDE_EXTERIEURE_CREER",
+            "AIDE_EXTERIEURE_MODIFIER",
+            "AIDE_EXTERIEURE_SUPPRIMER",
+
+            "KOUREL_CONSULTER",
         ],
     },
 
+    # ========================================================
+    # ADJOINT RESPONSABLE FINANCIER
+    # ========================================================
     "ADJOINT_FINANCIER": {
         "nom": "Adjoint au responsable financier",
         "description": "Adjoint au responsable financier",
         "permissions": [
             "MEMBRE_CONSULTER",
+
             "COTISATION_CREER",
             "COTISATION_CONSULTER",
+
             "PAIEMENT_CREER",
             "PAIEMENT_CONSULTER",
+
             "COMMUNICATION_CONSULTER",
             "PROFIL_MODIFIER",
+
+            # Finance + Dashboard
+            "FINANCE_CONSULTER",
             "DASHBOARD_CONSULTER",
+
             "COTISATION_ENREGISTRER",
             "COTISATION_MODIFIER",
+
             "PAIEMENT_ENREGISTRER",
             "PAIEMENT_MODIFIER",
+
             "NOTIFICATION_CONSULTER",
+
             "DEPENSE_CONSULTER",
             "AIDE_EXTERIEURE_CONSULTER",
+
             "KOUREL_CONSULTER",
         ],
     },
 
+    # ========================================================
+    # MEMBRE
+    # ========================================================
     "MEMBRE": {
         "nom": "Membre",
         "description": "Membre cotisant",
@@ -212,66 +257,105 @@ FONCTIONS = {
         ],
     },
 
+    # ========================================================
+    # RESPONSABLE FINANCIER
+    # ========================================================
     "RESPONSABLE_FINANCIER": {
         "nom": "Responsable Financier",
         "description": "Responsable de la gestion financière du Dahira",
         "permissions": [
             "MEMBRE_CONSULTER",
+
             "COTISATION_CREER",
             "COTISATION_CONSULTER",
+
             "PAIEMENT_CREER",
             "PAIEMENT_CONSULTER",
+
             "PROFIL_MODIFIER",
+
+            # Finance + Dashboard
+            "FINANCE_CONSULTER",
             "DASHBOARD_CONSULTER",
+
             "COTISATION_ENREGISTRER",
             "COTISATION_MODIFIER",
+
             "PAIEMENT_ENREGISTRER",
             "PAIEMENT_MODIFIER",
+
             "NOTIFICATION_CONSULTER",
+
             "DEPENSE_CONSULTER",
-            "AIDE_EXTERIEURE_CONSULTER",
-            "KOUREL_CONSULTER",
-            "AIDE_EXTERIEURE_CREER",
-            "AIDE_EXTERIEURE_MODIFIER",
-            "AIDE_EXTERIEURE_SUPPRIMER",
             "DEPENSE_CREER",
             "DEPENSE_MODIFIER",
             "DEPENSE_SUPPRIMER",
+
+            "AIDE_EXTERIEURE_CONSULTER",
+            "AIDE_EXTERIEURE_CREER",
+            "AIDE_EXTERIEURE_MODIFIER",
+            "AIDE_EXTERIEURE_SUPPRIMER",
+
+            "KOUREL_CONSULTER",
         ],
     },
 
+    # ========================================================
+    # RESPONSABLE COMMUNICATION
+    # ========================================================
     "RESPONSABLE_COMMUNICATION": {
         "nom": "Responsable Communication",
         "description": "Responsable de la communication du Dahira",
         "permissions": [
             "COTISATION_CONSULTER",
             "PAIEMENT_CONSULTER",
+
+            # Finance + Dashboard
+            "FINANCE_CONSULTER",
+            "DASHBOARD_CONSULTER",
+
             "COMMUNICATION_CREER",
             "COMMUNICATION_CONSULTER",
             "COMMUNICATION_MODIFIER",
             "COMMUNICATION_SUPPRIMER",
+
             "NOTIFICATION_CONSULTER",
             "NOTIFICATION_CREER",
+
             "DEPENSE_CONSULTER",
             "AIDE_EXTERIEURE_CONSULTER",
+
             "KOUREL_CONSULTER",
         ],
     },
 
+    # ========================================================
+    # ADJOINT COMMUNICATION
+    # ========================================================
     "ADJOINT_COMMUNICATION": {
         "nom": "Adjoint Communication",
         "description": "Adjoint du responsable de la communication",
         "permissions": [
             "COTISATION_CONSULTER",
             "PAIEMENT_CONSULTER",
+
+            # Finance + Dashboard
+            "FINANCE_CONSULTER",
+            "DASHBOARD_CONSULTER",
+
             "COMMUNICATION_CREER",
             "COMMUNICATION_CONSULTER",
             "COMMUNICATION_MODIFIER",
+
             "NOTIFICATION_CONSULTER",
+
             "KOUREL_CONSULTER",
         ],
     },
 
+    # ========================================================
+    # RESPONSABLE RELATION EXTÉRIEUR
+    # ========================================================
     "RESPONSABLE_RELATION_EXTERIEUR": {
         "nom": "Responsable Relation Extérieur",
         "description": "Responsable des relations extérieures du Dahira",
@@ -279,10 +363,19 @@ FONCTIONS = {
             "COTISATION_CONSULTER",
             "PAIEMENT_CONSULTER",
             "PROFIL_MODIFIER",
+
+            # Finance + Dashboard
+            "FINANCE_CONSULTER",
+            "DASHBOARD_CONSULTER",
+
             "NOTIFICATION_CONSULTER",
+
             "DEPENSE_CONSULTER",
+
             "AIDE_EXTERIEURE_CONSULTER",
+
             "KOUREL_CONSULTER",
+
             "RELATION_EXTERIEUR_CONSULTER",
             "RELATION_EXTERIEUR_CREER",
             "RELATION_EXTERIEUR_MODIFIER",
@@ -290,6 +383,9 @@ FONCTIONS = {
         ],
     },
 
+    # ========================================================
+    # ADJOINT RELATION EXTÉRIEUR
+    # ========================================================
     "ADJOINT_RELATION_EXTERIEUR": {
         "nom": "Adjoint Relation Extérieur",
         "description": "Adjoint des relations extérieures",
@@ -297,48 +393,80 @@ FONCTIONS = {
             "COTISATION_CONSULTER",
             "PAIEMENT_CONSULTER",
             "PROFIL_MODIFIER",
+
+            # Finance + Dashboard
+            "FINANCE_CONSULTER",
+            "DASHBOARD_CONSULTER",
+
             "NOTIFICATION_CONSULTER",
+
             "KOUREL_CONSULTER",
+
             "RELATION_EXTERIEUR_CONSULTER",
             "RELATION_EXTERIEUR_CREER",
             "RELATION_EXTERIEUR_MODIFIER",
         ],
     },
 
+    # ========================================================
+    # RESPONSABLE ORGANISATION
+    # ========================================================
     "RESPONSABLE_ORGANISATION": {
         "nom": "Responsable Organisation",
         "description": "Responsable de l'organisation des activités du Dahira",
         "permissions": [
             "COTISATION_CONSULTER",
             "PAIEMENT_CONSULTER",
+
+            # Finance + Dashboard
+            "FINANCE_CONSULTER",
+            "DASHBOARD_CONSULTER",
+
             "REUNION_CONSULTER",
             "REUNION_CREER",
             "REUNION_MODIFIER",
             "REUNION_SUPPRIMER",
+
             "PROGRAMME_CONSULTER",
+
             "EVENEMENT_CONSULTER",
             "EVENEMENT_CREER",
             "EVENEMENT_MODIFIER",
             "EVENEMENT_SUPPRIMER",
+
             "NOTIFICATION_CONSULTER",
+
             "DEPENSE_CONSULTER",
             "AIDE_EXTERIEURE_CONSULTER",
+
             "KOUREL_CONSULTER",
         ],
     },
 
+    # ========================================================
+    # ADJOINT ORGANISATION
+    # ========================================================
     "ADJOINT_ORGANISATION": {
         "nom": "Adjoint Organisation",
         "description": "Adjoint au responsable de l'organisation",
         "permissions": [
             "COTISATION_CONSULTER",
             "PAIEMENT_CONSULTER",
+
+            # Finance + Dashboard
+            "FINANCE_CONSULTER",
+            "DASHBOARD_CONSULTER",
+
             "REUNION_CONSULTER",
             "REUNION_CREER",
             "REUNION_MODIFIER",
+
             "PROGRAMME_CONSULTER",
+
             "EVENEMENT_CONSULTER",
+
             "NOTIFICATION_CONSULTER",
+
             "KOUREL_CONSULTER",
         ],
     },
@@ -346,30 +474,20 @@ FONCTIONS = {
 
 
 # ============================================================
-# INITIALISATION
-# ============================================================
-
-# ============================================================
-# INITIALISATION
+# INITIALISATION DES FONCTIONS
 # ============================================================
 
 def seed_fonctions():
     db = SessionLocal()
 
     try:
-        created = 0
-        updated = 0
-        associations_creees = 0
-        associations_supprimees = 0
-
         # ----------------------------------------------------
-        # Vérifier que toutes les permissions existent
+        # Récupérer toutes les permissions nécessaires
         # ----------------------------------------------------
-
         codes_requis = set()
 
-        for data in FONCTIONS.values():
-            codes_requis.update(data["permissions"])
+        for fonction_data in FONCTIONS.values():
+            codes_requis.update(fonction_data["permissions"])
 
         permissions_db = (
             db.query(Permission)
@@ -377,64 +495,87 @@ def seed_fonctions():
             .all()
         )
 
-        permissions_by_code = {
+        permissions_par_code = {
             permission.code: permission
             for permission in permissions_db
         }
 
+        # ----------------------------------------------------
+        # Vérifier les permissions manquantes
+        # ----------------------------------------------------
         permissions_manquantes = (
-            codes_requis - permissions_by_code.keys()
+            codes_requis - set(permissions_par_code.keys())
         )
 
         if permissions_manquantes:
             raise RuntimeError(
-                "Permissions manquantes dans la base :\n"
-                + "\n".join(sorted(permissions_manquantes))
-                + "\n\n"
-                "Exécute d'abord : python -m app.seed.permissions"
+                "Permissions manquantes en base de données : "
+                + ", ".join(sorted(permissions_manquantes))
             )
 
         # ----------------------------------------------------
-        # Créer / mettre à jour les fonctions
+        # Compteurs
         # ----------------------------------------------------
+        fonctions_creees = 0
+        fonctions_mises_a_jour = 0
+        associations_creees = 0
+        associations_supprimees = 0
 
-        for code, data in FONCTIONS.items():
+        # ----------------------------------------------------
+        # Synchronisation des fonctions
+        # ----------------------------------------------------
+        for code_fonction, fonction_data in FONCTIONS.items():
 
-            # Le modèle Fonction ne possède pas de colonne "code".
-            # Le nom est donc utilisé comme identifiant unique.
+            nom = fonction_data["nom"]
+
+            # Recherche par nom car le modèle Fonction
+            # ne possède pas de champ "code".
             fonction = (
                 db.query(Fonction)
-                .filter(Fonction.nom == data["nom"])
+                .filter(Fonction.nom == nom)
                 .first()
             )
 
-            if fonction:
-                fonction.description = data["description"]
-                fonction.actif = True
-
-                updated += 1
-
-            else:
+            # ------------------------------------------------
+            # Création de la fonction
+            # ------------------------------------------------
+            if fonction is None:
                 fonction = Fonction(
-                    nom=data["nom"],
-                    description=data["description"],
+                    nom=nom,
+                    description=fonction_data["description"],
                     actif=True,
                 )
 
                 db.add(fonction)
                 db.flush()
 
-                created += 1
+                fonctions_creees += 1
 
             # ------------------------------------------------
-            # Synchroniser les permissions de la fonction
+            # Mise à jour de la fonction
             # ------------------------------------------------
+            else:
+                fonction.description = fonction_data["description"]
+                fonction.actif = True
 
-            permissions_voulues = {
-                permissions_by_code[permission_code].id
-                for permission_code in data["permissions"]
+                fonctions_mises_a_jour += 1
+
+            # ------------------------------------------------
+            # Permissions attendues
+            # ------------------------------------------------
+            permissions_attendues = {
+                permissions_par_code[code]
+                for code in fonction_data["permissions"]
             }
 
+            permissions_attendues_ids = {
+                permission.id
+                for permission in permissions_attendues
+            }
+
+            # ------------------------------------------------
+            # Associations existantes
+            # ------------------------------------------------
             associations_existantes = (
                 db.query(FonctionPermission)
                 .filter(
@@ -443,52 +584,49 @@ def seed_fonctions():
                 .all()
             )
 
-            permissions_existantes = {
-                association.permission_id: association
+            associations_existantes_ids = {
+                association.permission_id
                 for association in associations_existantes
             }
 
-            # -----------------------------------------------
-            # Supprimer les anciennes permissions
-            # qui ne sont plus présentes dans FONCTIONS
-            # -----------------------------------------------
-
-            for permission_id, association in permissions_existantes.items():
-
-                if permission_id not in permissions_voulues:
+            # ------------------------------------------------
+            # Supprimer les permissions qui ne doivent plus
+            # être associées à cette fonction
+            # ------------------------------------------------
+            for association in associations_existantes:
+                if association.permission_id not in permissions_attendues_ids:
                     db.delete(association)
                     associations_supprimees += 1
 
-            # -----------------------------------------------
+            # ------------------------------------------------
             # Ajouter les nouvelles permissions
-            # -----------------------------------------------
-
-            for permission_id in permissions_voulues:
-
-                if permission_id not in permissions_existantes:
-                    association = FonctionPermission(
-                        fonction_id=fonction.id,
-                        permission_id=permission_id,
+            # ------------------------------------------------
+            for permission in permissions_attendues:
+                if permission.id not in associations_existantes_ids:
+                    db.add(
+                        FonctionPermission(
+                            fonction_id=fonction.id,
+                            permission_id=permission.id,
+                        )
                     )
 
-                    db.add(association)
                     associations_creees += 1
 
+        # ----------------------------------------------------
+        # Validation finale
+        # ----------------------------------------------------
         db.commit()
 
         print()
         print("=" * 60)
-        print("INITIALISATION DES FONCTIONS")
+        print("SEED DES FONCTIONS TERMINÉ")
         print("=" * 60)
-        print(f"Fonctions définies            : {len(FONCTIONS)}")
-        print(f"Fonctions créées              : {created}")
-        print(f"Fonctions mises à jour        : {updated}")
-        print(f"Associations créées           : {associations_creees}")
-        print(f"Associations supprimées       : {associations_supprimees}")
+        print(f"Fonctions définies        : {len(FONCTIONS)}")
+        print(f"Fonctions créées          : {fonctions_creees}")
+        print(f"Fonctions mises à jour    : {fonctions_mises_a_jour}")
+        print(f"Associations créées       : {associations_creees}")
+        print(f"Associations supprimées   : {associations_supprimees}")
         print("=" * 60)
-        print("Initialisation terminée avec succès.")
-        print("=" * 60)
-        print()
 
     except Exception:
         db.rollback()
@@ -497,6 +635,10 @@ def seed_fonctions():
     finally:
         db.close()
 
+
+# ============================================================
+# EXÉCUTION DIRECTE
+# ============================================================
 
 if __name__ == "__main__":
     seed_fonctions()

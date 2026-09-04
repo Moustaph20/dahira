@@ -1,4 +1,4 @@
-from app.core.database import SessionLocal
+﻿from app.core.database import SessionLocal
 from app.models.permission import Permission
 
 
@@ -29,8 +29,8 @@ PERMISSIONS = [
     },
     {
         "code": "MEMBRE_CREER",
-        "nom": "Créer un membre",
-        "description": "Permet de créer un membre",
+        "nom": "CrÃ©er un membre",
+        "description": "Permet de crÃ©er un membre",
     },
     {
         "code": "MEMBRE_MODIFIER",
@@ -39,8 +39,8 @@ PERMISSIONS = [
     },
     {
         "code": "MEMBRE_DESACTIVER",
-        "nom": "Désactiver un membre",
-        "description": "Permet de désactiver un membre",
+        "nom": "DÃ©sactiver un membre",
+        "description": "Permet de dÃ©sactiver un membre",
     },
 
     # ========================================================
@@ -54,8 +54,8 @@ PERMISSIONS = [
     },
     {
         "code": "UTILISATEUR_CREER",
-        "nom": "Créer un utilisateur",
-        "description": "Permet de créer un utilisateur",
+        "nom": "CrÃ©er un utilisateur",
+        "description": "Permet de crÃ©er un utilisateur",
     },
     {
         "code": "UTILISATEUR_MODIFIER",
@@ -64,8 +64,8 @@ PERMISSIONS = [
     },
     {
         "code": "UTILISATEUR_DESACTIVER",
-        "nom": "Désactiver un utilisateur",
-        "description": "Permet de désactiver un utilisateur",
+        "nom": "DÃ©sactiver un utilisateur",
+        "description": "Permet de dÃ©sactiver un utilisateur",
     },
 
     # ========================================================
@@ -79,8 +79,8 @@ PERMISSIONS = [
     },
     {
         "code": "COTISATION_CREER",
-        "nom": "Créer une cotisation",
-        "description": "Permet de créer une cotisation",
+        "nom": "CrÃ©er une cotisation",
+        "description": "Permet de crÃ©er une cotisation",
     },
     {
         "code": "COTISATION_ENREGISTRER",
@@ -104,8 +104,8 @@ PERMISSIONS = [
     },
     {
         "code": "PAIEMENT_CREER",
-        "nom": "Créer un paiement",
-        "description": "Permet de créer un paiement",
+        "nom": "CrÃ©er un paiement",
+        "description": "Permet de crÃ©er un paiement",
     },
     {
         "code": "PAIEMENT_ENREGISTRER",
@@ -119,33 +119,33 @@ PERMISSIONS = [
     },
 
     # ========================================================
-    # RÉUNIONS
+    # RÃ‰UNIONS
     # ========================================================
 
     {
         "code": "REUNION_CONSULTER",
-        "nom": "Consulter les réunions",
-        "description": "Permet de consulter les réunions",
+        "nom": "Consulter les rÃ©unions",
+        "description": "Permet de consulter les rÃ©unions",
     },
     {
         "code": "REUNION_CREER",
-        "nom": "Créer une réunion",
-        "description": "Permet de créer une réunion",
+        "nom": "CrÃ©er une rÃ©union",
+        "description": "Permet de crÃ©er une rÃ©union",
     },
     {
         "code": "REUNION_MODIFIER",
-        "nom": "Modifier une réunion",
-        "description": "Permet de modifier une réunion",
+        "nom": "Modifier une rÃ©union",
+        "description": "Permet de modifier une rÃ©union",
     },
     {
         "code": "REUNION_SUPPRIMER",
-        "nom": "Supprimer une réunion",
-        "description": "Permet de supprimer une réunion",
+        "nom": "Supprimer une rÃ©union",
+        "description": "Permet de supprimer une rÃ©union",
     },
     {
         "code": "REUNION_GERER",
-        "nom": "Gérer les réunions",
-        "description": "Permet de gérer les réunions du Dahira",
+        "nom": "GÃ©rer les rÃ©unions",
+        "description": "Permet de gÃ©rer les rÃ©unions du Dahira",
     },
 
     # ========================================================
@@ -159,8 +159,8 @@ PERMISSIONS = [
     },
     {
         "code": "PROGRAMME_CREER",
-        "nom": "Créer un programme",
-        "description": "Permet de créer un programme religieux",
+        "nom": "CrÃ©er un programme",
+        "description": "Permet de crÃ©er un programme religieux",
     },
     {
         "code": "PROGRAMME_MODIFIER",
@@ -174,8 +174,8 @@ PERMISSIONS = [
     },
     {
         "code": "PROGRAMME_GERER",
-        "nom": "Gérer les programmes",
-        "description": "Permet de gérer les programmes religieux",
+        "nom": "GÃ©rer les programmes",
+        "description": "Permet de gÃ©rer les programmes religieux",
     },
 
     # ========================================================
@@ -189,7 +189,7 @@ PERMISSIONS = [
     },
     {
         "code": "KHASSIDA_CREER",
-        "nom": "Créer une Khassida",
+        "nom": "CrÃ©er une Khassida",
         "description": "Permet d'ajouter une Khassida",
     },
     {
@@ -214,8 +214,8 @@ PERMISSIONS = [
     },
     {
         "code": "KOUREL_CREER",
-        "nom": "Créer un Kourel",
-        "description": "Permet de créer un Kourel",
+        "nom": "CrÃ©er un Kourel",
+        "description": "Permet de crÃ©er un Kourel",
     },
     {
         "code": "KOUREL_MODIFIER",
@@ -239,8 +239,8 @@ PERMISSIONS = [
     },
     {
         "code": "COMMUNICATION_CREER",
-        "nom": "Créer une communication",
-        "description": "Permet de créer une communication",
+        "nom": "CrÃ©er une communication",
+        "description": "Permet de crÃ©er une communication",
     },
     {
         "code": "COMMUNICATION_MODIFIER",
@@ -254,28 +254,28 @@ PERMISSIONS = [
     },
 
     # ========================================================
-    # ÉVÉNEMENTS
+    # Ã‰VÃ‰NEMENTS
     # ========================================================
 
     {
         "code": "EVENEMENT_CONSULTER",
-        "nom": "Consulter les événements",
-        "description": "Permet de consulter les événements",
+        "nom": "Consulter les Ã©vÃ©nements",
+        "description": "Permet de consulter les Ã©vÃ©nements",
     },
     {
         "code": "EVENEMENT_CREER",
-        "nom": "Créer un événement",
-        "description": "Permet de créer un événement",
+        "nom": "CrÃ©er un Ã©vÃ©nement",
+        "description": "Permet de crÃ©er un Ã©vÃ©nement",
     },
     {
         "code": "EVENEMENT_MODIFIER",
-        "nom": "Modifier un événement",
-        "description": "Permet de modifier un événement",
+        "nom": "Modifier un Ã©vÃ©nement",
+        "description": "Permet de modifier un Ã©vÃ©nement",
     },
     {
         "code": "EVENEMENT_SUPPRIMER",
-        "nom": "Supprimer un événement",
-        "description": "Permet de supprimer un événement",
+        "nom": "Supprimer un Ã©vÃ©nement",
+        "description": "Permet de supprimer un Ã©vÃ©nement",
     },
 
     # ========================================================
@@ -289,8 +289,8 @@ PERMISSIONS = [
     },
     {
         "code": "NOTIFICATION_CREER",
-        "nom": "Créer une notification",
-        "description": "Permet de créer une notification",
+        "nom": "CrÃ©er une notification",
+        "description": "Permet de crÃ©er une notification",
     },
 
     # ========================================================
@@ -304,8 +304,8 @@ PERMISSIONS = [
     },
     {
         "code": "FONCTION_CREER",
-        "nom": "Créer une fonction",
-        "description": "Permet de créer une fonction",
+        "nom": "CrÃ©er une fonction",
+        "description": "Permet de crÃ©er une fonction",
     },
     {
         "code": "FONCTION_MODIFIER",
@@ -329,28 +329,28 @@ PERMISSIONS = [
     },
 
     # ========================================================
-    # DÉPENSES
+    # DÃ‰PENSES
     # ========================================================
 
     {
         "code": "DEPENSE_CONSULTER",
-        "nom": "Consulter les dépenses",
-        "description": "Permet de consulter les dépenses",
+        "nom": "Consulter les dÃ©penses",
+        "description": "Permet de consulter les dÃ©penses",
     },
     {
         "code": "DEPENSE_CREER",
-        "nom": "Créer une dépense",
-        "description": "Permet d'enregistrer une dépense",
+        "nom": "CrÃ©er une dÃ©pense",
+        "description": "Permet d'enregistrer une dÃ©pense",
     },
     {
         "code": "DEPENSE_MODIFIER",
-        "nom": "Modifier une dépense",
-        "description": "Permet de modifier une dépense",
+        "nom": "Modifier une dÃ©pense",
+        "description": "Permet de modifier une dÃ©pense",
     },
     {
         "code": "DEPENSE_SUPPRIMER",
-        "nom": "Supprimer une dépense",
-        "description": "Permet de supprimer une dépense",
+        "nom": "Supprimer une dÃ©pense",
+        "description": "Permet de supprimer une dÃ©pense",
     },
     {
     "code": "PROFIL_MODIFIER",
@@ -359,53 +359,53 @@ PERMISSIONS = [
     },
 
     # ========================================================
-    # AIDES EXTÉRIEURES
+    # AIDES EXTÃ‰RIEURES
     # ========================================================
 
     {
         "code": "AIDE_EXTERIEURE_CONSULTER",
-        "nom": "Consulter les aides extérieures",
-        "description": "Permet de consulter les aides extérieures",
+        "nom": "Consulter les aides extÃ©rieures",
+        "description": "Permet de consulter les aides extÃ©rieures",
     },
     {
         "code": "AIDE_EXTERIEURE_CREER",
-        "nom": "Créer une aide extérieure",
-        "description": "Permet d'enregistrer une aide extérieure",
+        "nom": "CrÃ©er une aide extÃ©rieure",
+        "description": "Permet d'enregistrer une aide extÃ©rieure",
     },
     {
         "code": "AIDE_EXTERIEURE_MODIFIER",
-        "nom": "Modifier une aide extérieure",
-        "description": "Permet de modifier une aide extérieure",
+        "nom": "Modifier une aide extÃ©rieure",
+        "description": "Permet de modifier une aide extÃ©rieure",
     },
     {
         "code": "AIDE_EXTERIEURE_SUPPRIMER",
-        "nom": "Supprimer une aide extérieure",
-        "description": "Permet de supprimer une aide extérieure",
+        "nom": "Supprimer une aide extÃ©rieure",
+        "description": "Permet de supprimer une aide extÃ©rieure",
     },
 
     # ========================================================
-    # RELATIONS EXTÉRIEURES
+    # RELATIONS EXTÃ‰RIEURES
     # ========================================================
 
     {
         "code": "RELATION_EXTERIEUR_CONSULTER",
-        "nom": "Consulter les relations extérieures",
-        "description": "Permet de consulter les relations extérieures",
+        "nom": "Consulter les relations extÃ©rieures",
+        "description": "Permet de consulter les relations extÃ©rieures",
     },
     {
         "code": "RELATION_EXTERIEUR_CREER",
-        "nom": "Créer une relation extérieure",
-        "description": "Permet d'enregistrer une relation extérieure",
+        "nom": "CrÃ©er une relation extÃ©rieure",
+        "description": "Permet d'enregistrer une relation extÃ©rieure",
     },
     {
         "code": "RELATION_EXTERIEUR_MODIFIER",
-        "nom": "Modifier une relation extérieure",
-        "description": "Permet de modifier une relation extérieure",
+        "nom": "Modifier une relation extÃ©rieure",
+        "description": "Permet de modifier une relation extÃ©rieure",
     },
     {
         "code": "RELATION_EXTERIEUR_SUPPRIMER",
-        "nom": "Supprimer une relation extérieure",
-        "description": "Permet de supprimer une relation extérieure",
+        "nom": "Supprimer une relation extÃ©rieure",
+        "description": "Permet de supprimer une relation extÃ©rieure",
     },
 
     # ========================================================
@@ -419,31 +419,44 @@ PERMISSIONS = [
     },
     {
         "code": "GALERIE_CREER",
-        "nom": "Ajouter un élément à la galerie",
-        "description": "Permet d'ajouter un élément à la galerie",
+        "nom": "Ajouter un Ã©lÃ©ment Ã  la galerie",
+        "description": "Permet d'ajouter un Ã©lÃ©ment Ã  la galerie",
     },
     {
         "code": "GALERIE_MODIFIER",
-        "nom": "Modifier un élément de la galerie",
-        "description": "Permet de modifier un élément de la galerie",
+        "nom": "Modifier un Ã©lÃ©ment de la galerie",
+        "description": "Permet de modifier un Ã©lÃ©ment de la galerie",
     },
     {
         "code": "GALERIE_SUPPRIMER",
-        "nom": "Supprimer un élément de la galerie",
-        "description": "Permet de supprimer un élément de la galerie",
+        "nom": "Supprimer un Ã©lÃ©ment de la galerie",
+        "description": "Permet de supprimer un Ã©lÃ©ment de la galerie",
+    },
+
+
+        # ========================================================
+    # FINANCES
+    # ========================================================
+
+    {
+        "code": "FINANCE_CONSULTER",
+        "nom": "Consulter les finances",
+        "description": "Permet de consulter les finances de la dahira",
     },
 ]
 
 
+
+
 # ============================================================
-# VÉRIFICATION DU NOMBRE DE PERMISSIONS
+# VÃ‰RIFICATION DU NOMBRE DE PERMISSIONS
 # ============================================================
 
-EXPECTED_COUNT = 67
+EXPECTED_COUNT = 68
 
 if len(PERMISSIONS) != EXPECTED_COUNT:
     raise RuntimeError(
-        f"ERREUR : {len(PERMISSIONS)} permissions définies "
+        f"ERREUR : {len(PERMISSIONS)} permissions dÃ©finies "
         f"au lieu de {EXPECTED_COUNT}."
     )
 
@@ -491,11 +504,11 @@ def seed_permissions():
         print("=" * 60)
         print("INITIALISATION DES PERMISSIONS")
         print("=" * 60)
-        print(f"Permissions définies : {len(PERMISSIONS)}")
-        print(f"Permissions créées   : {created}")
-        print(f"Permissions mises à jour : {updated}")
+        print(f"Permissions dÃ©finies : {len(PERMISSIONS)}")
+        print(f"Permissions crÃ©Ã©es   : {created}")
+        print(f"Permissions mises Ã  jour : {updated}")
         print("=" * 60)
-        print("Permissions initialisées avec succès.")
+        print("Permissions initialisÃ©es avec succÃ¨s.")
         print("=" * 60)
         print()
 
@@ -508,7 +521,7 @@ def seed_permissions():
 
 
 # ============================================================
-# EXÉCUTION DIRECTE
+# EXÃ‰CUTION DIRECTE
 # ============================================================
 
 if __name__ == "__main__":
