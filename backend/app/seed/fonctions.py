@@ -1,6 +1,7 @@
 from app.core.database import SessionLocal
 from app.models.fonction import Fonction
 from app.models.permission import Permission
+from app.models.fonction_permission import FonctionPermission
 
 
 # ============================================================
@@ -348,13 +349,18 @@ FONCTIONS = {
 # INITIALISATION
 # ============================================================
 
+# ============================================================
+# INITIALISATION
+# ============================================================
+
 def seed_fonctions():
     db = SessionLocal()
 
     try:
         created = 0
         updated = 0
-        associations = 0
+        associations_creees = 0
+        associations_supprimees = 0
 
         # ----------------------------------------------------
         # Vérifier que toutes les permissions existent
@@ -385,7 +391,7 @@ def seed_fonctions():
                 "Permissions manquantes dans la base :\n"
                 + "\n".join(sorted(permissions_manquantes))
                 + "\n\n"
-                "Exécute d'abord seed_permissions.py."
+                "Exécute d'abord : python -m app.seed.permissions"
             )
 
         # ----------------------------------------------------
@@ -394,23 +400,25 @@ def seed_fonctions():
 
         for code, data in FONCTIONS.items():
 
+            # Le modèle Fonction ne possède pas de colonne "code".
+            # Le nom est donc utilisé comme identifiant unique.
             fonction = (
                 db.query(Fonction)
-                .filter(Fonction.code == code)
+                .filter(Fonction.nom == data["nom"])
                 .first()
             )
 
             if fonction:
-                fonction.nom = data["nom"]
                 fonction.description = data["description"]
+                fonction.actif = True
 
                 updated += 1
 
             else:
                 fonction = Fonction(
-                    code=code,
                     nom=data["nom"],
                     description=data["description"],
+                    actif=True,
                 )
 
                 db.add(fonction)
@@ -419,15 +427,52 @@ def seed_fonctions():
                 created += 1
 
             # ------------------------------------------------
-            # Remplacer les permissions de la fonction
+            # Synchroniser les permissions de la fonction
             # ------------------------------------------------
 
-            fonction.permissions.clear()
+            permissions_voulues = {
+                permissions_by_code[permission_code].id
+                for permission_code in data["permissions"]
+            }
 
-            for permission_code in data["permissions"]:
-                permission = permissions_by_code[permission_code]
-                fonction.permissions.append(permission)
-                associations += 1
+            associations_existantes = (
+                db.query(FonctionPermission)
+                .filter(
+                    FonctionPermission.fonction_id == fonction.id
+                )
+                .all()
+            )
+
+            permissions_existantes = {
+                association.permission_id: association
+                for association in associations_existantes
+            }
+
+            # -----------------------------------------------
+            # Supprimer les anciennes permissions
+            # qui ne sont plus présentes dans FONCTIONS
+            # -----------------------------------------------
+
+            for permission_id, association in permissions_existantes.items():
+
+                if permission_id not in permissions_voulues:
+                    db.delete(association)
+                    associations_supprimees += 1
+
+            # -----------------------------------------------
+            # Ajouter les nouvelles permissions
+            # -----------------------------------------------
+
+            for permission_id in permissions_voulues:
+
+                if permission_id not in permissions_existantes:
+                    association = FonctionPermission(
+                        fonction_id=fonction.id,
+                        permission_id=permission_id,
+                    )
+
+                    db.add(association)
+                    associations_creees += 1
 
         db.commit()
 
@@ -435,10 +480,11 @@ def seed_fonctions():
         print("=" * 60)
         print("INITIALISATION DES FONCTIONS")
         print("=" * 60)
-        print(f"Fonctions définies       : {len(FONCTIONS)}")
-        print(f"Fonctions créées         : {created}")
-        print(f"Fonctions mises à jour   : {updated}")
-        print(f"Associations permissions : {associations}")
+        print(f"Fonctions définies            : {len(FONCTIONS)}")
+        print(f"Fonctions créées              : {created}")
+        print(f"Fonctions mises à jour        : {updated}")
+        print(f"Associations créées           : {associations_creees}")
+        print(f"Associations supprimées       : {associations_supprimees}")
         print("=" * 60)
         print("Initialisation terminée avec succès.")
         print("=" * 60)
