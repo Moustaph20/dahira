@@ -1,304 +1,452 @@
 from app.core.database import SessionLocal
-
 from app.models.fonction import Fonction
 from app.models.permission import Permission
-from app.models.fonction_permission import FonctionPermission
 
+
+# ============================================================
+# FONCTIONS ET LEURS PERMISSIONS
+# ============================================================
 
 FONCTIONS = {
+    "ADMINISTRATEUR": {
+        "nom": "Administrateur",
+        "description": "Administrateur du système",
+        "permissions": [
+            "MEMBRE_CREER",
+            "MEMBRE_MODIFIER",
+            "MEMBRE_CONSULTER",
+            "UTILISATEUR_CREER",
+            "UTILISATEUR_MODIFIER",
+            "COTISATION_CREER",
+            "COTISATION_CONSULTER",
+            "PAIEMENT_CREER",
+            "PAIEMENT_CONSULTER",
+            "REUNION_GERER",
+            "PROGRAMME_GERER",
+            "COMMUNICATION_CREER",
+            "COMMUNICATION_CONSULTER",
+            "PROFIL_MODIFIER",
+            "DASHBOARD_CONSULTER",
+            "MEMBRE_DESACTIVER",
+            "COTISATION_ENREGISTRER",
+            "COTISATION_MODIFIER",
+            "PAIEMENT_ENREGISTRER",
+            "PAIEMENT_MODIFIER",
+            "REUNION_CONSULTER",
+            "REUNION_CREER",
+            "REUNION_MODIFIER",
+            "REUNION_SUPPRIMER",
+            "PROGRAMME_CONSULTER",
+            "PROGRAMME_CREER",
+            "PROGRAMME_MODIFIER",
+            "PROGRAMME_VALIDER",
+            "COMMUNICATION_MODIFIER",
+            "COMMUNICATION_SUPPRIMER",
+            "EVENEMENT_CONSULTER",
+            "EVENEMENT_CREER",
+            "EVENEMENT_MODIFIER",
+            "EVENEMENT_SUPPRIMER",
+            "NOTIFICATION_CONSULTER",
+            "NOTIFICATION_CREER",
+            "UTILISATEUR_CONSULTER",
+            "UTILISATEUR_DESACTIVER",
+            "FONCTION_CONSULTER",
+            "FONCTION_CREER",
+            "FONCTION_MODIFIER",
+            "PERMISSION_CONSULTER",
+            "PERMISSION_MODIFIER",
+            "DEPENSE_CONSULTER",
+            "AIDE_EXTERIEURE_CONSULTER",
+            "KOUREL_CONSULTER",
+            "KOUREL_CREER",
+            "KOUREL_MODIFIER",
+            "KOUREL_SUPPRIMER",
+            "GALERIE_CONSULTER",
+            "GALERIE_CREER",
+            "GALERIE_MODIFIER",
+            "GALERIE_SUPPRIMER",
+        ],
+    },
 
-    # ========================================================
-    # DIEUWRIGNE
-    # ========================================================
+    "SG": {
+        "nom": "Secrétaire Général",
+        "description": "Secrétaire Général",
+        "permissions": [
+            "MEMBRE_CREER",
+            "MEMBRE_MODIFIER",
+            "MEMBRE_CONSULTER",
+            "UTILISATEUR_CREER",
+            "UTILISATEUR_MODIFIER",
+            "COTISATION_CONSULTER",
+            "PAIEMENT_CONSULTER",
+            "REUNION_GERER",
+            "PROGRAMME_GERER",
+            "COMMUNICATION_CREER",
+            "COMMUNICATION_CONSULTER",
+            "PROFIL_MODIFIER",
+            "MEMBRE_DESACTIVER",
+            "REUNION_CONSULTER",
+            "REUNION_CREER",
+            "REUNION_MODIFIER",
+            "PROGRAMME_CONSULTER",
+            "EVENEMENT_CONSULTER",
+            "EVENEMENT_CREER",
+            "EVENEMENT_MODIFIER",
+            "NOTIFICATION_CONSULTER",
+            "DEPENSE_CONSULTER",
+            "AIDE_EXTERIEURE_CONSULTER",
+            "KOUREL_CONSULTER",
+            "KOUREL_CREER",
+            "KOUREL_MODIFIER",
+            "KOUREL_SUPPRIMER",
+        ],
+    },
 
-    "Dieuwrigne": [
-        "MEMBRE_CONSULTER",
-        "MEMBRE_CREER",
-        "MEMBRE_MODIFIER",
-        "MEMBRE_DESACTIVER",
+    "ADJOINT_SG": {
+        "nom": "Adjoint au Secrétaire Général",
+        "description": "Adjoint au Secrétaire Général",
+        "permissions": [
+            "MEMBRE_CREER",
+            "MEMBRE_MODIFIER",
+            "MEMBRE_CONSULTER",
+            "UTILISATEUR_CREER",
+            "UTILISATEUR_MODIFIER",
+            "COTISATION_CONSULTER",
+            "PAIEMENT_CONSULTER",
+            "REUNION_GERER",
+            "COMMUNICATION_CONSULTER",
+            "PROFIL_MODIFIER",
+            "REUNION_CONSULTER",
+            "REUNION_CREER",
+            "REUNION_MODIFIER",
+            "PROGRAMME_CONSULTER",
+            "EVENEMENT_CONSULTER",
+            "NOTIFICATION_CONSULTER",
+            "KOUREL_CONSULTER",
+            "KOUREL_CREER",
+            "KOUREL_MODIFIER",
+            "KOUREL_SUPPRIMER",
+        ],
+    },
 
-        "COTISATION_CONSULTER",
-        "COTISATION_ENREGISTRER",
-        "COTISATION_MODIFIER",
+    "DIEUWRIGNE": {
+        "nom": "Dieuwrigne",
+        "description": "Responsable général du Dahira",
+        "permissions": [
+            "MEMBRE_CREER",
+            "MEMBRE_MODIFIER",
+            "MEMBRE_CONSULTER",
+            "COTISATION_CREER",
+            "COTISATION_CONSULTER",
+            "PAIEMENT_CREER",
+            "PAIEMENT_CONSULTER",
+            "COMMUNICATION_CONSULTER",
+            "PROFIL_MODIFIER",
+            "DASHBOARD_CONSULTER",
+            "MEMBRE_DESACTIVER",
+            "COTISATION_ENREGISTRER",
+            "COTISATION_MODIFIER",
+            "PAIEMENT_ENREGISTRER",
+            "PAIEMENT_MODIFIER",
+            "REUNION_CONSULTER",
+            "REUNION_CREER",
+            "REUNION_MODIFIER",
+            "PROGRAMME_CONSULTER",
+            "PROGRAMME_CREER",
+            "PROGRAMME_MODIFIER",
+            "PROGRAMME_VALIDER",
+            "EVENEMENT_CONSULTER",
+            "EVENEMENT_CREER",
+            "EVENEMENT_MODIFIER",
+            "NOTIFICATION_CONSULTER",
+            "NOTIFICATION_CREER",
+            "DEPENSE_CONSULTER",
+            "AIDE_EXTERIEURE_CONSULTER",
+            "KOUREL_CONSULTER",
+            "AIDE_EXTERIEURE_CREER",
+            "AIDE_EXTERIEURE_MODIFIER",
+            "AIDE_EXTERIEURE_SUPPRIMER",
+            "DEPENSE_CREER",
+            "DEPENSE_MODIFIER",
+            "DEPENSE_SUPPRIMER",
+        ],
+    },
 
-        "PAIEMENT_CONSULTER",
-        "PAIEMENT_ENREGISTRER",
-        "PAIEMENT_MODIFIER",
+    "ADJOINT_FINANCIER": {
+        "nom": "Adjoint au responsable financier",
+        "description": "Adjoint au responsable financier",
+        "permissions": [
+            "MEMBRE_CONSULTER",
+            "COTISATION_CREER",
+            "COTISATION_CONSULTER",
+            "PAIEMENT_CREER",
+            "PAIEMENT_CONSULTER",
+            "COMMUNICATION_CONSULTER",
+            "PROFIL_MODIFIER",
+            "DASHBOARD_CONSULTER",
+            "COTISATION_ENREGISTRER",
+            "COTISATION_MODIFIER",
+            "PAIEMENT_ENREGISTRER",
+            "PAIEMENT_MODIFIER",
+            "NOTIFICATION_CONSULTER",
+            "DEPENSE_CONSULTER",
+            "AIDE_EXTERIEURE_CONSULTER",
+            "KOUREL_CONSULTER",
+        ],
+    },
 
-        "REUNION_CONSULTER",
-        "REUNION_CREER",
-        "REUNION_MODIFIER",
-        "REUNION_SUPPRIMER",
+    "MEMBRE": {
+        "nom": "Membre",
+        "description": "Membre cotisant",
+        "permissions": [
+            "COTISATION_CONSULTER",
+            "PAIEMENT_CONSULTER",
+            "COMMUNICATION_CONSULTER",
+            "PROFIL_MODIFIER",
+            "REUNION_CONSULTER",
+            "PROGRAMME_CONSULTER",
+            "EVENEMENT_CONSULTER",
+            "NOTIFICATION_CONSULTER",
+            "KOUREL_CONSULTER",
+        ],
+    },
 
-        "PROGRAMME_CONSULTER",
-        "PROGRAMME_VALIDER",
+    "RESPONSABLE_FINANCIER": {
+        "nom": "Responsable Financier",
+        "description": "Responsable de la gestion financière du Dahira",
+        "permissions": [
+            "MEMBRE_CONSULTER",
+            "COTISATION_CREER",
+            "COTISATION_CONSULTER",
+            "PAIEMENT_CREER",
+            "PAIEMENT_CONSULTER",
+            "PROFIL_MODIFIER",
+            "DASHBOARD_CONSULTER",
+            "COTISATION_ENREGISTRER",
+            "COTISATION_MODIFIER",
+            "PAIEMENT_ENREGISTRER",
+            "PAIEMENT_MODIFIER",
+            "NOTIFICATION_CONSULTER",
+            "DEPENSE_CONSULTER",
+            "AIDE_EXTERIEURE_CONSULTER",
+            "KOUREL_CONSULTER",
+            "AIDE_EXTERIEURE_CREER",
+            "AIDE_EXTERIEURE_MODIFIER",
+            "AIDE_EXTERIEURE_SUPPRIMER",
+            "DEPENSE_CREER",
+            "DEPENSE_MODIFIER",
+            "DEPENSE_SUPPRIMER",
+        ],
+    },
 
-        "KHASSIDA_CONSULTER",
-        "KHASSIDA_PROGRAMMER",
+    "RESPONSABLE_COMMUNICATION": {
+        "nom": "Responsable Communication",
+        "description": "Responsable de la communication du Dahira",
+        "permissions": [
+            "COTISATION_CONSULTER",
+            "PAIEMENT_CONSULTER",
+            "COMMUNICATION_CREER",
+            "COMMUNICATION_CONSULTER",
+            "COMMUNICATION_MODIFIER",
+            "COMMUNICATION_SUPPRIMER",
+            "NOTIFICATION_CONSULTER",
+            "NOTIFICATION_CREER",
+            "DEPENSE_CONSULTER",
+            "AIDE_EXTERIEURE_CONSULTER",
+            "KOUREL_CONSULTER",
+        ],
+    },
 
-        "COMMUNICATION_CONSULTER",
-        "COMMUNICATION_CREER",
-        "COMMUNICATION_MODIFIER",
-        "COMMUNICATION_SUPPRIMER",
+    "ADJOINT_COMMUNICATION": {
+        "nom": "Adjoint Communication",
+        "description": "Adjoint du responsable de la communication",
+        "permissions": [
+            "COTISATION_CONSULTER",
+            "PAIEMENT_CONSULTER",
+            "COMMUNICATION_CREER",
+            "COMMUNICATION_CONSULTER",
+            "COMMUNICATION_MODIFIER",
+            "NOTIFICATION_CONSULTER",
+            "KOUREL_CONSULTER",
+        ],
+    },
 
-        "EVENEMENT_CONSULTER",
-        "EVENEMENT_CREER",
-        "EVENEMENT_MODIFIER",
-        "EVENEMENT_SUPPRIMER",
+    "RESPONSABLE_RELATION_EXTERIEUR": {
+        "nom": "Responsable Relation Extérieur",
+        "description": "Responsable des relations extérieures du Dahira",
+        "permissions": [
+            "COTISATION_CONSULTER",
+            "PAIEMENT_CONSULTER",
+            "PROFIL_MODIFIER",
+            "NOTIFICATION_CONSULTER",
+            "DEPENSE_CONSULTER",
+            "AIDE_EXTERIEURE_CONSULTER",
+            "KOUREL_CONSULTER",
+            "RELATION_EXTERIEUR_CONSULTER",
+            "RELATION_EXTERIEUR_CREER",
+            "RELATION_EXTERIEUR_MODIFIER",
+            "RELATION_EXTERIEUR_SUPPRIMER",
+        ],
+    },
 
-        "NOTIFICATION_CONSULTER",
-        "NOTIFICATION_CREER",
+    "ADJOINT_RELATION_EXTERIEUR": {
+        "nom": "Adjoint Relation Extérieur",
+        "description": "Adjoint des relations extérieures",
+        "permissions": [
+            "COTISATION_CONSULTER",
+            "PAIEMENT_CONSULTER",
+            "PROFIL_MODIFIER",
+            "NOTIFICATION_CONSULTER",
+            "KOUREL_CONSULTER",
+            "RELATION_EXTERIEUR_CONSULTER",
+            "RELATION_EXTERIEUR_CREER",
+            "RELATION_EXTERIEUR_MODIFIER",
+        ],
+    },
 
-        "UTILISATEUR_CONSULTER",
-        "UTILISATEUR_CREER",
-        "UTILISATEUR_MODIFIER",
-        "UTILISATEUR_DESACTIVER",
+    "RESPONSABLE_ORGANISATION": {
+        "nom": "Responsable Organisation",
+        "description": "Responsable de l'organisation des activités du Dahira",
+        "permissions": [
+            "COTISATION_CONSULTER",
+            "PAIEMENT_CONSULTER",
+            "REUNION_CONSULTER",
+            "REUNION_CREER",
+            "REUNION_MODIFIER",
+            "REUNION_SUPPRIMER",
+            "PROGRAMME_CONSULTER",
+            "EVENEMENT_CONSULTER",
+            "EVENEMENT_CREER",
+            "EVENEMENT_MODIFIER",
+            "EVENEMENT_SUPPRIMER",
+            "NOTIFICATION_CONSULTER",
+            "DEPENSE_CONSULTER",
+            "AIDE_EXTERIEURE_CONSULTER",
+            "KOUREL_CONSULTER",
+        ],
+    },
 
-        "FONCTION_CONSULTER",
-        "PERMISSION_CONSULTER",
-    ],
-
-    # ========================================================
-    # SECRÉTAIRE GÉNÉRAL
-    # ========================================================
-
-    "Secrétaire Général": [
-        "MEMBRE_CONSULTER",
-        "MEMBRE_CREER",
-        "MEMBRE_MODIFIER",
-        "MEMBRE_DESACTIVER",
-
-        "COTISATION_CONSULTER",
-
-        "PAIEMENT_CONSULTER",
-
-        "REUNION_CONSULTER",
-        "REUNION_CREER",
-        "REUNION_MODIFIER",
-
-        "PROGRAMME_CONSULTER",
-
-        "COMMUNICATION_CONSULTER",
-        "COMMUNICATION_CREER",
-        "COMMUNICATION_MODIFIER",
-
-        "EVENEMENT_CONSULTER",
-
-        "NOTIFICATION_CONSULTER",
-        "NOTIFICATION_CREER",
-
-        "UTILISATEUR_CONSULTER",
-        "UTILISATEUR_CREER",
-    ],
-
-    # ========================================================
-    # SECRÉTAIRE GÉNÉRAL ADJOINT
-    # ========================================================
-
-    "Secrétaire Général Adjoint": [
-        "MEMBRE_CONSULTER",
-        "MEMBRE_CREER",
-        "MEMBRE_MODIFIER",
-
-        "COTISATION_CONSULTER",
-
-        "PAIEMENT_CONSULTER",
-
-        "REUNION_CONSULTER",
-
-        "PROGRAMME_CONSULTER",
-
-        "COMMUNICATION_CONSULTER",
-
-        "EVENEMENT_CONSULTER",
-
-        "NOTIFICATION_CONSULTER",
-    ],
-
-    # ========================================================
-    # RESPONSABLE COMMUNICATION
-    # ========================================================
-
-    "Responsable Communication": [
-        "COMMUNICATION_CONSULTER",
-        "COMMUNICATION_CREER",
-        "COMMUNICATION_MODIFIER",
-        "COMMUNICATION_SUPPRIMER",
-
-        "NOTIFICATION_CONSULTER",
-        "NOTIFICATION_CREER",
-
-        "EVENEMENT_CONSULTER",
-    ],
-
-    # ========================================================
-    # RESPONSABLE RELATION EXTÉRIEUR
-    # ========================================================
-
-    "Responsable Relation Extérieur": [
-        "COMMUNICATION_CONSULTER",
-        "COMMUNICATION_CREER",
-
-        "EVENEMENT_CONSULTER",
-        "EVENEMENT_CREER",
-        "EVENEMENT_MODIFIER",
-
-        "NOTIFICATION_CONSULTER",
-    ],
-
-    # ========================================================
-    # RESPONSABLE FINANCIER
-    # ========================================================
-
-    "Responsable Financier": [
-        "COTISATION_CONSULTER",
-        "COTISATION_ENREGISTRER",
-        "COTISATION_MODIFIER",
-
-        "PAIEMENT_CONSULTER",
-        "PAIEMENT_ENREGISTRER",
-        "PAIEMENT_MODIFIER",
-
-        "MEMBRE_CONSULTER",
-
-        "EVENEMENT_CONSULTER",
-    ],
-
-    # ========================================================
-    # RESPONSABLE ORGANISATION
-    # ========================================================
-
-    "Responsable Organisation": [
-        "MEMBRE_CONSULTER",
-
-        "REUNION_CONSULTER",
-        "REUNION_CREER",
-        "REUNION_MODIFIER",
-        "REUNION_SUPPRIMER",
-
-        "EVENEMENT_CONSULTER",
-        "EVENEMENT_CREER",
-        "EVENEMENT_MODIFIER",
-        "EVENEMENT_SUPPRIMER",
-
-        "NOTIFICATION_CONSULTER",
-    ],
-
-    # ========================================================
-    # KOUREL
-    # ========================================================
-
-    "Membre Kourel": [
-        "KHASSIDA_CONSULTER",
-        "KHASSIDA_PROGRAMMER",
-
-        "PROGRAMME_CONSULTER",
-
-        "REUNION_CONSULTER",
-
-        "EVENEMENT_CONSULTER",
-
-        "NOTIFICATION_CONSULTER",
-    ],
-
-    # ========================================================
-    # MEMBRE
-    # ========================================================
-
-    "Membre": [
-        "COTISATION_CONSULTER",
-        "PAIEMENT_CONSULTER",
-
-        "REUNION_CONSULTER",
-
-        "PROGRAMME_CONSULTER",
-
-        "COMMUNICATION_CONSULTER",
-
-        "EVENEMENT_CONSULTER",
-
-        "NOTIFICATION_CONSULTER",
-    ],
+    "ADJOINT_ORGANISATION": {
+        "nom": "Adjoint Organisation",
+        "description": "Adjoint au responsable de l'organisation",
+        "permissions": [
+            "COTISATION_CONSULTER",
+            "PAIEMENT_CONSULTER",
+            "REUNION_CONSULTER",
+            "REUNION_CREER",
+            "REUNION_MODIFIER",
+            "PROGRAMME_CONSULTER",
+            "EVENEMENT_CONSULTER",
+            "NOTIFICATION_CONSULTER",
+            "KOUREL_CONSULTER",
+        ],
+    },
 }
 
 
-def seed_fonctions():
+# ============================================================
+# INITIALISATION
+# ============================================================
 
+def seed_fonctions():
     db = SessionLocal()
 
     try:
+        created = 0
+        updated = 0
+        associations = 0
 
-        for nom_fonction, codes_permissions in FONCTIONS.items():
+        # ----------------------------------------------------
+        # Vérifier que toutes les permissions existent
+        # ----------------------------------------------------
 
-            # ------------------------------------------------
-            # Fonction
-            # ------------------------------------------------
+        codes_requis = set()
+
+        for data in FONCTIONS.values():
+            codes_requis.update(data["permissions"])
+
+        permissions_db = (
+            db.query(Permission)
+            .filter(Permission.code.in_(codes_requis))
+            .all()
+        )
+
+        permissions_by_code = {
+            permission.code: permission
+            for permission in permissions_db
+        }
+
+        permissions_manquantes = (
+            codes_requis - permissions_by_code.keys()
+        )
+
+        if permissions_manquantes:
+            raise RuntimeError(
+                "Permissions manquantes dans la base :\n"
+                + "\n".join(sorted(permissions_manquantes))
+                + "\n\n"
+                "Exécute d'abord seed_permissions.py."
+            )
+
+        # ----------------------------------------------------
+        # Créer / mettre à jour les fonctions
+        # ----------------------------------------------------
+
+        for code, data in FONCTIONS.items():
 
             fonction = (
                 db.query(Fonction)
-                .filter(
-                    Fonction.nom == nom_fonction
-                )
+                .filter(Fonction.code == code)
                 .first()
             )
 
-            if not fonction:
+            if fonction:
+                fonction.nom = data["nom"]
+                fonction.description = data["description"]
 
+                updated += 1
+
+            else:
                 fonction = Fonction(
-                    nom=nom_fonction,
-                    description=f"Fonction {nom_fonction}",
-                    actif=True,
+                    code=code,
+                    nom=data["nom"],
+                    description=data["description"],
                 )
 
                 db.add(fonction)
                 db.flush()
 
+                created += 1
+
             # ------------------------------------------------
-            # Permissions
+            # Remplacer les permissions de la fonction
             # ------------------------------------------------
 
-            for code in codes_permissions:
+            fonction.permissions.clear()
 
-                permission = (
-                    db.query(Permission)
-                    .filter(
-                        Permission.code == code
-                    )
-                    .first()
-                )
-
-                if not permission:
-                    print(
-                        f"Permission introuvable : {code}"
-                    )
-                    continue
-
-                association = (
-                    db.query(FonctionPermission)
-                    .filter(
-                        FonctionPermission.fonction_id
-                        == fonction.id,
-
-                        FonctionPermission.permission_id
-                        == permission.id,
-                    )
-                    .first()
-                )
-
-                if not association:
-
-                    db.add(
-                        FonctionPermission(
-                            fonction_id=fonction.id,
-                            permission_id=permission.id,
-                        )
-                    )
+            for permission_code in data["permissions"]:
+                permission = permissions_by_code[permission_code]
+                fonction.permissions.append(permission)
+                associations += 1
 
         db.commit()
 
-        print(
-            "Fonctions et permissions initialisées avec succès."
-        )
+        print()
+        print("=" * 60)
+        print("INITIALISATION DES FONCTIONS")
+        print("=" * 60)
+        print(f"Fonctions définies       : {len(FONCTIONS)}")
+        print(f"Fonctions créées         : {created}")
+        print(f"Fonctions mises à jour   : {updated}")
+        print(f"Associations permissions : {associations}")
+        print("=" * 60)
+        print("Initialisation terminée avec succès.")
+        print("=" * 60)
+        print()
+
+    except Exception:
+        db.rollback()
+        raise
 
     finally:
         db.close()
