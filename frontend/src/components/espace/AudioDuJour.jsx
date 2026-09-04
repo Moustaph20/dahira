@@ -20,15 +20,8 @@ function construireUrlAudio(fichier) {
     return valeur;
   }
 
-  const baseURL =
-    api.defaults.baseURL ||
-    "http://127.0.0.1:8000";
+  const baseURL = api.defaults.baseURL;
 
-  /*
-   * On évite volontairement les caractères "\" dans le code.
-   * Les chemins Windows éventuels sont convertis grâce au
-   * code ASCII 92 qui correspond au caractère "\".
-   */
   const chemin = valeur
     .split(String.fromCharCode(92))
     .join("/")

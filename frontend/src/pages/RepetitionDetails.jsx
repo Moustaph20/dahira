@@ -612,7 +612,7 @@ export default function RepetitionDetails() {
                                       controls
                                       preload="none"
                                       className="h-9 max-w-full"
-                                      src={`http://127.0.0.1:8000/${audio.fichier}`}
+                                      src={`${api.defaults.baseURL}/${String(audio.fichier).replace(/^\/+/, "")}`}
                                     />
                                   )}
 

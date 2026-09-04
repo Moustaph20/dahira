@@ -41,9 +41,7 @@ function getAudioUrl(fichier) {
     return fichier;
   }
 
-  const baseURL =
-    api.defaults.baseURL ||
-    "http://127.0.0.1:8000";
+ const baseURL = api.defaults.baseURL;
 
   const chemin = fichier
     .replace(/\\/g, "/")
