@@ -1,1513 +1,639 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 
 import {
+  AlertCircle,
   ArrowRight,
   Bell,
   BookOpen,
   Calendar,
-  CheckCircle2,
+  CalendarDays,
   ChevronRight,
   Clock3,
-  CreditCard,
+  Compass,
+  FileText,
+  HandCoins,
   Heart,
-  Home,
+  Info,
   Landmark,
-  LogOut,
-  Menu,
+  MapPin,
   Megaphone,
-  Mic2,
+  Menu,
   Moon,
-  Music,
-  Receipt,
+  RefreshCw,
+  Settings,
   Sparkles,
   Sun,
   Sunrise,
   Sunset,
   Users,
   Wallet,
+  Volume2,
   X,
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
-import { listerCommunications } from "../services/communications";
 
-import AudioDuJour from "../components/espace/AudioDuJour";
-
-
-/* =========================================================================
-   ICÔNES
-========================================================================= */
-
-const icones = {
-  wallet: Wallet,
-  "credit-card": CreditCard,
-  receipt: Receipt,
-  landmark: Landmark,
-  calendar: Calendar,
-  "book-open": BookOpen,
-  megaphone: Megaphone,
-  bell: Bell,
-  users: Users,
-  music: Music,
-  mic: Mic2,
-};
+import {
+  getCommunications,
+} from "../services/communications";
 
 
-/* =========================================================================
-   COULEURS
-========================================================================= */
+// ============================================================
+// CONFIGURATION
+// ============================================================
 
-const couleurs = [
-  {
-    gradient: "from-emerald-500 to-teal-600",
-    bg: "bg-emerald-50",
-    text: "text-emerald-700",
-  },
-  {
-    gradient: "from-blue-500 to-indigo-600",
-    bg: "bg-blue-50",
-    text: "text-blue-700",
-  },
-  {
-    gradient: "from-violet-500 to-purple-600",
-    bg: "bg-violet-50",
-    text: "text-violet-700",
-  },
-  {
-    gradient: "from-amber-500 to-orange-600",
-    bg: "bg-amber-50",
-    text: "text-amber-700",
-  },
-  {
-    gradient: "from-rose-500 to-pink-600",
-    bg: "bg-rose-50",
-    text: "text-rose-700",
-  },
-  {
-    gradient: "from-cyan-500 to-sky-600",
-    bg: "bg-cyan-50",
-    text: "text-cyan-700",
-  },
-];
+const VILLE = "Dakar";
+const PAYS = "Sénégal";
 
 
-/* =========================================================================
-   RUBRIQUES FINANCE
-   IMPORTANT :
-   Chaque rubrique possède SA propre permission.
-========================================================================= */
+// ============================================================
+// DUAS DE LA SEMAINE
+// ============================================================
 
-const rubriquesFinance = [
-  {
-    code: "COTISATIONS",
-    label: "Cotisations",
-    description: "Consulter les cotisations des membres.",
-    route: "/cotisations",
-    icone: "wallet",
-    permission: "COTISATION_CONSULTER",
-  },
-
-  {
-    code: "PAIEMENTS",
-    label: "Paiements",
-    description: "Consulter les paiements enregistrés.",
-    route: "/paiements",
-    icone: "credit-card",
-    permission: "PAIEMENT_CONSULTER",
-  },
-
-  {
-    code: "DEPENSES",
-    label: "Dépenses",
-    description: "Consulter les dépenses du Dahira.",
-    route: "/finances",
-    icone: "receipt",
-    permission: "DEPENSE_CONSULTER",
-  },
-
-  {
-    code: "AIDES_EXTERIEURES",
-    label: "Aides extérieures",
-    description: "Consulter les aides et contributions externes.",
-    route: "/aides-exterieures",
-    icone: "landmark",
-    permission: "AIDE_EXTERIEURE_CONSULTER",
-  },
-];
-
-
-/* =========================================================================
-   PERMISSIONS KOUREL
-========================================================================= */
-
-const PERMISSIONS_KOUREL = {
-  MON_KOUREL: [
-    "KOUREL_CONSULTER",
-  ],
-
-  PROGRAMME: [
-    "PROGRAMME_KOUREL_CONSULTER",
-    "REPETITION_CONSULTER",
-    "PROGRAMME_CONSULTER",
-  ],
-
-  KHASSIDAS: [
-    "KHASSIDA_CONSULTER",
-  ],
-
-  AUDIOS: [
-    "AUDIO_CONSULTER",
-    "KHASSIDA_CONSULTER",
-  ],
-
-  DECLAMATIONS: [
-    "DECLAMATION_CONSULTER",
-  ],
-
-  ACTIVITES: [
-    "ACTIVITE_KOUREL_CONSULTER",
-  ],
-};
-
-
-/* =========================================================================
-   RUBRIQUES KOUREL
-========================================================================= */
-
-const rubriquesKourel = [
-  {
-    code: "MON_KOUREL",
-    label: "Mon Kourel",
-    description:
-      "Consulter les informations et les membres de votre Kourel.",
-    route: "/mon-kourel",
-    icone: "users",
-    permissions: PERMISSIONS_KOUREL.MON_KOUREL,
-  },
-
-  {
-    code: "PROGRAMME_KOUREL",
-    label: "Programme du Kourel",
-    description:
-      "Consulter le programme mensuel de répétition du Kourel.",
-    route: "/programme-kourel",
-    icone: "calendar",
-    permissions: PERMISSIONS_KOUREL.PROGRAMME,
-  },
-
-  {
-    code: "KHASSIDAS",
-    label: "Khassidas",
-    description:
-      "Consulter les Khassidas utilisées par le Kourel.",
-    route: "/khassidas",
-    icone: "book-open",
-    permissions: PERMISSIONS_KOUREL.KHASSIDAS,
-  },
-
-  {
-    code: "AUDIOS",
-    label: "Audios",
-    description:
-      "Écouter les audios associés aux Khassidas.",
-    route: "/audios",
-    icone: "music",
-    permissions: PERMISSIONS_KOUREL.AUDIOS,
-  },
-
-  {
-    code: "DECLAMATIONS",
-    label: "Déclamations",
-    description:
-      "Consulter le programme des déclamations du Kourel.",
-    route: "/declamations",
-    icone: "mic",
-    permissions: PERMISSIONS_KOUREL.DECLAMATIONS,
-  },
-
-  {
-    code: "ACTIVITES_KOUREL",
-    label: "Activités du Kourel",
-    description:
-      "Consulter les activités et programmes religieux du Kourel.",
-    route: "/activites-kourel",
-    icone: "calendar",
-    permissions: PERMISSIONS_KOUREL.ACTIVITES,
-  },
-];
-
-
-/* =========================================================================
-   PRIÈRES
-========================================================================= */
-
-const PRIERES = [
-  {
-    nom: "Fajr",
-    arabe: "الفجر",
-    cle: "Fajr",
-    icon: Sunrise,
-  },
-  {
-    nom: "Dhuhr",
-    arabe: "الظهر",
-    cle: "Dhuhr",
-    icon: Sun,
-  },
-  {
-    nom: "Asr",
-    arabe: "العصر",
-    cle: "Asr",
-    icon: Sun,
-  },
-  {
-    nom: "Maghrib",
-    arabe: "المغرب",
-    cle: "Maghrib",
-    icon: Sunset,
-  },
-  {
-    nom: "Isha",
-    arabe: "العشاء",
-    cle: "Isha",
-    icon: Moon,
-  },
-];
-
-
-/* =========================================================================
-   DOUAS DE LA SEMAINE
-========================================================================= */
-
-const DOUAS_SEMAINE = [
-  {
-    arabe: "رَبِّ زِدْنِي عِلْمًا",
-    transliteration: "Rabbi zidnî 'ilmâ",
-    traduction:
-      "Seigneur, augmente-moi en connaissance.",
-    source: "Sourate Ta-Ha, 20:114",
-  },
-
-  {
-    arabe:
-      "رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً",
-    transliteration:
-      "Rabbana âtinâ fid-dunyâ hasanatan wa fil-âkhirati hasanatan",
-    traduction:
-      "Seigneur, accorde-nous une belle part ici-bas et une belle part dans l'au-delà.",
-    source: "Sourate Al-Baqara, 2:201",
-  },
-
-  {
-    arabe:
-      "رَبِّ اغْفِرْ لِي وَلِوَالِدَيَّ",
-    transliteration:
-      "Rabbi-ghfir lî wa li-wâlidayya",
-    traduction:
-      "Seigneur, pardonne-moi ainsi qu'à mes parents.",
-    source: "Invocation",
-  },
-
+const DUAS = [
   {
     arabe:
       "اللَّهُمَّ أَعِنِّي عَلَى ذِكْرِكَ وَشُكْرِكَ وَحُسْنِ عِبَادَتِكَ",
+
     transliteration:
-      "Allahumma a'inni 'alâ dhikrika wa shukrika wa husni 'ibâdatik",
+      "Allahumma a'inni 'ala dhikrika wa shukrika wa husni 'ibadatik.",
+
     traduction:
-      "Ô Allah, aide-moi à T'évoquer, à Te remercier et à bien T'adorer.",
-    source: "Hadith",
+      "Ô Allah, aide-moi à T'évoquer, à Te remercier et à T'adorer de la meilleure manière.",
   },
 
   {
     arabe:
-      "رَبِّ اشْرَحْ لِي صَدْرِي",
+      "رَبِّ زِدْنِي عِلْمًا",
+
     transliteration:
-      "Rabbi-shrah lî sadrî",
+      "Rabbi zidni 'ilma.",
+
     traduction:
-      "Seigneur, ouvre-moi la poitrine et facilite ma tâche.",
-    source: "Sourate Ta-Ha, 20:25-26",
+      "Seigneur, augmente-moi en connaissance.",
   },
 
   {
     arabe:
-      "اللَّهُمَّ اهْدِنِي وَسَدِّدْنِي",
+      "رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ",
+
     transliteration:
-      "Allahumma-hdinî wa saddidnî",
+      "Rabbana atina fid-dunya hasanatan wa fil-akhirati hasanatan wa qina 'adhaban-nar.",
+
     traduction:
-      "Ô Allah, guide-moi et dirige-moi vers ce qui est juste.",
-    source: "Hadith",
+      "Seigneur, accorde-nous une belle part ici-bas et une belle part dans l'au-delà, et protège-nous du châtiment du Feu.",
   },
 
   {
     arabe:
-      "حَسْبِيَ اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ",
+      "اللَّهُمَّ اغْفِرْ لِي وَارْحَمْنِي وَاهْدِنِي وَعَافِنِي وَارْزُقْنِي",
+
     transliteration:
-      "Hasbiyallâhu lâ ilâha illâ Huwa",
+      "Allahummaghfir li warhamni wahdini wa 'afini warzuqni.",
+
     traduction:
-      "Allah me suffit. Il n'y a de divinité que Lui.",
-    source: "Sourate At-Tawba, 9:129",
+      "Ô Allah, pardonne-moi, fais-moi miséricorde, guide-moi, accorde-moi la santé et pourvois à mes besoins.",
+  },
+
+  {
+    arabe:
+      "حَسْبِيَ اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ ۖ عَلَيْهِ تَوَكَّلْتُ",
+
+    transliteration:
+      "Hasbiyallahu la ilaha illa Huwa, 'alayhi tawakkaltu.",
+
+    traduction:
+      "Allah me suffit. Il n'y a de divinité que Lui. En Lui je place ma confiance.",
+  },
+
+  {
+    arabe:
+      "اللَّهُمَّ صَلِّ وَسَلِّمْ وَبَارِكْ عَلَى سَيِّدِنَا مُحَمَّدٍ",
+
+    transliteration:
+      "Allahumma salli wa sallim wa barik 'ala Sayyidina Muhammad.",
+
+    traduction:
+      "Ô Allah, prie sur notre maître Muhammad, accorde-lui le salut et bénis-le.",
+  },
+
+  {
+    arabe:
+      "يَا مُقَلِّبَ الْقُلُوبِ ثَبِّتْ قَلْبِي عَلَى دِينِكَ",
+
+    transliteration:
+      "Ya muqallibal-qulub, thabbit qalbi 'ala dinik.",
+
+    traduction:
+      "Ô Toi qui retournes les cœurs, affermis mon cœur sur Ta religion.",
   },
 ];
 
 
-/* =========================================================================
-   RAPPELS
-========================================================================= */
+// ============================================================
+// RAPPELS
+// ============================================================
 
 const RAPPELS = [
   {
+    titre: "Le rappel apaise le cœur",
     texte:
-      "Les œuvres les plus aimées d'Allah sont celles qui sont régulières, même si elles sont peu nombreuses.",
-    source: "Hadith",
+      "Multiplions le dhikr et les prières sur le Prophète ﷺ tout au long de la journée.",
   },
 
   {
+    titre: "Une journée bien commencée",
     texte:
-      "Certes, c'est par l'évocation d'Allah que les cœurs se tranquillisent.",
-    source: "Sourate Ar-Ra'd, 13:28",
+      "Commencer sa journée par la prière, le rappel et une bonne intention donne un sens nouveau à chaque action.",
   },
 
   {
+    titre: "La constance",
     texte:
-      "Et quiconque place sa confiance en Allah, Il lui suffit.",
-    source: "Sourate At-Talaq, 65:3",
+      "Les petites œuvres accomplies avec constance sont précieuses. Avançons chaque jour avec sincérité.",
   },
 
   {
+    titre: "La gratitude",
     texte:
-      "Invoquez-Moi, Je vous répondrai.",
-    source: "Sourate Ghafir, 40:60",
+      "Prenons quelques instants pour remercier Allah pour les bienfaits visibles et ceux que nous ne remarquons pas.",
   },
 
   {
+    titre: "La fraternité",
     texte:
-      "Allah n'impose à aucune âme une charge supérieure à sa capacité.",
-    source: "Sourate Al-Baqara, 2:286",
+      "Un bon comportement, une parole douce et un geste de solidarité peuvent illuminer la journée d'un frère.",
   },
 
   {
+    titre: "Le temps",
     texte:
-      "Et quiconque fait le bien, fût-ce du poids d'un atome, le verra.",
-    source: "Sourate Az-Zalzala, 99:7",
-  },
-
-  {
-    texte:
-      "Souvenez-vous de Moi et Je me souviendrai de vous.",
-    source: "Sourate Al-Baqara, 2:152",
+      "Chaque journée est une nouvelle occasion de faire le bien. Utilisons notre temps avant qu'il ne passe.",
   },
 ];
 
 
-/* =========================================================================
-   UTILITAIRES
-========================================================================= */
+// ============================================================
+// KHASSIDA DU JOUR
+// ============================================================
 
-function getPrenom(utilisateur) {
+const KHASSIDAS_DU_JOUR = [
+  {
+    titre: "Khassida du jour",
+    description:
+      "Consacrez quelques instants à la lecture ou à l'écoute d'une Khassida.",
+  },
+
+  {
+    titre: "Lecture spirituelle",
+    description:
+      "Prenez un moment de calme pour méditer et approfondir votre lecture.",
+  },
+
+  {
+    titre: "Salatoul Fatihi",
+    description:
+      "Un moment privilégié pour multiplier les prières sur le Prophète ﷺ.",
+  },
+
+  {
+    titre: "Dhikr et méditation",
+    description:
+      "Quelques minutes de rappel peuvent transformer l'ambiance de toute une journée.",
+  },
+];
+
+
+// ============================================================
+// RUBRIQUES DU MENU
+// ============================================================
+//
+// IMPORTANT :
+// Le menu n'affiche une rubrique QUE si l'utilisateur possède
+// la permission correspondante.
+//
+// On ne montre jamais ici le nombre de permissions.
+// On utilise uniquement aPermission().
+//
+// ============================================================
+
+const RUBRIQUES = [
+  {
+    id: "dashboard",
+    nom: "Tableau de bord",
+    description: "Vue générale du Dahira",
+    route: "/dashboard",
+    permission: "DASHBOARD_CONSULTER",
+    icon: Landmark,
+    couleur: "blue",
+  },
+
+  {
+    id: "membres",
+    nom: "Membres",
+    description: "Gestion des membres",
+    route: "/membres",
+    permission: "MEMBRE_CONSULTER",
+    icon: Users,
+    couleur: "indigo",
+  },
+
+  {
+    id: "cotisations",
+    nom: "Cotisations",
+    description: "Gestion des cotisations",
+    route: "/cotisations",
+    permission: "COTISATION_CONSULTER",
+    icon: Wallet,
+    couleur: "emerald",
+  },
+
+  {
+    id: "paiements",
+    nom: "Paiements",
+    description: "Suivi des paiements",
+    route: "/paiements",
+    permission: "PAIEMENT_CONSULTER",
+    icon: HandCoins,
+    couleur: "green",
+  },
+
+  {
+    id: "finances",
+    nom: "Finances",
+    description: "Gestion financière du Dahira",
+    route: "/finances",
+    permission: "FINANCE_CONSULTER",
+    icon: Landmark,
+    couleur: "amber",
+  },
+
+  {
+    id: "depenses",
+    nom: "Dépenses",
+    description: "Gestion des dépenses",
+    route: "/depenses",
+    permission: "DEPENSE_CONSULTER",
+    icon: FileText,
+    couleur: "red",
+  },
+
+  {
+    id: "aides",
+    nom: "Aides extérieures",
+    description: "Gestion des aides extérieures",
+    route: "/aides-exterieures",
+    permission: "AIDE_EXTERIEURE_CONSULTER",
+    icon: HandCoins,
+    couleur: "orange",
+  },
+
+  {
+    id: "reunions",
+    nom: "Réunions",
+    description: "Gestion des réunions",
+    route: "/reunions",
+    permission: "REUNION_CONSULTER",
+    icon: Calendar,
+    couleur: "violet",
+  },
+
+  {
+    id: "programmes",
+    nom: "Programmes",
+    description: "Programmes du Dahira",
+    route: "/programmes",
+    permission: "PROGRAMME_CONSULTER",
+    icon: CalendarDays,
+    couleur: "cyan",
+  },
+
+  {
+    id: "communications",
+    nom: "Communications",
+    description: "Informations et annonces",
+    route: "/communications",
+    permission: "COMMUNICATION_CONSULTER",
+    icon: Megaphone,
+    couleur: "blue",
+  },
+
+  {
+    id: "evenements",
+    nom: "Événements",
+    description: "Événements du Dahira",
+    route: "/evenements",
+    permission: "EVENEMENT_CONSULTER",
+    icon: CalendarDays,
+    couleur: "pink",
+  },
+
+  {
+    id: "kourel",
+    nom: "Kourel",
+    description: "Gestion du Kourel",
+    route: "/kourel",
+    permission: "KOUREL_CONSULTER",
+    icon: BookOpen,
+    couleur: "emerald",
+  },
+
+  {
+    id: "khassidas",
+    nom: "Khassidas",
+    description: "Bibliothèque des Khassidas",
+    route: "/khassidas",
+    permission: "KOUREL_CONSULTER",
+    icon: BookOpen,
+    couleur: "green",
+  },
+
+  {
+    id: "notifications",
+    nom: "Notifications",
+    description: "Vos notifications",
+    route: "/notifications",
+    permission: "NOTIFICATION_CONSULTER",
+    icon: Bell,
+    couleur: "orange",
+  },
+
+  {
+    id: "fonctions",
+    nom: "Fonctions",
+    description: "Gestion des fonctions",
+    route: "/fonctions",
+    permission: "FONCTION_CONSULTER",
+    icon: Settings,
+    couleur: "slate",
+  },
+
+  {
+    id: "utilisateurs",
+    nom: "Utilisateurs",
+    description: "Gestion des utilisateurs",
+    route: "/utilisateurs",
+    permission: "UTILISATEUR_CONSULTER",
+    icon: Users,
+    couleur: "indigo",
+  },
+];
+
+
+// ============================================================
+// OUTILS
+// ============================================================
+
+const obtenirCleJour = () => {
+  const maintenant = new Date();
+
   return (
-    utilisateur?.prenom ||
-    utilisateur?.membre?.prenom ||
-    ""
+    maintenant.getFullYear() * 10000 +
+    (maintenant.getMonth() + 1) * 100 +
+    maintenant.getDate()
   );
-}
+};
 
 
-function getNomComplet(utilisateur) {
-  const prenom = getPrenom(utilisateur);
-
-  const nom =
-    utilisateur?.nom ||
-    utilisateur?.membre?.nom ||
-    "";
-
-  const complet =
-    `${prenom} ${nom}`.trim();
-
-  return (
-    complet ||
-    utilisateur?.identifiant ||
-    "Utilisateur"
-  );
-}
-
-
-function getInitiales(utilisateur) {
-  const prenom = getPrenom(utilisateur);
-
-  const nom =
-    utilisateur?.nom ||
-    utilisateur?.membre?.nom ||
-    "";
-
-  const mots =
-    `${prenom} ${nom}`
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
-
-  if (mots.length === 0) {
-    return "U";
+const obtenirIndexDuJour = (longueur) => {
+  if (!longueur) {
+    return 0;
   }
 
-  if (mots.length === 1) {
-    return mots[0]
-      .substring(0, 2)
-      .toUpperCase();
+  return obtenirCleJour() % longueur;
+};
+
+
+const formaterHeure = (heure) => {
+  if (!heure) {
+    return "--:--";
   }
 
-  return (
-    mots[0][0] +
-    mots[mots.length - 1][0]
-  ).toUpperCase();
-}
+  return heure.substring(0, 5);
+};
 
 
-function getFonctionPrincipale(utilisateur) {
+const convertirHeureEnDate = (
+  heure,
+  date = new Date()
+) => {
+  if (!heure) {
+    return null;
+  }
+
+  const [h, m] = heure
+    .substring(0, 5)
+    .split(":")
+    .map(Number);
+
   if (
-    Array.isArray(
-      utilisateur?.fonctions
-    ) &&
-    utilisateur.fonctions.length > 0
+    Number.isNaN(h) ||
+    Number.isNaN(m)
   ) {
-    return (
-      utilisateur.fonctions[0]?.nom ||
-      "Membre"
-    );
+    return null;
   }
 
-  return "Membre";
-}
+  const resultat = new Date(date);
 
+  resultat.setHours(h, m, 0, 0);
 
-function obtenirCodesPermissions(utilisateur) {
-  if (
-    !Array.isArray(
-      utilisateur?.permissions
-    )
-  ) {
-    return [];
-  }
+  return resultat;
+};
 
-  return utilisateur.permissions
-    .map((permission) => {
-      if (
-        typeof permission === "string"
-      ) {
-        return permission;
-      }
 
-      return permission?.code;
-    })
-    .filter(Boolean);
-}
-
-
-function possedeUnePermission(
-  codesPermissions,
-  permissionsNecessaires
-) {
-  if (
-    !Array.isArray(
-      permissionsNecessaires
-    ) ||
-    permissionsNecessaires.length === 0
-  ) {
-    return false;
-  }
-
-  return permissionsNecessaires.some(
-    (permission) =>
-      codesPermissions.includes(
-        permission
-      )
-  );
-}
-
-
-/* =========================================================================
-   CARTE RUBRIQUE
-========================================================================= */
-
-function CarteEspace({
-  item,
-  index,
-  onNavigate,
-  active,
-}) {
-  const Icon =
-    icones[item?.icone] ||
-    BookOpen;
-
-  const couleur =
-    couleurs[
-      index % couleurs.length
-    ];
-
-  return (
-    <button
-      type="button"
-      disabled={active}
-      onClick={() =>
-        onNavigate(item.route)
-      }
-      className={`
-        group
-        relative
-        w-full
-        overflow-hidden
-        rounded-[1.75rem]
-        border
-        border-slate-200
-        bg-white
-        p-5
-        text-left
-        shadow-sm
-        transition-all
-        duration-500
-        hover:-translate-y-2
-        hover:border-emerald-200
-        hover:shadow-2xl
-        focus:outline-none
-        focus:ring-2
-        focus:ring-emerald-500
-        focus:ring-offset-2
-        ${
-          active
-            ? "scale-[0.98] opacity-60"
-            : ""
-        }
-      `}
-      style={{
-        animationDelay:
-          `${index * 80}ms`,
-      }}
-    >
-      <div
-        className="
-          pointer-events-none
-          absolute
-          -right-16
-          -top-16
-          h-40
-          w-40
-          rounded-full
-          bg-emerald-200/40
-          opacity-0
-          blur-3xl
-          transition-all
-          duration-700
-          group-hover:scale-150
-          group-hover:opacity-100
-        "
-      />
-
-      <div className="relative z-10">
-
-        <div className="flex items-start justify-between">
-
-          <div
-            className={`
-              flex
-              h-14
-              w-14
-              items-center
-              justify-center
-              rounded-2xl
-              bg-gradient-to-br
-              ${couleur.gradient}
-              text-white
-              shadow-lg
-              transition-all
-              duration-500
-              group-hover:rotate-6
-              group-hover:scale-110
-            `}
-          >
-            <Icon size={25} />
-          </div>
-
-          <div
-            className="
-              flex
-              h-9
-              w-9
-              items-center
-              justify-center
-              rounded-full
-              bg-slate-50
-              text-slate-400
-              transition-all
-              duration-300
-              group-hover:bg-emerald-50
-              group-hover:text-emerald-600
-              group-hover:translate-x-1
-            "
-          >
-            <ChevronRight size={18} />
-          </div>
-
-        </div>
-
-        <div className="mt-5">
-
-          <h3 className="text-base font-black text-slate-900">
-            {item.label}
-          </h3>
-
-          <p className="mt-2 min-h-[40px] text-sm leading-5 text-slate-500">
-            {item.description}
-          </p>
-
-        </div>
-
-        <div className="mt-5 flex items-center gap-2 text-xs font-bold text-emerald-600">
-
-          <span>
-            Accéder
-          </span>
-
-          <ArrowRight
-            size={14}
-            className="
-              transition-transform
-              duration-300
-              group-hover:translate-x-1
-            "
-          />
-
-        </div>
-
-      </div>
-    </button>
-  );
-}
-
-
-/* =========================================================================
-   STATISTIQUE
-========================================================================= */
-
-function Statistique({
-  icon: Icon,
-  label,
-  value,
-  description,
-}) {
-  return (
-    <div
-      className="
-        group
-        rounded-[1.75rem]
-        border
-        border-slate-200
-        bg-white
-        p-5
-        shadow-sm
-        transition-all
-        duration-300
-        hover:-translate-y-1
-        hover:shadow-xl
-      "
-    >
-      <div className="flex items-center justify-between">
-
-        <div
-          className="
-            flex
-            h-11
-            w-11
-            items-center
-            justify-center
-            rounded-2xl
-            bg-slate-100
-            text-slate-700
-            transition-all
-            duration-300
-            group-hover:bg-emerald-100
-            group-hover:text-emerald-700
-          "
-        >
-          <Icon size={20} />
-        </div>
-
-        <Sparkles
-          size={16}
-          className="
-            text-emerald-400
-            opacity-0
-            transition-opacity
-            group-hover:opacity-100
-          "
-        />
-
-      </div>
-
-      <p className="mt-4 text-2xl font-black text-slate-900">
-        {value}
-      </p>
-
-      <p className="mt-1 text-sm font-bold text-slate-700">
-        {label}
-      </p>
-
-      {description && (
-        <p className="mt-1 text-xs text-slate-400">
-          {description}
-        </p>
-      )}
-
-    </div>
-  );
-}
-
-
-/* =========================================================================
-   HORAIRES DE PRIÈRE
-========================================================================= */
-
-function HorairesPriere({
-  horaires,
-  prochainePriere,
-  tempsRestant,
-}) {
-  return (
-    <section
-      className="
-        mt-6
-        overflow-hidden
-        rounded-[2rem]
-        border
-        border-emerald-100
-        bg-white
-        shadow-sm
-      "
-    >
-
-      <div
-        className="
-          bg-gradient-to-br
-          from-emerald-950
-          via-emerald-900
-          to-teal-900
-          p-6
-          text-white
-          sm:p-8
-        "
-      >
-
-        <div
-          className="
-            flex
-            flex-col
-            gap-5
-            lg:flex-row
-            lg:items-center
-            lg:justify-between
-          "
-        >
-
-          <div>
-
-            <div className="flex items-center gap-2 text-emerald-300">
-
-              <span
-                className="
-                  flex
-                  h-9
-                  w-9
-                  items-center
-                  justify-center
-                  rounded-xl
-                  bg-white/10
-                "
-              >
-                <Clock3 size={18} />
-              </span>
-
-              <span
-                className="
-                  text-xs
-                  font-bold
-                  uppercase
-                  tracking-[0.18em]
-                "
-              >
-                Aujourd'hui
-              </span>
-
-            </div>
-
-            <h2 className="mt-3 text-2xl font-black sm:text-3xl">
-              Horaires de prière
-            </h2>
-
-            <p className="mt-2 text-sm text-emerald-100/70">
-              Dakar · Horaires actualisés quotidiennement
-            </p>
-
-          </div>
-
-
-          {prochainePriere && (
-
-            <div
-              className="
-                rounded-2xl
-                border
-                border-white/10
-                bg-white/10
-                px-5
-                py-4
-                backdrop-blur-xl
-              "
-            >
-
-              <p className="text-xs font-semibold text-emerald-100/60">
-                Prochaine prière
-              </p>
-
-              <div className="mt-1 flex items-center gap-3">
-
-                <p className="text-xl font-black">
-                  {prochainePriere.nom}
-                </p>
-
-                <span className="rounded-full bg-emerald-400/20 px-3 py-1 text-xs font-bold text-emerald-200">
-                  dans {tempsRestant}
-                </span>
-
-              </div>
-
-            </div>
-
-          )}
-
-        </div>
-
-
-        <div
-          className="
-            mt-8
-            grid
-            grid-cols-2
-            gap-3
-            sm:grid-cols-5
-          "
-        >
-
-          {PRIERES.map((priere) => {
-
-            const Icon = priere.icon;
-
-            const heure =
-              horaires?.[priere.cle];
-
-            const estProchaine =
-              prochainePriere?.cle ===
-              priere.cle;
-
-            return (
-
-              <div
-                key={priere.cle}
-                className={`
-                  rounded-2xl
-                  border
-                  p-4
-                  transition-all
-                  ${
-                    estProchaine
-                      ? "border-emerald-300 bg-emerald-400/20 shadow-lg"
-                      : "border-white/10 bg-white/5"
-                  }
-                `}
-              >
-
-                <div className="flex items-center justify-between">
-
-                  <Icon
-                    size={18}
-                    className={
-                      estProchaine
-                        ? "text-emerald-300"
-                        : "text-emerald-100/60"
-                    }
-                  />
-
-                  {estProchaine && (
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-300" />
-                  )}
-
-                </div>
-
-                <p className="mt-4 text-xs font-semibold text-emerald-100/60">
-                  {priere.nom}
-                </p>
-
-                <p className="mt-1 text-xl font-black">
-                  {heure || "--:--"}
-                </p>
-
-              </div>
-
-            );
-
-          })}
-
-        </div>
-
-      </div>
-
-    </section>
-  );
-}
-
-
-/* =========================================================================
-   DOU'A
-========================================================================= */
-
-function DouaSemaine({ doua }) {
-
-  const [copie, setCopie] =
-    useState(false);
-
-  async function copier() {
-
-    try {
-
-      await navigator.clipboard.writeText(
-        `${doua.arabe}\n\n${doua.transliteration}\n\n${doua.traduction}`
-      );
-
-      setCopie(true);
-
-      setTimeout(
-        () => setCopie(false),
-        1800
-      );
-
-    } catch (error) {
-
-      console.error(
-        "Impossible de copier la dou'a :",
-        error
-      );
-
+const formaterDateComplete = (date) => {
+  return new Intl.DateTimeFormat(
+    "fr-FR",
+    {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
     }
+  ).format(date);
+};
 
+
+const formaterDateCourte = (date) => {
+  return new Intl.DateTimeFormat(
+    "fr-FR",
+    {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }
+  ).format(date);
+};
+
+
+const obtenirSalutation = () => {
+  const heure = new Date().getHours();
+
+  if (heure < 12) {
+    return "Bonjour";
+  }
+
+  if (heure < 18) {
+    return "Bon après-midi";
+  }
+
+  return "Bonsoir";
+};
+
+
+const obtenirPrenom = (utilisateur) => {
+  return (
+    utilisateur?.membre?.prenom ||
+    utilisateur?.prenom ||
+    utilisateur?.nom_complet?.split(" ")[0] ||
+    utilisateur?.identifiant ||
+    "Membre"
+  );
+};
+
+
+const obtenirMessageErreur = (erreur) => {
+  const detail =
+    erreur?.response?.data?.detail;
+
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  if (Array.isArray(detail)) {
+    return detail
+      .map(
+        (item) =>
+          item?.msg ||
+          "Erreur de validation."
+      )
+      .join(" ");
   }
 
   return (
-    <section
-      className="
-        relative
-        overflow-hidden
-        rounded-[2rem]
-        border
-        border-amber-100
-        bg-gradient-to-br
-        from-amber-50
-        via-white
-        to-orange-50
-        p-6
-        shadow-sm
-        sm:p-8
-      "
-    >
-
-      <div
-        className="
-          pointer-events-none
-          absolute
-          -right-20
-          -top-20
-          h-48
-          w-48
-          rounded-full
-          bg-amber-200/30
-          blur-3xl
-        "
-      />
-
-      <div className="relative">
-
-        <div className="flex items-center gap-3">
-
-          <div
-            className="
-              flex
-              h-12
-              w-12
-              items-center
-              justify-center
-              rounded-2xl
-              bg-amber-100
-              text-amber-700
-            "
-          >
-            <Heart size={22} />
-          </div>
-
-          <div>
-
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-amber-600">
-              Chaque semaine
-            </p>
-
-            <h2 className="mt-1 text-xl font-black text-slate-900">
-              Dou'a de la semaine
-            </h2>
-
-          </div>
-
-        </div>
-
-        <div className="mt-7 text-center">
-
-          <p
-            dir="rtl"
-            className="
-              text-2xl
-              font-bold
-              leading-loose
-              text-slate-900
-              sm:text-3xl
-            "
-          >
-            {doua.arabe}
-          </p>
-
-          <p className="mt-5 text-sm font-semibold italic text-amber-700">
-            {doua.transliteration}
-          </p>
-
-          <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-slate-600">
-            « {doua.traduction} »
-          </p>
-
-          <p className="mt-3 text-xs font-semibold text-slate-400">
-            {doua.source}
-          </p>
-
-        </div>
-
-        <button
-          type="button"
-          onClick={copier}
-          className="
-            mx-auto
-            mt-6
-            flex
-            items-center
-            gap-2
-            rounded-xl
-            bg-amber-100
-            px-4
-            py-2.5
-            text-xs
-            font-bold
-            text-amber-700
-            transition
-            hover:bg-amber-200
-          "
-        >
-          {copie ? (
-            <>
-              <CheckCircle2 size={15} />
-              Copiée
-            </>
-          ) : (
-            <>
-              <BookOpen size={15} />
-              Copier la dou'a
-            </>
-          )}
-        </button>
-
-      </div>
-
-    </section>
+    erreur?.message ||
+    "Une erreur est survenue."
   );
-}
+};
 
 
-/* =========================================================================
-   RAPPEL
-========================================================================= */
+// ============================================================
+// COULEURS RUBRIQUES
+// ============================================================
 
-function RappelJour({ rappel }) {
+const obtenirClassesRubrique = (couleur) => {
+  const classes = {
+    blue: {
+      fond: "bg-blue-50",
+      icone: "text-blue-600",
+      hover: "hover:border-blue-300",
+    },
+
+    indigo: {
+      fond: "bg-indigo-50",
+      icone: "text-indigo-600",
+      hover: "hover:border-indigo-300",
+    },
+
+    emerald: {
+      fond: "bg-emerald-50",
+      icone: "text-emerald-600",
+      hover: "hover:border-emerald-300",
+    },
+
+    green: {
+      fond: "bg-green-50",
+      icone: "text-green-600",
+      hover: "hover:border-green-300",
+    },
+
+    amber: {
+      fond: "bg-amber-50",
+      icone: "text-amber-600",
+      hover: "hover:border-amber-300",
+    },
+
+    red: {
+      fond: "bg-red-50",
+      icone: "text-red-600",
+      hover: "hover:border-red-300",
+    },
+
+    orange: {
+      fond: "bg-orange-50",
+      icone: "text-orange-600",
+      hover: "hover:border-orange-300",
+    },
+
+    violet: {
+      fond: "bg-violet-50",
+      icone: "text-violet-600",
+      hover: "hover:border-violet-300",
+    },
+
+    cyan: {
+      fond: "bg-cyan-50",
+      icone: "text-cyan-600",
+      hover: "hover:border-cyan-300",
+    },
+
+    pink: {
+      fond: "bg-pink-50",
+      icone: "text-pink-600",
+      hover: "hover:border-pink-300",
+    },
+
+    slate: {
+      fond: "bg-slate-100",
+      icone: "text-slate-600",
+      hover: "hover:border-slate-300",
+    },
+  };
 
   return (
-    <section
-      className="
-        relative
-        overflow-hidden
-        rounded-[2rem]
-        bg-gradient-to-br
-        from-violet-950
-        via-purple-900
-        to-indigo-950
-        p-6
-        text-white
-        shadow-xl
-        sm:p-8
-      "
-    >
-
-      <div
-        className="
-          pointer-events-none
-          absolute
-          -bottom-20
-          -right-20
-          h-48
-          w-48
-          rounded-full
-          bg-violet-400/10
-          blur-3xl
-        "
-      />
-
-      <div className="relative">
-
-        <div className="flex items-center gap-3">
-
-          <div
-            className="
-              flex
-              h-12
-              w-12
-              items-center
-              justify-center
-              rounded-2xl
-              bg-white/10
-              text-violet-200
-            "
-          >
-            <Sparkles size={22} />
-          </div>
-
-          <div>
-
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-violet-200/70">
-              Méditation
-            </p>
-
-            <h2 className="mt-1 text-xl font-black">
-              Rappel du jour
-            </h2>
-
-          </div>
-
-        </div>
-
-        <p className="mt-8 text-lg font-semibold leading-8 text-white/95 sm:text-xl">
-          « {rappel.texte} »
-        </p>
-
-        <div className="mt-6 flex items-center gap-2 text-xs font-semibold text-violet-200/60">
-          <BookOpen size={14} />
-          {rappel.source}
-        </div>
-
-      </div>
-
-    </section>
+    classes[couleur] ||
+    classes.blue
   );
-}
+};
 
 
-/* =========================================================================
-   COMMUNICATIONS
-========================================================================= */
+// ============================================================
+// COMPOSANT PRINCIPAL
+// ============================================================
 
-function CommunicationsRecentes({
-  communications,
-  onNavigate,
-}) {
-
-  return (
-    <section
-      className="
-        overflow-hidden
-        rounded-[2rem]
-        border
-        border-slate-200
-        bg-white
-        shadow-sm
-      "
-    >
-
-      <div className="border-b border-slate-100 p-6 sm:p-7">
-
-        <div className="flex items-center justify-between gap-4">
-
-          <div className="flex items-center gap-3">
-
-            <div
-              className="
-                flex
-                h-12
-                w-12
-                items-center
-                justify-center
-                rounded-2xl
-                bg-rose-50
-                text-rose-600
-              "
-            >
-              <Megaphone size={22} />
-            </div>
-
-            <div>
-
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-rose-600">
-                Informations
-              </p>
-
-              <h2 className="mt-1 text-xl font-black text-slate-900">
-                Communications
-              </h2>
-
-            </div>
-
-          </div>
-
-          <button
-            type="button"
-            onClick={() =>
-              onNavigate(
-                "/communications"
-              )
-            }
-            className="
-              hidden
-              items-center
-              gap-1
-              text-xs
-              font-bold
-              text-emerald-600
-              sm:flex
-            "
-          >
-            Tout voir
-            <ArrowRight size={14} />
-          </button>
-
-        </div>
-
-      </div>
-
-
-      <div className="divide-y divide-slate-100">
-
-        {communications.length === 0 ? (
-
-          <div className="p-8 text-center">
-
-            <div
-              className="
-                mx-auto
-                flex
-                h-14
-                w-14
-                items-center
-                justify-center
-                rounded-2xl
-                bg-slate-100
-                text-slate-400
-              "
-            >
-              <Bell size={23} />
-            </div>
-
-            <p className="mt-4 text-sm font-semibold text-slate-700">
-              Aucune communication récente
-            </p>
-
-            <p className="mt-1 text-xs text-slate-400">
-              Vous serez informé ici des prochaines annonces.
-            </p>
-
-          </div>
-
-        ) : (
-
-          communications
-            .slice(0, 3)
-            .map((communication) => (
-
-              <button
-                key={communication.id}
-                type="button"
-                onClick={() =>
-                  onNavigate(
-                    `/communications/${communication.id}`
-                  )
-                }
-                className="
-                  group
-                  flex
-                  w-full
-                  items-start
-                  gap-4
-                  p-5
-                  text-left
-                  transition
-                  hover:bg-slate-50
-                "
-              >
-
-                <div
-                  className={`
-                    mt-1
-                    h-2.5
-                    w-2.5
-                    shrink-0
-                    rounded-full
-                    ${
-                      communication.priorite ===
-                      "URGENTE"
-                        ? "bg-rose-500"
-                        : communication.priorite ===
-                          "IMPORTANTE"
-                        ? "bg-amber-500"
-                        : "bg-emerald-500"
-                    }
-                  `}
-                />
-
-                <div className="min-w-0 flex-1">
-
-                  <div className="flex flex-wrap items-center gap-2">
-
-                    <h3 className="truncate text-sm font-black text-slate-900">
-                      {communication.titre}
-                    </h3>
-
-                    {communication.priorite ===
-                      "URGENTE" && (
-                      <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-bold text-rose-600">
-                        URGENT
-                      </span>
-                    )}
-
-                  </div>
-
-                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
-                    {communication.contenu}
-                  </p>
-
-                  <p className="mt-2 text-[11px] font-semibold text-slate-400">
-                    {communication.date_publication
-                      ? new Date(
-                          communication.date_publication
-                        ).toLocaleDateString(
-                          "fr-FR"
-                        )
-                      : ""}
-                  </p>
-
-                </div>
-
-                <ChevronRight
-                  size={17}
-                  className="
-                    mt-2
-                    shrink-0
-                    text-slate-300
-                    transition
-                    group-hover:translate-x-1
-                    group-hover:text-emerald-600
-                  "
-                />
-
-              </button>
-
-            ))
-
-        )}
-
-      </div>
-
-
-      <div className="border-t border-slate-100 p-4 sm:hidden">
-
-        <button
-          type="button"
-          onClick={() =>
-            onNavigate(
-              "/communications"
-            )
-          }
-          className="
-            flex
-            w-full
-            items-center
-            justify-center
-            gap-2
-            rounded-xl
-            bg-slate-50
-            px-4
-            py-3
-            text-xs
-            font-bold
-            text-emerald-600
-          "
-        >
-          Voir toutes les communications
-          <ArrowRight size={14} />
-        </button>
-
-      </div>
-
-    </section>
-  );
-}
-
-
-/* =========================================================================
-   COMPOSANT PRINCIPAL
-========================================================================= */
-
-export default function MonEspace() {
+function Espace() {
+  const navigate = useNavigate();
 
   const {
     utilisateur,
-    deconnexion,
+    chargement,
+    aPermission,
   } = useAuth();
 
-  const navigate =
-    useNavigate();
-
-
-  /* =======================================================================
-     ÉTATS
-  ======================================================================= */
+  // ==========================================================
+  // ETATS
+  // ==========================================================
 
   const [
-    menuOuvert,
-    setMenuOuvert,
-  ] = useState(false);
+    maintenant,
+    setMaintenant,
+  ] = useState(new Date());
 
   const [
-    elementActif,
-    setElementActif,
+    horaires,
+    setHoraires,
   ] = useState(null);
 
   const [
-    heure,
-    setHeure,
-  ] = useState(
-    new Date()
-  );
+    chargementHoraires,
+    setChargementHoraires,
+  ] = useState(true);
 
   const [
-    horairesPriere,
-    setHorairesPriere,
-  ] = useState(null);
+    erreurHoraires,
+    setErreurHoraires,
+  ] = useState("");
 
   const [
     communications,
@@ -1519,2325 +645,1978 @@ export default function MonEspace() {
     setChargementCommunications,
   ] = useState(false);
 
+  const [
+    erreurCommunications,
+    setErreurCommunications,
+  ] = useState("");
 
-  /* =======================================================================
-     HORLOGE
-  ======================================================================= */
+  const [
+    duaIndex,
+    setDuaIndex,
+  ] = useState(
+    obtenirIndexDuJour(
+      DUAS.length
+    )
+  );
+
+  const [
+    menuOuvert,
+    setMenuOuvert,
+  ] = useState(false);
+
+
+  // ==========================================================
+  // MENU DYNAMIQUE SELON LES DROITS
+  // ==========================================================
+
+  const rubriquesAutorisees = useMemo(() => {
+    if (!utilisateur) {
+      return [];
+    }
+
+    return RUBRIQUES.filter(
+      (rubrique) =>
+        aPermission(
+          rubrique.permission
+        )
+    );
+  }, [
+    utilisateur,
+    aPermission,
+  ]);
+
+
+  // ==========================================================
+  // HORLOGE
+  // ==========================================================
 
   useEffect(() => {
-
     const interval =
       setInterval(() => {
-
-        setHeure(
+        setMaintenant(
           new Date()
         );
-
       }, 1000);
 
     return () =>
-      clearInterval(
-        interval
-      );
-
+      clearInterval(interval);
   }, []);
 
 
-  /* =======================================================================
-     PERMISSIONS
-  ======================================================================= */
-
-  const permissions =
-    useMemo(
-      () =>
-        obtenirCodesPermissions(
-          utilisateur
-        ),
-      [utilisateur]
-    );
-
-
-  const permissionsSet =
-    useMemo(
-      () =>
-        new Set(
-          permissions
-        ),
-      [permissions]
-    );
-
-
-  const aPermission =
-    (permission) =>
-      Boolean(
-        permission &&
-        permissionsSet.has(
-          permission
-        )
-      );
-
-
-  /* =======================================================================
-     HORAIRES DE PRIÈRE
-  ======================================================================= */
+  // ==========================================================
+  // DU'A
+  // ==========================================================
 
   useEffect(() => {
+    const index =
+      Math.floor(
+        obtenirCleJour() / 7
+      ) % DUAS.length;
 
-    async function chargerHoraires() {
+    setDuaIndex(index);
+  }, []);
 
-      try {
 
-        const maintenant =
-          new Date();
+  // ==========================================================
+  // HORAIRES DE PRIERE
+  // ==========================================================
 
-        const jour =
-          maintenant.getDate();
+  const chargerHoraires = async () => {
+    setChargementHoraires(true);
+    setErreurHoraires("");
 
-        const mois =
-          maintenant.getMonth() + 1;
+    try {
+      const date =
+        new Date();
 
-        const annee =
-          maintenant.getFullYear();
+      const jour =
+        String(
+          date.getDate()
+        ).padStart(2, "0");
 
-        const url =
-          `https://api.aladhan.com/v1/timings/${jour}-${mois}-${annee}?latitude=14.7167&longitude=-17.4677&method=3`;
+      const mois =
+        String(
+          date.getMonth() + 1
+        ).padStart(2, "0");
 
-        const response =
-          await fetch(url);
+      const annee =
+        date.getFullYear();
 
-        if (!response.ok) {
-          throw new Error(
-            "Impossible de récupérer les horaires."
-          );
-        }
+      const url =
+        `https://api.aladhan.com/v1/timingsByCity/${jour}-${mois}-${annee}?city=${encodeURIComponent(
+          VILLE
+        )}&country=${encodeURIComponent(
+          PAYS
+        )}&method=3`;
 
-        const data =
-          await response.json();
+      const response =
+        await fetch(url);
 
-        if (
-          data?.code === 200 &&
-          data?.data?.timings
-        ) {
-
-          setHorairesPriere(
-            data.data.timings
-          );
-
-        }
-
-      } catch (error) {
-
-        console.error(
-          "Erreur horaires de prière :",
-          error
+      if (!response.ok) {
+        throw new Error(
+          "Impossible de récupérer les horaires de prière."
         );
-
       }
 
+      const donnees =
+        await response.json();
+
+      if (
+        donnees?.code !== 200 ||
+        !donnees?.data?.timings
+      ) {
+        throw new Error(
+          "Les horaires de prière sont indisponibles."
+        );
+      }
+
+      setHoraires(
+        donnees.data
+      );
+    } catch (err) {
+      console.error(
+        "Erreur horaires de prière :",
+        err
+      );
+
+      setErreurHoraires(
+        err?.message ||
+          "Impossible de charger les horaires."
+      );
+    } finally {
+      setChargementHoraires(
+        false
+      );
     }
-
-    chargerHoraires();
-
-    const interval =
-      setInterval(
-        chargerHoraires,
-        1000 * 60 * 60 * 6
-      );
-
-    return () =>
-      clearInterval(
-        interval
-      );
-
-  }, []);
-
-
-  /* =======================================================================
-     COMMUNICATIONS
-  ======================================================================= */
-
-  const peutVoirCommunications =
-    aPermission(
-      "COMMUNICATION_CONSULTER"
-    );
+  };
 
 
   useEffect(() => {
+    chargerHoraires();
+  }, []);
 
-    if (!peutVoirCommunications) {
 
-      setCommunications([]);
+  // ==========================================================
+  // COMMUNICATIONS
+  // ==========================================================
 
-      return;
-    }
-
-    async function chargerCommunications() {
+  const chargerCommunications =
+    async () => {
+      if (
+        !aPermission(
+          "COMMUNICATION_CONSULTER"
+        )
+      ) {
+        return;
+      }
 
       setChargementCommunications(
         true
       );
 
-      try {
+      setErreurCommunications(
+        ""
+      );
 
-        const resultat =
-          await listerCommunications({
+      try {
+        const donnees =
+          await getCommunications({
             actif: true,
           });
 
         setCommunications(
-          Array.isArray(resultat)
-            ? resultat
+          Array.isArray(donnees)
+            ? donnees.slice(0, 3)
             : []
         );
-
-      } catch (error) {
-
+      } catch (err) {
         console.error(
-          "Erreur chargement communications :",
-          error
+          "Erreur communications :",
+          err
         );
 
-        setCommunications([]);
-
+        setErreurCommunications(
+          obtenirMessageErreur(err)
+        );
       } finally {
-
         setChargementCommunications(
           false
         );
-
       }
+    };
 
+
+  useEffect(() => {
+    if (utilisateur) {
+      chargerCommunications();
+    }
+  }, [utilisateur]);
+
+
+  // ==========================================================
+  // PRIÈRES
+  // ==========================================================
+
+  const prieres = useMemo(() => {
+    if (!horaires) {
+      return [];
     }
 
-    chargerCommunications();
-
-  }, [
-    peutVoirCommunications,
-  ]);
-
-
-  /* =======================================================================
-     INFORMATIONS UTILISATEUR
-  ======================================================================= */
-
-  const prenomUtilisateur =
-    useMemo(
-      () =>
-        getPrenom(
-          utilisateur
+    return [
+      {
+        nom: "Fajr",
+        heure: formaterHeure(
+          horaires.Fajr
         ),
-      [utilisateur]
-    );
+        icone: Sunrise,
+      },
 
-  const nomUtilisateur =
-    useMemo(
-      () =>
-        getNomComplet(
-          utilisateur
+      {
+        nom: "Dhuhr",
+        heure: formaterHeure(
+          horaires.Dhuhr
         ),
-      [utilisateur]
-    );
+        icone: Sun,
+      },
 
-  const initiales =
-    useMemo(
-      () =>
-        getInitiales(
-          utilisateur
+      {
+        nom: "Asr",
+        heure: formaterHeure(
+          horaires.Asr
         ),
-      [utilisateur]
-    );
+        icone: Sun,
+      },
 
-  const fonctionPrincipale =
-    useMemo(
-      () =>
-        getFonctionPrincipale(
-          utilisateur
+      {
+        nom: "Maghrib",
+        heure: formaterHeure(
+          horaires.Maghrib
         ),
-      [utilisateur]
-    );
-
-
-  /* =======================================================================
-     KOURELS
-  ======================================================================= */
-
-  const kourels =
-    useMemo(
-      () =>
-        Array.isArray(
-          utilisateur?.kourels
-        )
-          ? utilisateur.kourels
-          : [],
-      [utilisateur]
-    );
-
-
-  const estMembreKourel =
-    utilisateur?.est_membre_kourel === true ||
-    kourels.length > 0;
-
-
-  /* =======================================================================
-     ESPACE BACKEND
-     
-     IMPORTANT :
-     On ne fait PAS confiance aveuglément à utilisateur.espace.
-     Chaque rubrique est vérifiée avec utilisateur.permissions.
-  ======================================================================= */
-
-  const espaceBackend =
-    useMemo(
-      () =>
-        Array.isArray(
-          utilisateur?.espace
-        )
-          ? utilisateur.espace
-          : [],
-      [utilisateur]
-    );
-
-
-  /* =======================================================================
-     RUBRIQUES FINANCE AUTORISÉES
-  ======================================================================= */
-
-  const rubriquesFinanceAutorisees =
-    useMemo(() => {
-
-      return rubriquesFinance.filter(
-        (rubrique) =>
-          aPermission(
-            rubrique.permission
-          )
-      );
-
-    }, [
-      permissionsSet,
-    ]);
-
-
-  /* =======================================================================
-     RUBRIQUES KOUREL AUTORISÉES
-     
-     IMPORTANT :
-     L'appartenance à un Kourel n'accorde pas automatiquement
-     l'accès aux rubriques.
-     
-     Il faut :
-       1. être membre du Kourel ;
-       2. posséder la permission correspondante.
-  ======================================================================= */
-
-  const rubriquesKourelAutorisees =
-    useMemo(() => {
-
-      if (!estMembreKourel) {
-        return [];
-      }
-
-      return rubriquesKourel.filter(
-        (rubrique) =>
-          possedeUnePermission(
-            permissions,
-            rubrique.permissions
-          )
-      );
-
-    }, [
-      estMembreKourel,
-      permissions,
-    ]);
-
-
-  /* =======================================================================
-     ESPACE BACKEND AUTORISÉ
-     
-     Les éléments provenant du backend doivent eux aussi être vérifiés.
-  ======================================================================= */
-
-  const espaceBackendAutorise =
-    useMemo(() => {
-
-      return espaceBackend.filter(
-        (item) => {
-
-          if (
-            !item ||
-            !item.code ||
-            !item.route ||
-            !item.label
-          ) {
-            return false;
-          }
-
-
-          /*
-           * Si le backend fournit directement la permission
-           * de la rubrique, on l'utilise.
-           */
-          if (item.permission) {
-
-            return aPermission(
-              item.permission
-            );
-
-          }
-
-
-          /*
-           * Correspondance de sécurité pour les rubriques
-           * connues de l'application.
-           */
-
-          const correspondances = {
-            MEMBRES:
-              "MEMBRE_CONSULTER",
-
-            COTISATIONS:
-              "COTISATION_CONSULTER",
-
-            PAIEMENTS:
-              "PAIEMENT_CONSULTER",
-
-            DEPENSES:
-              "DEPENSE_CONSULTER",
-
-            FINANCES:
-              "DEPENSE_CONSULTER",
-
-            AIDES_EXTERIEURES:
-              "AIDE_EXTERIEURE_CONSULTER",
-
-            COMMUNICATIONS:
-              "COMMUNICATION_CONSULTER",
-
-            NOTIFICATIONS:
-              "NOTIFICATION_CONSULTER",
-
-            REUNIONS:
-              "REUNION_CONSULTER",
-
-            PROGRAMMES:
-              "PROGRAMME_CONSULTER",
-
-            KHASSIDAS:
-              "KHASSIDA_CONSULTER",
-
-            KOURELS:
-              "KOUREL_CONSULTER",
-
-            MON_KOUREL:
-              "KOUREL_CONSULTER",
-
-            PROGRAMME_KOUREL:
-              "PROGRAMME_KOUREL_CONSULTER",
-
-            REPETITIONS:
-              "REPETITION_CONSULTER",
-
-            DECLAMATIONS:
-              "DECLAMATION_CONSULTER",
-
-            ACTIVITES_KOUREL:
-              "ACTIVITE_KOUREL_CONSULTER",
-
-            AUDIOS:
-              "AUDIO_CONSULTER",
-
-            EVENEMENTS:
-              "EVENEMENT_CONSULTER",
-
-            UTILISATEURS:
-              "UTILISATEUR_CONSULTER",
-
-            FONCTIONS:
-              "FONCTION_CONSULTER",
-
-            PERMISSIONS:
-              "PERMISSION_CONSULTER",
-          };
-
-
-          const permissionAttendue =
-            correspondances[
-              item.code
-            ];
-
-
-          /*
-           * Si on connaît la permission attendue,
-           * elle doit obligatoirement être présente.
-           */
-          if (permissionAttendue) {
-
-            return aPermission(
-              permissionAttendue
-            );
-
-          }
-
-
-          /*
-           * Si aucune correspondance n'est connue,
-           * on ne l'affiche pas automatiquement.
-           *
-           * Cela évite qu'une rubrique apparaisse
-           * sans permission explicite.
-           */
-          return false;
-
-        }
-      );
-
-    }, [
-      espaceBackend,
-      permissionsSet,
-    ]);
-
-
-  /* =======================================================================
-     ESPACE FINAL
-     
-     Une seule source visuelle finale.
-     
-     Priorité :
-       1. rubriques backend autorisées ;
-       2. rubriques Finance autorisées ;
-       3. rubriques Kourel autorisées.
-     
-     Aucun doublon.
-  ======================================================================= */
-
-  const espaceVisible =
-    useMemo(() => {
-
-      const resultat = [];
-      const codes = new Set();
-
-
-      /* ---------------------------------------------------------------
-         BACKEND
-      --------------------------------------------------------------- */
-
-      espaceBackendAutorise.forEach(
-        (item) => {
-
-          if (
-            codes.has(
-              item.code
-            )
-          ) {
-            return;
-          }
-
-          codes.add(
-            item.code
-          );
-
-          resultat.push(
-            item
-          );
-
-        }
-      );
-
-
-      /* ---------------------------------------------------------------
-         FINANCE
-      --------------------------------------------------------------- */
-
-      rubriquesFinanceAutorisees.forEach(
-        (rubrique) => {
-
-          if (
-            codes.has(
-              rubrique.code
-            )
-          ) {
-            return;
-          }
-
-          codes.add(
-            rubrique.code
-          );
-
-          resultat.push(
-            rubrique
-          );
-
-        }
-      );
-
-
-      /* ---------------------------------------------------------------
-         KOUREL
-      --------------------------------------------------------------- */
-
-      rubriquesKourelAutorisees.forEach(
-        (rubrique) => {
-
-          if (
-            codes.has(
-              rubrique.code
-            )
-          ) {
-            return;
-          }
-
-          codes.add(
-            rubrique.code
-          );
-
-          resultat.push(
-            rubrique
-          );
-
-        }
-      );
-
-
-      return resultat;
-
-    }, [
-      espaceBackendAutorise,
-      rubriquesFinanceAutorisees,
-      rubriquesKourelAutorisees,
-    ]);
-
-
-  /* =======================================================================
-     AUDIO DU JOUR
-  ======================================================================= */
-
-  const peutVoirAudioDuJour =
-    estMembreKourel &&
-    (
-      aPermission(
-        "AUDIO_CONSULTER"
-      ) ||
-      aPermission(
-        "KHASSIDA_CONSULTER"
-      )
-    );
-
-
-  /* =======================================================================
-     DOU'A / RAPPEL DU JOUR
-  ======================================================================= */
-
-  const numeroJour =
-    Math.floor(
-      (
-        new Date(
-          heure.getFullYear(),
-          heure.getMonth(),
-          heure.getDate()
-        ).getTime() -
-        new Date(
-          heure.getFullYear(),
-          0,
-          1
-        ).getTime()
-      ) /
-        (1000 * 60 * 60 * 24)
-    );
-
-  const indexSpirituel =
-    numeroJour %
-    DOUAS_SEMAINE.length;
-
-  const douaSemaine =
-    DOUAS_SEMAINE[
-      indexSpirituel
+        icone: Sunset,
+      },
+
+      {
+        nom: "Isha",
+        heure: formaterHeure(
+          horaires.Isha
+        ),
+        icone: Moon,
+      },
     ];
-
-  const rappelJour =
-    RAPPELS[
-      indexSpirituel %
-      RAPPELS.length
-    ];
+  }, [horaires]);
 
 
-  /* =======================================================================
-     PROCHAINE PRIÈRE
-  ======================================================================= */
+  // ==========================================================
+  // PROCHAINE PRIERE
+  // ==========================================================
 
   const prochainePriere =
     useMemo(() => {
-
-      if (!horairesPriere) {
+      if (!prieres.length) {
         return null;
       }
 
-      const maintenant =
-        new Date();
-
-      const minutesActuelles =
-        maintenant.getHours() * 60 +
-        maintenant.getMinutes();
-
-      for (const priere of PRIERES) {
-
-        const valeur =
-          horairesPriere[
-            priere.cle
-          ];
-
-        if (!valeur) {
-          continue;
-        }
-
-        const [h, m] =
-          valeur
-            .split(":")
-            .map(Number);
-
-        const minutesPriere =
-          h * 60 + m;
+      for (const priere of prieres) {
+        const datePriere =
+          convertirHeureEnDate(
+            priere.heure,
+            maintenant
+          );
 
         if (
-          minutesPriere >
-          minutesActuelles
+          datePriere &&
+          datePriere > maintenant
         ) {
-
           return {
             ...priere,
-            minutesPriere,
+            date: datePriere,
           };
-
         }
-
       }
 
       return null;
-
     }, [
-      horairesPriere,
-      heure,
+      prieres,
+      maintenant,
     ]);
 
 
-  /* =======================================================================
-     TEMPS RESTANT
-  ======================================================================= */
+  // ==========================================================
+  // PRIERE DU LENDEMAIN
+  // ==========================================================
 
-  const tempsRestant =
+  const prochainePriereFinale =
+    prochainePriere ||
+    (prieres.length
+      ? {
+          ...prieres[0],
+          date:
+            (() => {
+              const demain =
+                new Date(
+                  maintenant
+                );
+
+              demain.setDate(
+                demain.getDate() + 1
+              );
+
+              return convertirHeureEnDate(
+                prieres[0].heure,
+                demain
+              );
+            })(),
+        }
+      : null);
+
+
+  // ==========================================================
+  // COMPTE A REBOURS
+  // ==========================================================
+
+  const compteARebours =
     useMemo(() => {
-
-      if (!prochainePriere) {
-        return "--";
+      if (
+        !prochainePriereFinale?.date
+      ) {
+        return "--:--:--";
       }
-
-      const maintenant =
-        heure.getHours() * 60 +
-        heure.getMinutes();
-
-      const secondes =
-        heure.getSeconds();
 
       let difference =
-        prochainePriere.minutesPriere -
-        maintenant;
+        prochainePriereFinale.date.getTime() -
+        maintenant.getTime();
 
       if (difference < 0) {
-        difference += 24 * 60;
+        difference = 0;
       }
 
-      let totalSecondes =
-        difference * 60 -
-        secondes;
-
-      if (totalSecondes < 0) {
-        totalSecondes = 0;
-      }
+      const totalSecondes =
+        Math.floor(
+          difference / 1000
+        );
 
       const heures =
         Math.floor(
-          totalSecondes /
-            3600
+          totalSecondes / 3600
         );
 
       const minutes =
         Math.floor(
-          (
-            totalSecondes %
-            3600
-          ) / 60
+          (totalSecondes % 3600) /
+            60
         );
 
-      const secondesRestantes =
-        totalSecondes %
-        60;
+      const secondes =
+        totalSecondes % 60;
 
-      if (heures > 0) {
-        return `${heures}h ${String(
-          minutes
-        ).padStart(2, "0")}m`;
-      }
-
-      return `${minutes}m ${String(
-        secondesRestantes
-      ).padStart(2, "0")}s`;
-
+      return [
+        String(heures).padStart(
+          2,
+          "0"
+        ),
+        String(minutes).padStart(
+          2,
+          "0"
+        ),
+        String(secondes).padStart(
+          2,
+          "0"
+        ),
+      ].join(":");
     }, [
-      prochainePriere,
-      heure,
+      prochainePriereFinale,
+      maintenant,
     ]);
 
 
-  /* =======================================================================
-     NAVIGATION
-  ======================================================================= */
+  // ==========================================================
+  // INDEX
+  // ==========================================================
 
-  function naviguer(route) {
+  const khassidaDuJour =
+    KHASSIDAS_DU_JOUR[
+      obtenirIndexDuJour(
+        KHASSIDAS_DU_JOUR.length
+      )
+    ];
 
-    if (!route) {
-      return;
-    }
+  const rappelDuJour =
+    RAPPELS[
+      obtenirIndexDuJour(
+        RAPPELS.length
+      )
+    ];
 
-    setElementActif(
-      route
+  const dua =
+    DUAS[duaIndex];
+
+
+  // ==========================================================
+  // HORAIRE SUIVANT
+  // ==========================================================
+
+  const indexProchainePriere =
+    prieres.findIndex(
+      (priere) =>
+        prochainePriereFinale?.nom ===
+        priere.nom
     );
 
-    setMenuOuvert(
-      false
+
+  // ==========================================================
+  // PRENOM
+  // ==========================================================
+
+  const prenom =
+    obtenirPrenom(
+      utilisateur
     );
 
-    setTimeout(() => {
 
-      navigate(
-        route
-      );
+  // ==========================================================
+  // CHARGEMENT
+  // ==========================================================
 
-      setElementActif(
-        null
-      );
+  if (chargement) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <RefreshCw
+            size={32}
+            className="mx-auto text-blue-600 animate-spin"
+          />
 
-    }, 180);
-
+          <p className="mt-3 text-gray-500">
+            Chargement...
+          </p>
+        </div>
+      </div>
+    );
   }
 
 
-  /* =======================================================================
-     DÉCONNEXION
-  ======================================================================= */
+  // ==========================================================
+  // UTILISATEUR NON CONNECTE
+  // ==========================================================
 
-  async function quitter() {
-
-    try {
-
-      await deconnexion();
-
-    } catch (error) {
-
-      console.error(
-        "Erreur déconnexion :",
-        error
-      );
-
-    } finally {
-
-      navigate(
-        "/login",
-        {
-          replace: true,
-        }
-      );
-
-    }
-
+  if (!utilisateur) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    );
   }
 
 
-  /* =======================================================================
-     DATE / HEURE
-  ======================================================================= */
-
-  const dateTexte =
-    heure.toLocaleDateString(
-      "fr-FR",
-      {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      }
-    );
-
-  const heureTexte =
-    heure.toLocaleTimeString(
-      "fr-FR",
-      {
-        hour: "2-digit",
-        minute: "2-digit",
-      }
-    );
-
-
-  /* =========================================================================
-     RENDER
-  ========================================================================= */
+  // ==========================================================
+  // RENDU
+  // ==========================================================
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-slate-50">
 
-      {/* ===================================================================
-          BACKGROUND
-      =================================================================== */}
+      {/* ======================================================
+          MENU PRINCIPAL
+      ====================================================== */}
 
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-200">
 
-        <div
-          className="
-            absolute
-            -left-40
-            -top-40
-            h-96
-            w-96
-            rounded-full
-            bg-emerald-300/20
-            blur-3xl
-            animate-pulse
-          "
-        />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-        <div
-          className="
-            absolute
-            -bottom-40
-            -right-40
-            h-96
-            w-96
-            rounded-full
-            bg-teal-300/20
-            blur-3xl
-            animate-pulse
-          "
-        />
+          <div className="h-16 flex items-center justify-between">
 
-      </div>
+            {/* LOGO */}
 
-
-      {/* ===================================================================
-          HEADER
-      =================================================================== */}
-
-      <header
-        className="
-          sticky
-          top-0
-          z-50
-          border-b
-          border-slate-200/70
-          bg-white/85
-          backdrop-blur-xl
-        "
-      >
-
-        <div
-          className="
-            mx-auto
-            flex
-            max-w-7xl
-            items-center
-            justify-between
-            px-4
-            py-4
-            sm:px-6
-            lg:px-8
-          "
-        >
-
-          <button
-            type="button"
-            onClick={() =>
-              naviguer(
-                "/mon-espace"
-              )
-            }
-            className="group flex items-center gap-3"
-          >
-
-            <div
-              className="
-                flex
-                h-11
-                w-11
-                items-center
-                justify-center
-                rounded-2xl
-                bg-gradient-to-br
-                from-emerald-600
-                to-teal-700
-                text-white
-                shadow-lg
-                shadow-emerald-600/20
-                transition-transform
-                duration-300
-                group-hover:scale-105
-              "
+            <button
+              type="button"
+              onClick={() =>
+                navigate("/")
+              }
+              className="flex items-center gap-3"
             >
-              <Home size={21} />
-            </div>
 
-            <div className="hidden sm:block">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-sm">
+                <Heart size={19} />
+              </div>
 
-              <p className="text-sm font-black tracking-tight text-slate-900">
-                Mon Espace
-              </p>
+              <div className="hidden sm:block text-left">
+                <p className="font-bold text-gray-900">
+                  Dahira
+                </p>
 
-              <p className="text-xs text-slate-400">
-                Dahira
-              </p>
+                <p className="text-xs text-gray-500">
+                  Espace membre
+                </p>
+              </div>
 
-            </div>
-
-          </button>
-
-
-          <div className="hidden items-center gap-3 md:flex">
-
-            <div className="hidden text-right lg:block">
-
-              <p className="text-xs capitalize text-slate-400">
-                {dateTexte}
-              </p>
-
-              <p className="text-sm font-black text-slate-800">
-                {heureTexte}
-              </p>
-
-            </div>
-
-            <div className="h-8 w-px bg-slate-200" />
+            </button>
 
 
-            {/* -------------------------------------------------------------
-                NOTIFICATIONS
-                Visible uniquement avec NOTIFICATION_CONSULTER
-            ------------------------------------------------------------- */}
+            {/* MENU DESKTOP */}
 
-            {aPermission(
-              "NOTIFICATION_CONSULTER"
-            ) && (
+            <nav className="hidden lg:flex items-center gap-1">
+
+              {rubriquesAutorisees
+                .slice(0, 8)
+                .map((rubrique) => {
+
+                  const Icon =
+                    rubrique.icon;
+
+                  return (
+                    <button
+                      key={rubrique.id}
+                      type="button"
+                      onClick={() =>
+                        navigate(
+                          rubrique.route
+                        )
+                      }
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition"
+                    >
+                      <Icon size={16} />
+
+                      {rubrique.nom}
+                    </button>
+                  );
+                })}
+
+              {rubriquesAutorisees.length >
+                8 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setMenuOuvert(
+                      !menuOuvert
+                    )
+                  }
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                >
+                  <Menu size={17} />
+
+                  Plus
+                </button>
+              )}
+
+            </nav>
+
+
+            {/* PROFIL + MOBILE */}
+
+            <div className="flex items-center gap-2">
 
               <button
                 type="button"
                 onClick={() =>
-                  naviguer(
-                    "/notifications"
+                  navigate(
+                    "/mon-espace"
                   )
                 }
-                className="
-                  relative
-                  flex
-                  h-10
-                  w-10
-                  items-center
-                  justify-center
-                  rounded-xl
-                  bg-slate-100
-                  text-slate-600
-                  transition-all
-                  hover:bg-emerald-50
-                  hover:text-emerald-700
-                "
+                className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 transition"
               >
 
-                <Bell size={19} />
+                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-sm">
+                  {prenom
+                    ?.charAt(0)
+                    ?.toUpperCase()}
+                </div>
 
-                <span
-                  className="
-                    absolute
-                    right-2
-                    top-2
-                    h-2
-                    w-2
-                    rounded-full
-                    bg-rose-500
-                    ring-2
-                    ring-white
-                    animate-pulse
-                  "
-                />
+                <span className="text-sm font-medium text-gray-700">
+                  {prenom}
+                </span>
 
               </button>
 
-            )}
 
-
-            <div className="flex items-center gap-3">
-
-              <div
-                className="
-                  flex
-                  h-10
-                  w-10
-                  items-center
-                  justify-center
-                  rounded-xl
-                  bg-gradient-to-br
-                  from-emerald-500
-                  to-teal-700
-                  text-sm
-                  font-black
-                  text-white
-                  shadow-lg
-                "
+              <button
+                type="button"
+                onClick={() =>
+                  setMenuOuvert(
+                    !menuOuvert
+                  )
+                }
+                className="lg:hidden w-10 h-10 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-100"
               >
-                {initiales}
-              </div>
-
-              <div className="hidden lg:block">
-
-                <p className="text-sm font-bold text-slate-900">
-                  {nomUtilisateur}
-                </p>
-
-                <p className="text-xs text-slate-400">
-                  {fonctionPrincipale}
-                </p>
-
-              </div>
+                {menuOuvert ? (
+                  <X size={21} />
+                ) : (
+                  <Menu size={21} />
+                )}
+              </button>
 
             </div>
-
-
-            <button
-              type="button"
-              onClick={quitter}
-              className="
-                flex
-                h-10
-                w-10
-                items-center
-                justify-center
-                rounded-xl
-                text-slate-400
-                transition
-                hover:bg-rose-50
-                hover:text-rose-600
-              "
-              title="Déconnexion"
-            >
-              <LogOut size={18} />
-            </button>
 
           </div>
 
 
-          <button
-            type="button"
-            onClick={() =>
-              setMenuOuvert(true)
-            }
-            className="
-              flex
-              h-10
-              w-10
-              items-center
-              justify-center
-              rounded-xl
-              bg-slate-100
-              text-slate-700
-              md:hidden
-            "
-          >
-            <Menu size={21} />
-          </button>
+          {/* MENU MOBILE / PLUS */}
+
+          {menuOuvert && (
+            <div className="border-t border-gray-100 py-3">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+
+                {rubriquesAutorisees.map(
+                  (rubrique) => {
+
+                    const Icon =
+                      rubrique.icon;
+
+                    const classes =
+                      obtenirClassesRubrique(
+                        rubrique.couleur
+                      );
+
+                    return (
+                      <button
+                        key={
+                          rubrique.id
+                        }
+                        type="button"
+                        onClick={() => {
+                          navigate(
+                            rubrique.route
+                          );
+
+                          setMenuOuvert(
+                            false
+                          );
+                        }}
+                        className={`flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-white ${classes.hover} transition text-left`}
+                      >
+
+                        <div
+                          className={`w-9 h-9 rounded-lg ${classes.fond} flex items-center justify-center`}
+                        >
+                          <Icon
+                            size={17}
+                            className={
+                              classes.icone
+                            }
+                          />
+                        </div>
+
+                        <div>
+                          <p className="text-sm font-semibold text-gray-800">
+                            {
+                              rubrique.nom
+                            }
+                          </p>
+
+                          <p className="text-xs text-gray-500">
+                            {
+                              rubrique.description
+                            }
+                          </p>
+                        </div>
+
+                      </button>
+                    );
+                  }
+                )}
+
+              </div>
+
+            </div>
+          )}
 
         </div>
 
       </header>
 
 
-      {/* ===================================================================
-          MENU MOBILE
-      =================================================================== */}
+      {/* ======================================================
+          MENU COMPLET SUR DESKTOP
+      ====================================================== */}
 
-      {menuOuvert && (
+      {menuOuvert &&
+        rubriquesAutorisees.length >
+          8 && (
+          <div className="hidden lg:block border-b border-gray-200 bg-white">
 
-        <div className="fixed inset-0 z-[100] md:hidden">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
 
-          <button
-            type="button"
-            aria-label="Fermer"
-            onClick={() =>
-              setMenuOuvert(false)
-            }
-            className="
-              absolute
-              inset-0
-              bg-slate-950/40
-              backdrop-blur-sm
-            "
-          />
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
 
-          <div
-            className="
-              absolute
-              right-0
-              top-0
-              h-full
-              w-[88%]
-              max-w-sm
-              animate-[slideIn_0.3s_ease-out]
-              overflow-y-auto
-              bg-white
-              p-6
-              shadow-2xl
-            "
-          >
+                {rubriquesAutorisees.map(
+                  (rubrique) => {
 
-            <div className="flex items-center justify-between">
+                    const Icon =
+                      rubrique.icon;
 
-              <div>
+                    const classes =
+                      obtenirClassesRubrique(
+                        rubrique.couleur
+                      );
 
-                <p className="font-black text-slate-900">
-                  Menu
-                </p>
+                    return (
+                      <button
+                        key={
+                          rubrique.id
+                        }
+                        type="button"
+                        onClick={() => {
+                          navigate(
+                            rubrique.route
+                          );
 
-                <p className="text-xs text-slate-400">
-                  {nomUtilisateur}
-                </p>
+                          setMenuOuvert(
+                            false
+                          );
+                        }}
+                        className={`flex items-center gap-3 p-4 rounded-2xl border border-gray-200 bg-white ${classes.hover} hover:shadow-sm transition text-left`}
+                      >
+
+                        <div
+                          className={`w-11 h-11 rounded-xl ${classes.fond} flex items-center justify-center shrink-0`}
+                        >
+                          <Icon
+                            size={20}
+                            className={
+                              classes.icone
+                            }
+                          />
+                        </div>
+
+                        <div>
+                          <p className="font-semibold text-gray-900">
+                            {
+                              rubrique.nom
+                            }
+                          </p>
+
+                          <p className="mt-1 text-xs text-gray-500">
+                            {
+                              rubrique.description
+                            }
+                          </p>
+                        </div>
+
+                      </button>
+                    );
+                  }
+                )}
 
               </div>
 
-              <button
-                type="button"
-                onClick={() =>
-                  setMenuOuvert(false)
-                }
-                className="
-                  flex
-                  h-10
-                  w-10
-                  items-center
-                  justify-center
-                  rounded-xl
-                  bg-slate-100
-                "
-              >
-                <X size={19} />
-              </button>
+            </div>
+
+          </div>
+        )}
+
+
+      {/* ======================================================
+          HERO
+      ====================================================== */}
+
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 text-white">
+
+        <div className="absolute inset-0 opacity-10">
+
+          <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full border border-white/40" />
+
+          <div className="absolute top-20 right-20 w-96 h-96 rounded-full border border-white/20" />
+
+          <div className="absolute -bottom-32 -left-20 w-96 h-96 rounded-full border border-white/20" />
+
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+
+            <div className="max-w-2xl">
+
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-sm text-blue-100 mb-5">
+
+                <Sparkles
+                  size={15}
+                />
+
+                Espace spirituel
+
+              </div>
+
+
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight">
+
+                {obtenirSalutation()},{" "}
+
+                {prenom} 👋
+
+              </h1>
+
+
+              <p className="mt-4 text-blue-100 text-base md:text-lg leading-relaxed">
+
+                Bienvenue dans votre espace.
+                Retrouvez ici les informations
+                essentielles de votre journée,
+                les prières, les rappels et les
+                communications du Dahira.
+
+              </p>
+
+
+              <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-blue-100">
+
+                <span className="inline-flex items-center gap-2">
+
+                  <CalendarDays
+                    size={16}
+                  />
+
+                  {formaterDateComplete(
+                    maintenant
+                  )}
+
+                </span>
+
+
+                <span className="hidden sm:block text-white/30">
+                  •
+                </span>
+
+
+                <span className="inline-flex items-center gap-2">
+
+                  <MapPin
+                    size={16}
+                  />
+
+                  {VILLE}
+
+                </span>
+
+              </div>
 
             </div>
 
 
-            <div className="mt-8 space-y-2">
+            {/* HORLOGE */}
 
-              {espaceVisible.map(
-                (item) => {
+            <div className="lg:min-w-[280px]">
 
-                  const Icon =
-                    icones[
-                      item.icone
-                    ] ||
-                    BookOpen;
+              <div className="rounded-3xl bg-white/10 backdrop-blur border border-white/10 p-6">
 
-                  return (
+                <div className="flex items-center gap-2 text-blue-200 text-sm">
 
-                    <button
-                      key={
-                        item.code
-                      }
-                      type="button"
-                      onClick={() =>
-                        naviguer(
-                          item.route
-                        )
-                      }
-                      className="
-                        group
-                        flex
-                        w-full
-                        items-center
-                        gap-4
-                        rounded-2xl
-                        p-4
-                        text-left
-                        transition
-                        hover:bg-emerald-50
-                      "
-                    >
+                  <Clock3
+                    size={17}
+                  />
 
-                      <div
-                        className="
-                          flex
-                          h-10
-                          w-10
-                          items-center
-                          justify-center
-                          rounded-xl
-                          bg-emerald-50
-                          text-emerald-600
-                          transition
-                          group-hover:bg-emerald-100
-                        "
-                      >
-                        <Icon size={20} />
-                      </div>
+                  Heure locale
 
-                      <div>
+                </div>
 
-                        <p className="font-semibold">
-                          {item.label}
+
+                <div className="mt-2 text-4xl md:text-5xl font-bold tracking-tight">
+
+                  {maintenant.toLocaleTimeString(
+                    "fr-FR",
+                    {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    }
+                  )}
+
+                </div>
+
+
+                <div className="mt-2 text-sm text-blue-200">
+
+                  {formaterDateCourte(
+                    maintenant
+                  )}
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+      {/* ======================================================
+          CONTENU
+      ====================================================== */}
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+
+        {/* ====================================================
+            PROCHAINE PRIERE
+        ==================================================== */}
+
+        <section className="mb-8">
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+            <div className="lg:col-span-2 relative overflow-hidden rounded-3xl bg-white border border-gray-200 shadow-sm">
+
+              <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-blue-50 -translate-y-1/2 translate-x-1/2" />
+
+              <div className="relative p-6 md:p-8">
+
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+
+                  <div>
+
+                    <div className="flex items-center gap-2 text-blue-600 font-medium text-sm">
+
+                      <Compass
+                        size={18}
+                      />
+
+                      PROCHAINE PRIÈRE
+
+                    </div>
+
+
+                    {chargementHoraires ? (
+                      <div className="mt-4">
+
+                        <RefreshCw
+                          size={30}
+                          className="text-blue-600 animate-spin"
+                        />
+
+                        <p className="mt-3 text-gray-500">
+                          Chargement des horaires...
                         </p>
 
-                        {item.description && (
-                          <p className="mt-0.5 text-xs text-slate-400">
-                            {item.description}
-                          </p>
-                        )}
+                      </div>
+                    ) : erreurHoraires ? (
+                      <div className="mt-4">
+
+                        <div className="flex items-start gap-2 text-red-600">
+
+                          <AlertCircle
+                            size={20}
+                          />
+
+                          <span>
+                            {erreurHoraires}
+                          </span>
+
+                        </div>
+
+
+                        <button
+                          type="button"
+                          onClick={
+                            chargerHoraires
+                          }
+                          className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+                        >
+
+                          <RefreshCw
+                            size={16}
+                          />
+
+                          Réessayer
+
+                        </button>
 
                       </div>
+                    ) : prochainePriereFinale ? (
+                      <>
 
-                    </button>
+                        <h2 className="mt-3 text-3xl md:text-4xl font-bold text-gray-900">
 
-                  );
+                          {
+                            prochainePriereFinale.nom
+                          }
 
-                }
-              )}
+                        </h2>
+
+
+                        <div className="mt-2 flex items-baseline gap-3">
+
+                          <span className="text-5xl md:text-6xl font-bold text-blue-600">
+
+                            {
+                              prochainePriereFinale.heure
+                            }
+
+                          </span>
+
+                          <span className="text-gray-500">
+                            à Dakar
+                          </span>
+
+                        </div>
+
+                      </>
+                    ) : (
+                      <p className="mt-4 text-gray-500">
+                        Horaires indisponibles.
+                      </p>
+                    )}
+
+                  </div>
+
+
+                  {prochainePriereFinale &&
+                    !erreurHoraires && (
+                      <div className="shrink-0">
+
+                        <div className="rounded-2xl bg-blue-50 border border-blue-100 px-6 py-5 text-center">
+
+                          <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">
+                            Dans
+                          </p>
+
+                          <p className="mt-1 text-2xl md:text-3xl font-bold text-blue-700 font-mono">
+                            {
+                              compteARebours
+                            }
+                          </p>
+
+                        </div>
+
+                      </div>
+                    )}
+
+                </div>
+
+              </div>
+
+            </div>
+
+
+            {/* CALENDRIER */}
+
+            <div className="rounded-3xl bg-white border border-gray-200 shadow-sm p-6">
+
+              <div className="flex items-center gap-3">
+
+                <div className="w-11 h-11 rounded-xl bg-indigo-100 flex items-center justify-center">
+
+                  <CalendarDays
+                    size={21}
+                    className="text-indigo-600"
+                  />
+
+                </div>
+
+
+                <div>
+
+                  <p className="text-sm text-gray-500">
+                    Aujourd'hui
+                  </p>
+
+                  <p className="font-semibold text-gray-800">
+
+                    {new Intl.DateTimeFormat(
+                      "fr-FR",
+                      {
+                        day: "numeric",
+                        month: "long",
+                      }
+                    ).format(
+                      maintenant
+                    )}
+
+                  </p>
+
+                </div>
+
+              </div>
+
+
+              <div className="mt-6 rounded-2xl bg-slate-50 p-5">
+
+                <p className="text-xs text-gray-500 uppercase tracking-wide">
+                  Localisation
+                </p>
+
+
+                <div className="mt-2 flex items-center gap-2 text-gray-800 font-medium">
+
+                  <MapPin
+                    size={17}
+                    className="text-blue-600"
+                  />
+
+                  Dakar, Sénégal
+
+                </div>
+
+
+                <p className="mt-3 text-sm text-gray-500 leading-relaxed">
+
+                  Les horaires affichés sont
+                  calculés pour Dakar.
+
+                </p>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+        {/* ====================================================
+            HORAIRES
+        ==================================================== */}
+
+        <section className="mb-8">
+
+          <div className="flex items-center justify-between mb-4">
+
+            <div>
+
+              <h2 className="text-xl font-bold text-gray-900">
+                Horaires des prières
+              </h2>
+
+              <p className="text-sm text-gray-500 mt-1">
+                Les cinq prières quotidiennes
+              </p>
 
             </div>
 
 
             <button
               type="button"
-              onClick={quitter}
-              className="
-                mt-8
-                flex
-                w-full
-                items-center
-                gap-3
-                rounded-2xl
-                bg-rose-50
-                p-4
-                font-semibold
-                text-rose-600
-              "
+              onClick={
+                chargerHoraires
+              }
+              disabled={
+                chargementHoraires
+              }
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 text-sm hover:bg-gray-50 disabled:opacity-50"
             >
-              <LogOut size={19} />
-              Déconnexion
+
+              <RefreshCw
+                size={16}
+                className={
+                  chargementHoraires
+                    ? "animate-spin"
+                    : ""
+                }
+              />
+
+              <span className="hidden sm:inline">
+                Actualiser
+              </span>
+
             </button>
 
           </div>
 
-        </div>
 
-      )}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
 
+            {prieres.map(
+              (priere, index) => {
 
-      {/* ===================================================================
-          CONTENU
-      =================================================================== */}
+                const Icon =
+                  priere.icone;
 
-      <main
-        className="
-          relative
-          mx-auto
-          max-w-7xl
-          px-4
-          py-8
-          sm:px-6
-          lg:px-8
-        "
-      >
+                const estProchaine =
+                  index ===
+                  indexProchainePriere;
 
-        {/* =================================================================
-            HERO
-        ================================================================= */}
-
-        <section
-          className="
-            relative
-            overflow-hidden
-            rounded-[2rem]
-            bg-gradient-to-br
-            from-emerald-950
-            via-emerald-900
-            to-teal-900
-            p-6
-            text-white
-            shadow-2xl
-            shadow-emerald-900/20
-            sm:p-8
-            lg:p-10
-          "
-        >
-
-          <div
-            className="
-              absolute
-              -right-20
-              -top-20
-              h-72
-              w-72
-              rounded-full
-              bg-emerald-400/10
-              blur-3xl
-              animate-pulse
-            "
-          />
-
-          <div
-            className="
-              absolute
-              -bottom-32
-              left-1/3
-              h-72
-              w-72
-              rounded-full
-              bg-teal-300/10
-              blur-3xl
-            "
-          />
-
-          <div
-            className="
-              relative
-              z-10
-              grid
-              gap-8
-              lg:grid-cols-[1fr_auto]
-              lg:items-center
-            "
-          >
-
-            <div>
-
-              <div
-                className="
-                  mb-5
-                  inline-flex
-                  items-center
-                  gap-2
-                  rounded-full
-                  border
-                  border-white/10
-                  bg-white/10
-                  px-3
-                  py-1.5
-                  text-xs
-                  font-semibold
-                  text-emerald-100
-                  backdrop-blur
-                "
-              >
-                <Sparkles size={14} />
-                Bienvenue dans votre espace
-              </div>
-
-              <h1
-                className="
-                  max-w-2xl
-                  text-3xl
-                  font-black
-                  tracking-tight
-                  sm:text-4xl
-                  lg:text-5xl
-                "
-              >
-                As Salam 'Alaykum{" "}
-
-                <span className="text-emerald-300">
-                  {prenomUtilisateur ||
-                    "Membre"}
-                </span>{" "}
-
-                👋
-              </h1>
-
-              <p
-                className="
-                  mt-4
-                  max-w-xl
-                  text-sm
-                  leading-6
-                  text-emerald-100/75
-                  sm:text-base
-                "
-              >
-                Retrouvez vos informations,
-                vos activités et vos rappels
-                spirituels au même endroit.
-              </p>
-
-
-              {estMembreKourel && (
-
-                <div
-                  className="
-                    mt-6
-                    inline-flex
-                    items-center
-                    gap-3
-                    rounded-2xl
-                    border
-                    border-white/10
-                    bg-white/10
-                    px-4
-                    py-3
-                    backdrop-blur
-                  "
-                >
-
+                return (
                   <div
-                    className="
-                      flex
-                      h-9
-                      w-9
-                      items-center
-                      justify-center
-                      rounded-xl
-                      bg-amber-400/20
-                      text-amber-300
-                    "
+                    key={
+                      priere.nom
+                    }
+                    className={`rounded-2xl border p-4 transition ${
+                      estProchaine
+                        ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100"
+                        : "bg-white border-gray-200 text-gray-800"
+                    }`}
                   >
-                    <Music size={18} />
-                  </div>
 
-                  <div>
+                    <div className="flex items-center justify-between">
 
-                    <p className="text-xs text-emerald-100/60">
-                      Membre du Kourel
+                      <span
+                        className={`text-sm font-medium ${
+                          estProchaine
+                            ? "text-blue-100"
+                            : "text-gray-500"
+                        }`}
+                      >
+                        {
+                          priere.nom
+                        }
+                      </span>
+
+
+                      <Icon
+                        size={18}
+                        className={
+                          estProchaine
+                            ? "text-blue-100"
+                            : "text-blue-600"
+                        }
+                      />
+
+                    </div>
+
+
+                    <p
+                      className={`mt-3 text-2xl font-bold ${
+                        estProchaine
+                          ? "text-white"
+                          : "text-gray-900"
+                      }`}
+                    >
+                      {
+                        priere.heure
+                      }
                     </p>
 
-                    <p className="text-sm font-bold">
-                      {kourels.length === 1
-                        ? kourels[0]?.nom ||
-                          "Kourel"
-                        : `${kourels.length} Kourels`}
-                    </p>
+
+                    {estProchaine && (
+                      <p className="mt-1 text-xs text-blue-100">
+                        Prochaine
+                      </p>
+                    )}
 
                   </div>
-
-                </div>
-
-              )}
-
-            </div>
-
-
-            <div className="hidden lg:block">
-
-              <div
-                className="
-                  flex
-                  h-36
-                  w-36
-                  items-center
-                  justify-center
-                  rounded-[2rem]
-                  border
-                  border-white/10
-                  bg-white/10
-                  text-5xl
-                  font-black
-                  shadow-2xl
-                  backdrop-blur-xl
-                  transition-transform
-                  duration-700
-                  hover:rotate-3
-                  hover:scale-105
-                "
-              >
-                {initiales}
-              </div>
-
-            </div>
-
-          </div>
-
-        </section>
-
-
-        {/* =================================================================
-            HORAIRES DE PRIÈRE
-        ================================================================= */}
-
-        <HorairesPriere
-          horaires={horairesPriere}
-          prochainePriere={
-            prochainePriere
-          }
-          tempsRestant={
-            tempsRestant
-          }
-        />
-
-
-        {/* =================================================================
-            AUDIO DU JOUR — KOUREL
-        ================================================================= */}
-
-        {peutVoirAudioDuJour && (
-          <section className="mt-6">
-            <AudioDuJour />
-          </section>
-        )}
-
-
-        {/* =================================================================
-            INSPIRATION SPIRITUELLE
-        ================================================================= */}
-
-        <section
-          className="
-            mt-6
-            grid
-            gap-5
-            lg:grid-cols-2
-          "
-        >
-
-          <DouaSemaine
-            doua={douaSemaine}
-          />
-
-          <RappelJour
-            rappel={rappelJour}
-          />
-
-        </section>
-
-
-        {/* =================================================================
-            COMMUNICATIONS
-        ================================================================= */}
-
-        {peutVoirCommunications && (
-
-          <section className="mt-6">
-
-            {chargementCommunications ? (
-
-              <div
-                className="
-                  rounded-[2rem]
-                  border
-                  border-slate-200
-                  bg-white
-                  p-8
-                  text-center
-                  shadow-sm
-                "
-              >
-
-                <div
-                  className="
-                    mx-auto
-                    h-8
-                    w-8
-                    animate-spin
-                    rounded-full
-                    border-2
-                    border-slate-200
-                    border-t-emerald-600
-                  "
-                />
-
-                <p className="mt-3 text-xs text-slate-400">
-                  Chargement des communications...
-                </p>
-
-              </div>
-
-            ) : (
-
-              <CommunicationsRecentes
-                communications={
-                  communications
-                }
-                onNavigate={
-                  naviguer
-                }
-              />
-
+                );
+              }
             )}
 
-          </section>
 
-        )}
-
-
-        {/* =================================================================
-            STATISTIQUES
-        ================================================================= */}
-
-        <section
-          className="
-            mt-6
-            grid
-            gap-4
-            sm:grid-cols-2
-            lg:grid-cols-4
-          "
-        >
-
-          <Statistique
-            icon={Heart}
-            label="Statut"
-            value={
-              utilisateur?.actif
-                ? "Actif"
-                : "Inactif"
-            }
-            description="Compte utilisateur"
-          />
-
-          <Statistique
-            icon={Users}
-            label="Kourel"
-            value={
-              estMembreKourel
-                ? kourels.length
-                : "—"
-            }
-            description={
-              estMembreKourel
-                ? "Kourel(s) affilié(s)"
-                : "Aucune affiliation"
-            }
-          />
-
-          <Statistique
-            icon={CheckCircle2}
-            label="Permissions"
-            value={
-              permissions.length
-            }
-            description="Accès disponibles"
-          />
-
-          <Statistique
-            icon={BookOpen}
-            label="Rubriques"
-            value={
-              espaceVisible.length
-            }
-            description="Dans votre espace"
-          />
-
-        </section>
-
-
-        {/* =================================================================
-            ACCÈS RAPIDES
-        ================================================================= */}
-
-        <section className="mt-10">
-
-          <div
-            className="
-              flex
-              flex-col
-              justify-between
-              gap-3
-              sm:flex-row
-              sm:items-end
-            "
-          >
-
-            <div>
-
-              <div className="flex items-center gap-2 text-emerald-600">
-
-                <Sparkles size={17} />
-
-                <span
-                  className="
-                    text-xs
-                    font-bold
-                    uppercase
-                    tracking-[0.18em]
-                  "
-                >
-                  Votre espace
-                </span>
-
-              </div>
-
-              <h2
-                className="
-                  mt-2
-                  text-2xl
-                  font-black
-                  tracking-tight
-                  text-slate-900
-                  sm:text-3xl
-                "
-              >
-                Accès rapides
-              </h2>
-
-              <p className="mt-2 text-sm text-slate-500">
-                Retrouvez uniquement les fonctionnalités
-                auxquelles votre compte a accès.
-              </p>
-
-            </div>
-
-            <div
-              className="
-                rounded-full
-                bg-slate-100
-                px-4
-                py-2
-                text-xs
-                font-semibold
-                text-slate-500
-              "
-            >
-              {espaceVisible.length}{" "}
-              rubrique
-              {espaceVisible.length > 1
-                ? "s"
-                : ""}
-            </div>
+            {!prieres.length &&
+              !chargementHoraires && (
+                <div className="col-span-full bg-white border border-gray-200 rounded-2xl p-6 text-center text-gray-500">
+                  Aucun horaire disponible.
+                </div>
+              )}
 
           </div>
 
         </section>
 
 
-        {/* =================================================================
-            CARTES
-        ================================================================= */}
+        {/* ====================================================
+            DU'A + RAPPEL
+        ==================================================== */}
 
-        {espaceVisible.length > 0 ? (
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
 
-          <section
-            className="
-              mt-6
-              grid
-              gap-5
-              sm:grid-cols-2
-              lg:grid-cols-3
-            "
-          >
 
-            {espaceVisible.map(
-              (item, index) => (
+          {/* DU'A */}
 
-                <div
-                  key={
-                    item.code
-                  }
-                  className="
-                    animate-[fadeUp_0.55s_ease-out_both]
-                  "
-                >
+          <div className="rounded-3xl bg-white border border-gray-200 shadow-sm overflow-hidden">
 
-                  <CarteEspace
-                    item={item}
-                    index={index}
-                    onNavigate={
-                      naviguer
-                    }
-                    active={
-                      elementActif ===
-                      item.route
-                    }
+            <div className="bg-gradient-to-r from-indigo-950 to-blue-900 text-white p-6">
+
+              <div className="flex items-center gap-3">
+
+                <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center">
+
+                  <Heart
+                    size={21}
                   />
 
                 </div>
 
-              )
-            )}
 
-          </section>
+                <div>
 
-        ) : (
+                  <p className="text-blue-200 text-xs uppercase tracking-wide font-medium">
+                    Invocation
+                  </p>
 
-          <section
-            className="
-              mt-6
-              rounded-3xl
-              border
-              border-dashed
-              border-slate-300
-              bg-white
-              p-10
-              text-center
-            "
-          >
+                  <h2 className="text-xl font-bold">
+                    Du'a de la semaine
+                  </h2>
 
-            <div
-              className="
-                mx-auto
-                flex
-                h-16
-                w-16
-                items-center
-                justify-center
-                rounded-2xl
-                bg-slate-100
-                text-slate-400
-              "
-            >
-              <BookOpen size={28} />
+                </div>
+
+              </div>
+
             </div>
 
-            <h3 className="mt-5 text-lg font-bold text-slate-900">
-              Aucun accès disponible
-            </h3>
 
-            <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
-              Votre compte ne dispose
-              actuellement d'aucune rubrique
-              accessible.
+            <div className="p-6">
+
+              <div className="rounded-2xl bg-slate-50 p-5">
+
+                <p
+                  dir="rtl"
+                  className="text-2xl md:text-3xl leading-loose text-gray-900 text-right font-serif"
+                >
+                  {dua.arabe}
+                </p>
+
+              </div>
+
+
+              <p className="mt-5 text-sm italic text-gray-600 leading-relaxed">
+                {dua.transliteration}
+              </p>
+
+
+              <div className="mt-4 border-l-4 border-blue-500 pl-4">
+
+                <p className="text-gray-700 leading-relaxed">
+                  {dua.traduction}
+                </p>
+
+              </div>
+
+
+              <div className="mt-5 flex justify-end">
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setDuaIndex(
+                      (
+                        duaIndex + 1
+                      ) %
+                        DUAS.length
+                    )
+                  }
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
+                >
+
+                  Nouvelle invocation
+
+                  <ChevronRight
+                    size={16}
+                  />
+
+                </button>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          {/* RAPPEL */}
+
+          <div className="rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50 border border-orange-100 shadow-sm p-6">
+
+            <div className="flex items-center gap-3">
+
+              <div className="w-11 h-11 rounded-xl bg-orange-100 flex items-center justify-center">
+
+                <Sparkles
+                  size={21}
+                  className="text-orange-600"
+                />
+
+              </div>
+
+
+              <div>
+
+                <p className="text-xs uppercase tracking-wide text-orange-600 font-medium">
+                  Méditation
+                </p>
+
+                <h2 className="text-xl font-bold text-gray-900">
+                  {
+                    rappelDuJour.titre
+                  }
+                </h2>
+
+              </div>
+
+            </div>
+
+
+            <p className="mt-6 text-gray-700 leading-relaxed text-base">
+              {
+                rappelDuJour.texte
+              }
             </p>
 
-          </section>
 
-        )}
+            <div className="mt-8 flex items-center gap-2 text-sm text-orange-700">
+
+              <Heart
+                size={16}
+              />
+
+              Qu'Allah nous accorde
+              la constance et la sincérité.
+
+            </div>
+
+          </div>
+
+        </section>
 
 
-        {/* =================================================================
-            ESPACE KOUREL
-        ================================================================= */}
+        {/* ====================================================
+            KHASSIDA
+        ==================================================== */}
 
-        {estMembreKourel &&
-          rubriquesKourelAutorisees.length >
-            0 && (
+        <section className="mb-8">
 
-          <section
-            className="
-              mt-10
-              overflow-hidden
-              rounded-[2rem]
-              border
-              border-emerald-100
-              bg-white
-              shadow-sm
-            "
-          >
+          <div className="rounded-3xl overflow-hidden bg-white border border-gray-200 shadow-sm">
 
-            <div
-              className="
-                bg-gradient-to-r
-                from-emerald-50
-                via-teal-50
-                to-cyan-50
-                p-6
-                sm:p-8
-              "
-            >
+            <div className="p-6 md:p-7">
 
-              <div
-                className="
-                  flex
-                  flex-col
-                  gap-6
-                  sm:flex-row
-                  sm:items-center
-                  sm:justify-between
-                "
-              >
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-start gap-4">
 
-                  <div
-                    className="
-                      flex
-                      h-14
-                      w-14
-                      items-center
-                      justify-center
-                      rounded-2xl
-                      bg-gradient-to-br
-                      from-emerald-500
-                      to-teal-600
-                      text-white
-                      shadow-lg
-                    "
-                  >
-                    <Music size={25} />
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center shrink-0">
+
+                    <BookOpen
+                      size={26}
+                      className="text-emerald-600"
+                    />
+
                   </div>
+
 
                   <div>
 
-                    <p
-                      className="
-                        text-xs
-                        font-bold
-                        uppercase
-                        tracking-wider
-                        text-emerald-600
-                      "
-                    >
-                      Espace Kourel
+                    <p className="text-xs uppercase tracking-wide text-emerald-600 font-semibold">
+                      Lecture spirituelle
                     </p>
 
-                    <h3
-                      className="
-                        mt-1
-                        text-xl
-                        font-black
-                        text-slate-900
-                      "
-                    >
-                      {kourels.length === 1
-                        ? kourels[0]?.nom ||
-                          "Mon Kourel"
-                        : `${kourels.length} Kourels`}
-                    </h3>
+                    <h2 className="mt-1 text-xl md:text-2xl font-bold text-gray-900">
+                      {
+                        khassidaDuJour.titre
+                      }
+                    </h2>
+
+                    <p className="mt-2 text-gray-500 leading-relaxed">
+                      {
+                        khassidaDuJour.description
+                      }
+                    </p>
 
                   </div>
 
                 </div>
 
 
-                {rubriquesKourelAutorisees.some(
-                  (item) =>
-                    item.code ===
-                    "MON_KOUREL"
-                ) && (
+                <div className="flex flex-wrap gap-2">
 
                   <button
                     type="button"
                     onClick={() =>
-                      naviguer(
-                        "/mon-kourel"
+                      navigate(
+                        "/khassidas"
                       )
                     }
-                    className="
-                      inline-flex
-                      items-center
-                      justify-center
-                      gap-2
-                      rounded-2xl
-                      bg-emerald-700
-                      px-5
-                      py-3
-                      text-sm
-                      font-bold
-                      text-white
-                      shadow-lg
-                      shadow-emerald-700/20
-                      transition-all
-                      hover:-translate-y-0.5
-                      hover:bg-emerald-800
-                      hover:shadow-xl
-                    "
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition"
                   >
-                    Ouvrir mon Kourel
-                    <ArrowRight size={17} />
+
+                    <BookOpen
+                      size={17}
+                    />
+
+                    Consulter
+
                   </button>
 
-                )}
 
-              </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(
+                        "/khassidas"
+                      )
+                    }
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition"
+                  >
 
+                    <Volume2
+                      size={17}
+                    />
 
-              {kourels.length > 1 && (
+                    Écouter
 
-                <div
-                  className="
-                    mt-6
-                    grid
-                    gap-3
-                    sm:grid-cols-2
-                  "
-                >
-
-                  {kourels.map(
-                    (kourel) => (
-
-                      <button
-                        type="button"
-                        key={
-                          kourel.id
-                        }
-                        onClick={() =>
-                          naviguer(
-                            `/kourels/${kourel.id}`
-                          )
-                        }
-                        className="
-                          group
-                          flex
-                          items-center
-                          justify-between
-                          rounded-2xl
-                          border
-                          border-emerald-100
-                          bg-white/80
-                          p-4
-                          text-left
-                          transition
-                          hover:-translate-y-1
-                          hover:shadow-md
-                        "
-                      >
-
-                        <div>
-
-                          <p className="text-sm font-bold text-slate-900">
-                            {kourel.nom}
-                          </p>
-
-                          {kourel.date_entree && (
-
-                            <p className="mt-1 text-xs text-slate-400">
-                              Membre depuis le{" "}
-                              {new Date(
-                                kourel.date_entree
-                              ).toLocaleDateString(
-                                "fr-FR"
-                              )}
-                            </p>
-
-                          )}
-
-                        </div>
-
-                        <ChevronRight
-                          size={18}
-                          className="
-                            text-slate-300
-                            transition
-                            group-hover:translate-x-1
-                            group-hover:text-emerald-600
-                          "
-                        />
-
-                      </button>
-
-                    )
-                  )}
+                  </button>
 
                 </div>
 
-              )}
-
-            </div>
-
-
-            <div className="p-6 sm:p-8">
-
-              <div className="mb-5">
-
-                <p
-                  className="
-                    text-xs
-                    font-bold
-                    uppercase
-                    tracking-wider
-                    text-emerald-600
-                  "
-                >
-                  Activités
-                </p>
-
-                <h4 className="mt-1 text-lg font-black text-slate-900">
-                  Activités de votre Kourel
-                </h4>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  Accédez aux fonctionnalités
-                  selon vos permissions.
-                </p>
-
-              </div>
-
-
-              <div
-                className="
-                  grid
-                  gap-3
-                  sm:grid-cols-2
-                  lg:grid-cols-3
-                "
-              >
-
-                {rubriquesKourelAutorisees
-                  .filter(
-                    (item) =>
-                      item.code !==
-                      "MON_KOUREL"
-                  )
-                  .map(
-                    (item) => {
-
-                      const Icon =
-                        icones[
-                          item.icone
-                        ] ||
-                        BookOpen;
-
-                      return (
-
-                        <button
-                          type="button"
-                          key={
-                            item.code
-                          }
-                          onClick={() =>
-                            naviguer(
-                              item.route
-                            )
-                          }
-                          className="
-                            group
-                            rounded-2xl
-                            border
-                            border-slate-200
-                            bg-slate-50
-                            p-4
-                            text-left
-                            transition
-                            hover:-translate-y-1
-                            hover:border-emerald-200
-                            hover:bg-emerald-50
-                            hover:shadow-md
-                          "
-                        >
-
-                          <div className="flex items-center justify-between">
-
-                            <div
-                              className="
-                                flex
-                                h-11
-                                w-11
-                                items-center
-                                justify-center
-                                rounded-xl
-                                bg-white
-                                text-emerald-600
-                                shadow-sm
-                              "
-                            >
-                              <Icon size={20} />
-                            </div>
-
-                            <ChevronRight
-                              size={17}
-                              className="
-                                text-slate-300
-                                transition
-                                group-hover:translate-x-1
-                                group-hover:text-emerald-600
-                              "
-                            />
-
-                          </div>
-
-                          <p className="mt-4 text-sm font-bold text-slate-900">
-                            {item.label}
-                          </p>
-
-                          <p className="mt-1 text-xs leading-5 text-slate-500">
-                            {item.description}
-                          </p>
-
-                        </button>
-
-                      );
-
-                    }
-                  )}
-
               </div>
 
             </div>
-
-          </section>
-
-        )}
-
-
-        {/* =================================================================
-            FOOTER
-        ================================================================= */}
-
-        <footer
-          className="
-            mt-12
-            border-t
-            border-slate-200
-            py-8
-          "
-        >
-
-          <div
-            className="
-              flex
-              flex-col
-              items-center
-              justify-between
-              gap-3
-              text-center
-              sm:flex-row
-              sm:text-left
-            "
-          >
-
-            <div>
-
-              <p className="text-sm font-bold text-slate-700">
-                Dahira
-              </p>
-
-              <p className="mt-1 text-xs text-slate-400">
-                Votre espace personnel et spirituel
-              </p>
-
-            </div>
-
-            <p className="text-xs text-slate-400">
-              ©{" "}
-              {new Date().getFullYear()}
-              {" "}— Tous droits réservés
-            </p>
 
           </div>
 
-        </footer>
+        </section>
+
+
+        {/* ====================================================
+            COMMUNICATIONS
+        ==================================================== */}
+
+        {aPermission(
+          "COMMUNICATION_CONSULTER"
+        ) && (
+          <section className="mb-8">
+
+            <div className="flex items-center justify-between mb-4">
+
+              <div>
+
+                <h2 className="text-xl font-bold text-gray-900">
+                  Communications
+                </h2>
+
+                <p className="text-sm text-gray-500 mt-1">
+                  Les dernières informations du Dahira
+                </p>
+
+              </div>
+
+
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(
+                    "/communications"
+                  )
+                }
+                className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
+              >
+
+                Tout voir
+
+                <ArrowRight
+                  size={16}
+                />
+
+              </button>
+
+            </div>
+
+
+            {chargementCommunications ? (
+              <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center">
+
+                <RefreshCw
+                  size={25}
+                  className="mx-auto text-blue-600 animate-spin"
+                />
+
+                <p className="mt-3 text-sm text-gray-500">
+                  Chargement des communications...
+                </p>
+
+              </div>
+            ) : erreurCommunications ? (
+              <div className="bg-white border border-red-200 rounded-2xl p-5">
+
+                <div className="flex items-start gap-3 text-red-600">
+
+                  <AlertCircle
+                    size={19}
+                  />
+
+                  <p className="text-sm">
+                    {
+                      erreurCommunications
+                    }
+                  </p>
+
+                </div>
+
+              </div>
+            ) : communications.length ===
+              0 ? (
+              <div className="bg-white border border-gray-200 rounded-2xl p-7 text-center">
+
+                <Megaphone
+                  size={30}
+                  className="mx-auto text-gray-300"
+                />
+
+                <p className="mt-3 text-sm text-gray-500">
+                  Aucune communication récente.
+                </p>
+
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                {communications.map(
+                  (communication) => (
+                    <button
+                      type="button"
+                      key={
+                        communication.id
+                      }
+                      onClick={() =>
+                        navigate(
+                          `/communications/${communication.id}`
+                        )
+                      }
+                      className="text-left bg-white border border-gray-200 rounded-2xl p-5 hover:border-blue-300 hover:shadow-md transition group"
+                    >
+
+                      <div className="flex items-center justify-between gap-3">
+
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+
+                          <Megaphone
+                            size={18}
+                            className="text-blue-600"
+                          />
+
+                        </div>
+
+
+                        <ArrowRight
+                          size={17}
+                          className="text-gray-300 group-hover:text-blue-600 transition"
+                        />
+
+                      </div>
+
+
+                      <h3 className="mt-4 font-semibold text-gray-900 line-clamp-2">
+                        {
+                          communication.titre
+                        }
+                      </h3>
+
+
+                      <p className="mt-2 text-sm text-gray-500 line-clamp-3 leading-relaxed">
+                        {
+                          communication.contenu
+                        }
+                      </p>
+
+
+                      <div className="mt-4 flex items-center gap-2 text-xs text-gray-400">
+
+                        <Calendar
+                          size={13}
+                        />
+
+                        {communication.date_publication
+                          ? new Intl.DateTimeFormat(
+                              "fr-FR",
+                              {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              }
+                            ).format(
+                              new Date(
+                                communication.date_publication
+                              )
+                            )
+                          : "-"}
+
+                      </div>
+
+                    </button>
+                  )
+                )}
+
+              </div>
+            )}
+
+          </section>
+        )}
+
+
+        {/* ====================================================
+            MON ESPACE
+        ==================================================== */}
+
+        <section className="mb-8">
+
+          <div className="flex items-center gap-3 mb-4">
+
+            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+
+              <Info
+                size={19}
+                className="text-blue-600"
+              />
+
+            </div>
+
+
+            <div>
+
+              <h2 className="text-xl font-bold text-gray-900">
+                Mon espace
+              </h2>
+
+              <p className="text-sm text-gray-500">
+                Accédez rapidement à vos informations
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+            <button
+              type="button"
+              onClick={() =>
+                navigate(
+                  "/mon-espace"
+                )
+              }
+              className="bg-white border border-gray-200 rounded-2xl p-5 text-left hover:border-blue-300 hover:shadow-md transition group"
+            >
+
+              <div className="flex items-center justify-between">
+
+                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+
+                  <Bell
+                    size={19}
+                    className="text-blue-600"
+                  />
+
+                </div>
+
+
+                <ArrowRight
+                  size={17}
+                  className="text-gray-300 group-hover:text-blue-600"
+                />
+
+              </div>
+
+
+              <h3 className="mt-4 font-semibold text-gray-900">
+                Mon espace personnel
+              </h3>
+
+
+              <p className="mt-1 text-sm text-gray-500">
+                Retrouvez vos fonctionnalités personnelles.
+              </p>
+
+            </button>
+
+
+            {aPermission(
+              "REUNION_CONSULTER"
+            ) && (
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(
+                    "/reunions"
+                  )
+                }
+                className="bg-white border border-gray-200 rounded-2xl p-5 text-left hover:border-indigo-300 hover:shadow-md transition group"
+              >
+
+                <div className="flex items-center justify-between">
+
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+
+                    <Calendar
+                      size={19}
+                      className="text-indigo-600"
+                    />
+
+                  </div>
+
+
+                  <ArrowRight
+                    size={17}
+                    className="text-gray-300 group-hover:text-indigo-600"
+                  />
+
+                </div>
+
+
+                <h3 className="mt-4 font-semibold text-gray-900">
+                  Réunions
+                </h3>
+
+
+                <p className="mt-1 text-sm text-gray-500">
+                  Consultez les prochaines réunions.
+                </p>
+
+              </button>
+            )}
+
+
+            {aPermission(
+              "COMMUNICATION_CONSULTER"
+            ) && (
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(
+                    "/communications"
+                  )
+                }
+                className="bg-white border border-gray-200 rounded-2xl p-5 text-left hover:border-emerald-300 hover:shadow-md transition group"
+              >
+
+                <div className="flex items-center justify-between">
+
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+
+                    <Megaphone
+                      size={19}
+                      className="text-emerald-600"
+                    />
+
+                  </div>
+
+
+                  <ArrowRight
+                    size={17}
+                    className="text-gray-300 group-hover:text-emerald-600"
+                  />
+
+                </div>
+
+
+                <h3 className="mt-4 font-semibold text-gray-900">
+                  Communications
+                </h3>
+
+
+                <p className="mt-1 text-sm text-gray-500">
+                  Consultez les annonces du Dahira.
+                </p>
+
+              </button>
+            )}
+
+
+            {aPermission(
+              "KOUREL_CONSULTER"
+            ) && (
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(
+                    "/khassidas"
+                  )
+                }
+                className="bg-white border border-gray-200 rounded-2xl p-5 text-left hover:border-orange-300 hover:shadow-md transition group"
+              >
+
+                <div className="flex items-center justify-between">
+
+                  <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
+
+                    <BookOpen
+                      size={19}
+                      className="text-orange-600"
+                    />
+
+                  </div>
+
+
+                  <ArrowRight
+                    size={17}
+                    className="text-gray-300 group-hover:text-orange-600"
+                  />
+
+                </div>
+
+
+                <h3 className="mt-4 font-semibold text-gray-900">
+                  Khassidas
+                </h3>
+
+
+                <p className="mt-1 text-sm text-gray-500">
+                  Consultez les Khassidas disponibles.
+                </p>
+
+              </button>
+            )}
+
+          </div>
+
+        </section>
+
+
+        {/* ====================================================
+            FOOTER SPIRITUEL
+        ==================================================== */}
+
+        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 to-blue-950 text-white p-7 md:p-9">
+
+          <div className="absolute -right-16 -top-16 w-48 h-48 rounded-full border border-white/10" />
+
+          <div className="absolute -left-10 -bottom-20 w-56 h-56 rounded-full border border-white/10" />
+
+
+          <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+
+            <div>
+
+              <div className="flex items-center gap-2 text-blue-300 text-sm font-medium">
+
+                <Heart
+                  size={16}
+                />
+
+                Rappel
+
+              </div>
+
+
+              <h2 className="mt-2 text-xl md:text-2xl font-bold">
+                Qu'Allah bénisse votre journée.
+              </h2>
+
+
+              <p className="mt-2 text-blue-200 max-w-2xl leading-relaxed">
+
+                Que chaque prière, chaque
+                invocation et chaque bonne action
+                soit une source de lumière,
+                de paix et de bénédiction.
+
+              </p>
+
+            </div>
+
+
+            <div className="flex items-center gap-3 shrink-0">
+
+              <Volume2
+                size={24}
+                className="text-blue-300"
+              />
+
+              <span className="text-sm text-blue-200">
+                Dhikr • Prière • Fraternité
+              </span>
+
+            </div>
+
+          </div>
+
+        </section>
 
       </main>
-
-
-      {/* ===================================================================
-          ANIMATIONS
-      =================================================================== */}
-
-      <style>{`
-
-        @keyframes fadeUp {
-
-          from {
-            opacity: 0;
-            transform: translateY(18px);
-          }
-
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-
-        }
-
-        @keyframes slideIn {
-
-          from {
-            opacity: 0;
-            transform: translateX(100%);
-          }
-
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-
-        }
-
-      `}</style>
 
     </div>
   );
 }
+
+export default Espace;
