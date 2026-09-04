@@ -10,6 +10,9 @@ from app.models.membre import Membre
 from app.models.paiement import Paiement
 from app.models.depense import Depense
 from app.models.aide_exterieure import AideExterieure
+from app.models.fonction_permission import FonctionPermission
+from app.models.permission import Permission
+from app.models.utilisateur_fonction import UtilisateurFonction
 
 
 router = APIRouter(
@@ -19,95 +22,60 @@ router = APIRouter(
 
 
 # ============================================================
-# OUTIL : VÉRIFIER UNE PERMISSION DE L'UTILISATEUR
+# OUTIL : VÉRIFIER UNE PERMISSION
 # ============================================================
 
 def utilisateur_a_permission(
-    utilisateur,
+    db: Session,
+    utilisateur_id: int,
     code_permission: str,
 ) -> bool:
     """
-    Vérifie si l'utilisateur possède une permission donnée.
+    Vérifie directement en base si l'utilisateur possède
+    une permission donnée via sa fonction.
 
-    La fonction reste volontairement souple afin de fonctionner
-    avec la structure actuelle de l'utilisateur retourné par
-    le système d'authentification.
+    Chaîne :
+
+        Utilisateur
+             ↓
+        UtilisateurFonction
+             ↓
+           Fonction
+             ↓
+        FonctionPermission
+             ↓
+         Permission
     """
 
-    # --------------------------------------------------------
-    # Cas 1 : l'utilisateur possède directement une méthode
-    #         a_permission()
-    # --------------------------------------------------------
-
-    methode_permission = getattr(
-        utilisateur,
-        "a_permission",
-        None,
-    )
-
-    if callable(methode_permission):
-        try:
-            return bool(
-                methode_permission(code_permission)
-            )
-        except Exception:
-            pass
-
-    # --------------------------------------------------------
-    # Cas 2 : permissions directement présentes sur
-    #         l'utilisateur
-    # --------------------------------------------------------
-
-    permissions = getattr(
-        utilisateur,
-        "permissions",
-        None,
-    )
-
-    if permissions:
-
-        # Liste de chaînes :
-        # ["DASHBOARD_CONSULTER", "FINANCE_CONSULTER"]
-        if isinstance(permissions, (list, tuple, set)):
-
-            for permission in permissions:
-
-                if isinstance(permission, str):
-                    if permission == code_permission:
-                        return True
-
-                elif isinstance(permission, dict):
-                    if (
-                        permission.get("code")
-                        == code_permission
-                    ):
-                        return True
-
-                else:
-                    if (
-                        getattr(
-                            permission,
-                            "code",
-                            None,
-                        )
-                        == code_permission
-                    ):
-                        return True
-
-    # --------------------------------------------------------
-    # Cas 3 : permissions sous forme de dictionnaire
-    # --------------------------------------------------------
-
-    if isinstance(permissions, dict):
-
-        valeur = permissions.get(
-            code_permission
+    permission = (
+        db.query(Permission)
+        .filter(
+            Permission.code == code_permission,
+            Permission.actif.is_(True),
         )
+        .first()
+    )
 
-        if valeur is True:
-            return True
+    if not permission:
+        return False
 
-    return False
+    autorisation = (
+        db.query(FonctionPermission)
+        .join(
+            UtilisateurFonction,
+            UtilisateurFonction.fonction_id
+            == FonctionPermission.fonction_id,
+        )
+        .filter(
+            UtilisateurFonction.utilisateur_id
+            == utilisateur_id,
+            FonctionPermission.permission_id
+            == permission.id,
+        )
+        .first()
+    )
+
+    return autorisation is not None
 
 
 # ============================================================
@@ -139,8 +107,9 @@ def dashboard(
     # ========================================================
 
     peut_consulter_finances = utilisateur_a_permission(
-        current_user,
-        "FINANCE_CONSULTER",
+        db=db,
+        utilisateur_id=current_user.id,
+        code_permission="FINANCE_CONSULTER",
     )
 
     # ========================================================
@@ -171,9 +140,6 @@ def dashboard(
 
     # ========================================================
     # DONNÉES FINANCIÈRES
-    #
-    # Elles ne sont calculées que si l'utilisateur possède
-    # FINANCE_CONSULTER.
     # ========================================================
 
     if peut_consulter_finances:
@@ -200,9 +166,6 @@ def dashboard(
 
         # ----------------------------------------------------
         # PAIEMENTS EFFECTUÉS
-        #
-        # Les paiements ne sont PAS considérés comme des
-        # dépenses du Dahira.
         # ----------------------------------------------------
 
         total_paiements = (
@@ -262,7 +225,7 @@ def dashboard(
         )
 
         # ----------------------------------------------------
-        # CONVERSION
+        # CONVERSION EN FLOAT
         # ----------------------------------------------------
 
         total_cotisations = float(
@@ -284,10 +247,7 @@ def dashboard(
         # ----------------------------------------------------
         # TOTAL RECETTES
         #
-        # RECETTES =
-        #     COTISATIONS
-        #     +
-        #     AIDES EXTÉRIEURES
+        # Cotisations + aides extérieures
         # ----------------------------------------------------
 
         total_recettes = (
@@ -298,10 +258,7 @@ def dashboard(
         # ----------------------------------------------------
         # SOLDE
         #
-        # SOLDE =
-        #     TOTAL RECETTES
-        #     -
-        #     TOTAL DÉPENSES
+        # Recettes - dépenses
         # ----------------------------------------------------
 
         solde = (
@@ -336,10 +293,6 @@ def dashboard(
 
         # ----------------------------------------------------
         # FINANCES
-        #
-        # Si l'utilisateur n'a pas FINANCE_CONSULTER,
-        # les valeurs restent à 0 et le frontend masque
-        # toute la partie financière.
         # ----------------------------------------------------
 
         "cotisations_encaissees": (
