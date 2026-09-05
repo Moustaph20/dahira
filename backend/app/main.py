@@ -6,7 +6,8 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 
-
+from app.seed.tons import seed_tons
+from app.core.database import SessionLocal
 # ============================================================
 # MODÈLES
 # ============================================================
@@ -117,6 +118,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+def initialiser_donnees():
+    db = SessionLocal()
+
+    try:
+        seed_tons(db)
+    finally:
+        db.close()
 
 
 # ============================================================
