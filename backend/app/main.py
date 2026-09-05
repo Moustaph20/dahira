@@ -1,5 +1,52 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
+from app.core.config import settings
+
+
+# ============================================================
+# MODÈLES
+# ============================================================
+
+from app.models.membre import Membre
+from app.models.fonction import Fonction
+from app.models.utilisateur import Utilisateur
+from app.models.permission import Permission
+from app.models.fonction_permission import FonctionPermission
+from app.models.utilisateur_fonction import UtilisateurFonction
+from app.models.galerie import Galerie
+
+
+# ============================================================
+# MODÈLES KOUREL
+# ============================================================
+
+from app.models.kourel import Kourel
+from app.models.kourel_membre import KourelMembre
+
+from app.models.programme_mensuel import ProgrammeMensuel
+from app.models.repetition import Repetition
+from app.models.declamation import Declamation
+from app.models.declamation_khassida import DeclamationKhassida
+
+from app.models.khassida import Khassida
+from app.models.khassida_ton import KhassidaTon
+
+from app.models.ton import Ton
+from app.models.audio import Audio
+
+from app.models.repetition_khassida import RepetitionKhassida
+
+
+# ============================================================
+# MODÈLES FINANCES
+# ============================================================
+
+from app.models.depense import Depense
+from app.models.aide_exterieure import AideExterieure
 
 
 # ============================================================
@@ -9,34 +56,43 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers.auth import router as auth_router
 from app.routers.membres import router as membres_router
 
-from app.routers import (
-    cotisations,
-    paiements,
-    dashboard,
-    reunions,
-    communications,
-    programmes,
-    choix_khassidas,
-    audios,
-    fonctions,
-    kourels,
-    depenses,
-    aides_exterieures,
-    tons,
+from app.routers import cotisations
+from app.routers import paiements
+from app.routers import dashboard
+from app.routers import reunions
+from app.routers import communications
+
+from app.routers import programmes
+from app.routers import choix_khassidas
+from app.routers import audios
+from app.routers import tons
+from app.routers.galerie import router as galerie_router
+
+from app.routers.repetitions import (
+    router as repetitions_router
 )
 
-from app.routers.utilisateurs import router as utilisateurs_router
-from app.routers.khassidas import router as khassidas_router
-from app.routers.repetitions import router as repetitions_router
+from app.routers.utilisateurs import (
+    router as utilisateurs_router
+)
+
+from app.routers import fonctions
+from app.routers import kourels
+
+from app.routers.khassidas import (
+    router as khassidas_router
+)
+
 from app.routers.programmes_religieux import (
-    router as programmes_religieux_router,
+    router as programmes_religieux_router
 )
+
 from app.routers.notifications import (
-    router as notifications_router,
+    router as notifications_router
 )
-from app.routers.galerie import (
-    router as galerie_router,
-)
+
+from app.routers import depenses
+from app.routers import aides_exterieures
 
 
 # ============================================================
@@ -45,6 +101,7 @@ from app.routers.galerie import (
 
 app = FastAPI(
     title="Dahira API",
+    description="API de gestion du Dahira",
     version="1.0.0",
 )
 
@@ -55,14 +112,26 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://dahira.onrender.com",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+
+# ============================================================
+# UPLOADS
+# ============================================================
+
+Path("uploads/audios").mkdir(
+    parents=True,
+    exist_ok=True,
+)
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory="uploads"),
+    name="uploads",
 )
 
 
@@ -97,12 +166,6 @@ app.include_router(fonctions.router)
 app.include_router(kourels.router)
 
 app.include_router(khassidas_router)
-
-
-# ============================================================
-# TONS
-# ============================================================
-
 app.include_router(tons.router)
 
 app.include_router(repetitions_router)
@@ -119,12 +182,23 @@ app.include_router(galerie_router)
 
 
 # ============================================================
-# ROUTE RACINE
+# ROOT
 # ============================================================
 
 @app.get("/")
 def root():
     return {
-        "message": "API Dahira opérationnelle.",
+        "message": "Dahira API opérationnelle",
         "version": "1.0.0",
+    }
+
+
+# ============================================================
+# HEALTH
+# ============================================================
+
+@app.get("/health")
+def health():
+    return {
+        "status": "ok",
     }
