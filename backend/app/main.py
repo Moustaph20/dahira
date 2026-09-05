@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 
 # ============================================================
 # ROUTERS
@@ -48,6 +50,23 @@ app = FastAPI(
 
 
 # ============================================================
+# CORS
+# ============================================================
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://dahira.onrender.com",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ============================================================
 # ROUTES
 # ============================================================
 
@@ -78,6 +97,7 @@ app.include_router(fonctions.router)
 app.include_router(kourels.router)
 
 app.include_router(khassidas_router)
+
 
 # ============================================================
 # TONS
