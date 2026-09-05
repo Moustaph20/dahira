@@ -1,4 +1,3 @@
-
 import {
   useEffect,
   useState,
@@ -41,7 +40,7 @@ function getAudioUrl(fichier) {
     return fichier;
   }
 
- const baseURL = api.defaults.baseURL;
+  const baseURL = api.defaults.baseURL;
 
   const chemin = fichier
     .replace(/\\/g, "/")
@@ -398,24 +397,33 @@ export default function Khassidas() {
   // ==========================================================
   // CHARGER LES TONS
   // ==========================================================
+  //
+  // CORRECTION :
+  // Les tons sont maintenant chargés directement depuis
+  // GET /tons.
+  //
+  // Swagger confirme que cette route retourne les 13 tons
+  // actifs de la base de données.
+  //
+  // ==========================================================
 
-  async function chargerTons(khassidaId) {
-    if (!khassidaId) {
-      setTons([]);
-      return;
-    }
-
+  async function chargerTons() {
     setChargementTons(true);
 
     try {
       const response =
-        await api.get(
-          `/khassidas/${khassidaId}/tons`
-        );
+        await api.get("/tons");
 
       console.log(
         "TONS REÇUS :",
         response.data
+      );
+
+      console.log(
+        "NOMBRE DE TONS :",
+        Array.isArray(response.data)
+          ? response.data.length
+          : 0
       );
 
       setTons(
@@ -465,7 +473,7 @@ export default function Khassidas() {
 
     setModalAudio(true);
 
-    await chargerTons(khassida.id);
+    await chargerTons();
   }
 
 
@@ -501,7 +509,7 @@ export default function Khassidas() {
 
     setModalAudio(true);
 
-    await chargerTons(khassida.id);
+    await chargerTons();
   }
 
 
@@ -658,14 +666,6 @@ export default function Khassidas() {
       // ======================================================
 
       else {
-        /*
-         * Ton backend Audio fourni actuellement
-         * ne possède pas encore d'endpoint PUT/PATCH.
-         *
-         * Cette partie sera donc activée dès que
-         * l'endpoint de modification audio sera ajouté.
-         */
-
         if (
           !audioSelectionne?.id
         ) {
