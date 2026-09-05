@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 
@@ -11,8 +12,6 @@ import {
   ChevronRight,
   Clock3,
   Compass,
-  FileText,
-  HandCoins,
   Heart,
   Info,
   Landmark,
@@ -28,6 +27,7 @@ import {
   Sunset,
   Users,
   Wallet,
+  HandCoins,
   Volume2,
   X,
 } from "lucide-react";
@@ -55,10 +55,8 @@ const DUAS = [
   {
     arabe:
       "اللَّهُمَّ أَعِنِّي عَلَى ذِكْرِكَ وَشُكْرِكَ وَحُسْنِ عِبَادَتِكَ",
-
     transliteration:
       "Allahumma a'inni 'ala dhikrika wa shukrika wa husni 'ibadatik.",
-
     traduction:
       "Ô Allah, aide-moi à T'évoquer, à Te remercier et à T'adorer de la meilleure manière.",
   },
@@ -66,10 +64,8 @@ const DUAS = [
   {
     arabe:
       "رَبِّ زِدْنِي عِلْمًا",
-
     transliteration:
       "Rabbi zidni 'ilma.",
-
     traduction:
       "Seigneur, augmente-moi en connaissance.",
   },
@@ -77,10 +73,8 @@ const DUAS = [
   {
     arabe:
       "رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ",
-
     transliteration:
       "Rabbana atina fid-dunya hasanatan wa fil-akhirati hasanatan wa qina 'adhaban-nar.",
-
     traduction:
       "Seigneur, accorde-nous une belle part ici-bas et une belle part dans l'au-delà, et protège-nous du châtiment du Feu.",
   },
@@ -88,10 +82,8 @@ const DUAS = [
   {
     arabe:
       "اللَّهُمَّ اغْفِرْ لِي وَارْحَمْنِي وَاهْدِنِي وَعَافِنِي وَارْزُقْنِي",
-
     transliteration:
       "Allahummaghfir li warhamni wahdini wa 'afini warzuqni.",
-
     traduction:
       "Ô Allah, pardonne-moi, fais-moi miséricorde, guide-moi, accorde-moi la santé et pourvois à mes besoins.",
   },
@@ -99,10 +91,8 @@ const DUAS = [
   {
     arabe:
       "حَسْبِيَ اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ ۖ عَلَيْهِ تَوَكَّلْتُ",
-
     transliteration:
       "Hasbiyallahu la ilaha illa Huwa, 'alayhi tawakkaltu.",
-
     traduction:
       "Allah me suffit. Il n'y a de divinité que Lui. En Lui je place ma confiance.",
   },
@@ -110,10 +100,8 @@ const DUAS = [
   {
     arabe:
       "اللَّهُمَّ صَلِّ وَسَلِّمْ وَبَارِكْ عَلَى سَيِّدِنَا مُحَمَّدٍ",
-
     transliteration:
       "Allahumma salli wa sallim wa barik 'ala Sayyidina Muhammad.",
-
     traduction:
       "Ô Allah, prie sur notre maître Muhammad, accorde-lui le salut et bénis-le.",
   },
@@ -121,10 +109,8 @@ const DUAS = [
   {
     arabe:
       "يَا مُقَلِّبَ الْقُلُوبِ ثَبِّتْ قَلْبِي عَلَى دِينِكَ",
-
     transliteration:
       "Ya muqallibal-qulub, thabbit qalbi 'ala dinik.",
-
     traduction:
       "Ô Toi qui retournes les cœurs, affermis mon cœur sur Ta religion.",
   },
@@ -209,12 +195,10 @@ const KHASSIDAS_DU_JOUR = [
 // RUBRIQUES DU MENU
 // ============================================================
 //
-// IMPORTANT :
-// Le menu n'affiche une rubrique QUE si l'utilisateur possède
+// Une rubrique apparaît uniquement si l'utilisateur possède
 // la permission correspondante.
 //
-// On ne montre jamais ici le nombre de permissions.
-// On utilise uniquement aPermission().
+// Aucun nombre de permissions n'est affiché.
 //
 // ============================================================
 
@@ -270,26 +254,6 @@ const RUBRIQUES = [
   },
 
   {
-    id: "depenses",
-    nom: "Dépenses",
-    description: "Gestion des dépenses",
-    route: "/depenses",
-    permission: "DEPENSE_CONSULTER",
-    icon: FileText,
-    couleur: "red",
-  },
-
-  {
-    id: "aides",
-    nom: "Aides extérieures",
-    description: "Gestion des aides extérieures",
-    route: "/aides-exterieures",
-    permission: "AIDE_EXTERIEURE_CONSULTER",
-    icon: HandCoins,
-    couleur: "orange",
-  },
-
-  {
     id: "reunions",
     nom: "Réunions",
     description: "Gestion des réunions",
@@ -300,11 +264,11 @@ const RUBRIQUES = [
   },
 
   {
-    id: "programmes",
-    nom: "Programmes",
-    description: "Programmes du Dahira",
-    route: "/programmes",
-    permission: "PROGRAMME_CONSULTER",
+    id: "programme-religieux",
+    nom: "Programme religieux",
+    description: "Programmes religieux du Dahira",
+    route: "/programme-religieux",
+    permission: "KOUREL_CONSULTER",
     icon: CalendarDays,
     couleur: "cyan",
   },
@@ -320,20 +284,10 @@ const RUBRIQUES = [
   },
 
   {
-    id: "evenements",
-    nom: "Événements",
-    description: "Événements du Dahira",
-    route: "/evenements",
-    permission: "EVENEMENT_CONSULTER",
-    icon: CalendarDays,
-    couleur: "pink",
-  },
-
-  {
     id: "kourel",
     nom: "Kourel",
     description: "Gestion du Kourel",
-    route: "/kourel",
+    route: "/kourels",
     permission: "KOUREL_CONSULTER",
     icon: BookOpen,
     couleur: "emerald",
@@ -468,17 +422,7 @@ const formaterDateCourte = (date) => {
 
 
 const obtenirSalutation = () => {
-  const heure = new Date().getHours();
-
-  if (heure < 12) {
-    return "Bonjour";
-  }
-
-  if (heure < 18) {
-    return "Bon après-midi";
-  }
-
-  return "Bonsoir";
+  return "As Salam 'Aleykum";
 };
 
 
@@ -742,24 +686,42 @@ function Espace() {
       const annee =
         date.getFullYear();
 
+      const params =
+        new URLSearchParams({
+          city: VILLE,
+          country: PAYS,
+          method: "3",
+        });
+
       const url =
-        `https://api.aladhan.com/v1/timingsByCity/${jour}-${mois}-${annee}?city=${encodeURIComponent(
-          VILLE
-        )}&country=${encodeURIComponent(
-          PAYS
-        )}&method=3`;
+        `https://api.aladhan.com/v1/timingsByCity/${jour}-${mois}-${annee}?${params.toString()}`;
+
+      console.log(
+        "📿 URL horaires :",
+        url
+      );
 
       const response =
         await fetch(url);
 
+      console.log(
+        "📿 Statut API horaires :",
+        response.status
+      );
+
       if (!response.ok) {
         throw new Error(
-          "Impossible de récupérer les horaires de prière."
+          `Erreur API horaires (${response.status})`
         );
       }
 
       const donnees =
         await response.json();
+
+      console.log(
+        "📿 Réponse API horaires :",
+        donnees
+      );
 
       if (
         donnees?.code !== 200 ||
@@ -773,16 +735,20 @@ function Espace() {
       setHoraires(
         donnees.data
       );
+
     } catch (err) {
       console.error(
-        "Erreur horaires de prière :",
+        "❌ Erreur horaires de prière :",
         err
       );
+
+      setHoraires(null);
 
       setErreurHoraires(
         err?.message ||
           "Impossible de charger les horaires."
       );
+
     } finally {
       setChargementHoraires(
         false
@@ -858,7 +824,10 @@ function Espace() {
   // ==========================================================
 
   const prieres = useMemo(() => {
-    if (!horaires) {
+    const timings =
+      horaires?.timings;
+
+    if (!timings) {
       return [];
     }
 
@@ -866,7 +835,7 @@ function Espace() {
       {
         nom: "Fajr",
         heure: formaterHeure(
-          horaires.Fajr
+          timings.Fajr
         ),
         icone: Sunrise,
       },
@@ -874,7 +843,7 @@ function Espace() {
       {
         nom: "Dhuhr",
         heure: formaterHeure(
-          horaires.Dhuhr
+          timings.Dhuhr
         ),
         icone: Sun,
       },
@@ -882,7 +851,7 @@ function Espace() {
       {
         nom: "Asr",
         heure: formaterHeure(
-          horaires.Asr
+          timings.Asr
         ),
         icone: Sun,
       },
@@ -890,7 +859,7 @@ function Espace() {
       {
         nom: "Maghrib",
         heure: formaterHeure(
-          horaires.Maghrib
+          timings.Maghrib
         ),
         icone: Sunset,
       },
@@ -898,7 +867,7 @@ function Espace() {
       {
         nom: "Isha",
         heure: formaterHeure(
-          horaires.Isha
+          timings.Isha
         ),
         icone: Moon,
       },
@@ -2368,48 +2337,6 @@ function Espace() {
 
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-
-            <button
-              type="button"
-              onClick={() =>
-                navigate(
-                  "/mon-espace"
-                )
-              }
-              className="bg-white border border-gray-200 rounded-2xl p-5 text-left hover:border-blue-300 hover:shadow-md transition group"
-            >
-
-              <div className="flex items-center justify-between">
-
-                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-
-                  <Bell
-                    size={19}
-                    className="text-blue-600"
-                  />
-
-                </div>
-
-
-                <ArrowRight
-                  size={17}
-                  className="text-gray-300 group-hover:text-blue-600"
-                />
-
-              </div>
-
-
-              <h3 className="mt-4 font-semibold text-gray-900">
-                Mon espace personnel
-              </h3>
-
-
-              <p className="mt-1 text-sm text-gray-500">
-                Retrouvez vos fonctionnalités personnelles.
-              </p>
-
-            </button>
-
 
             {aPermission(
               "REUNION_CONSULTER"
