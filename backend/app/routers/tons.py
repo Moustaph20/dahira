@@ -39,7 +39,7 @@ def lister_tons(
             Ton.actif.is_(True),
         )
         .order_by(
-            Ton.nom.asc()
+            Ton.nom.asc(),
         )
         .all()
     )
@@ -81,7 +81,7 @@ def obtenir_ton(
 
 
 # ============================================================
-# CRÉATION D'UN TON
+# CRÉATION
 # ============================================================
 
 @router.post(
@@ -104,10 +104,6 @@ def creer_ton(
             detail="Le nom du ton est obligatoire.",
         )
 
-    # --------------------------------------------------------
-    # Vérifier si un ton portant déjà ce nom existe
-    # --------------------------------------------------------
-
     ton_existant = (
         db.query(Ton)
         .filter(
@@ -123,37 +119,27 @@ def creer_ton(
                 detail="Ce ton existe déjà.",
             )
 
-        # ----------------------------------------------------
-        # Si le ton existe mais est désactivé,
-        # on le réactive plutôt que de créer un doublon.
-        # ----------------------------------------------------
-
+        # Réactivation d'un ancien ton supprimé
+        ton_existant.nom = nom
+        ton_existant.description = (
+            data.description.strip()
+            if data.description
+            else None
+        )
         ton_existant.actif = True
-
-        if data.description is not None:
-            description = data.description.strip()
-            ton_existant.description = (
-                description if description else None
-            )
 
         db.commit()
         db.refresh(ton_existant)
 
         return ton_existant
 
-    # --------------------------------------------------------
-    # Création
-    # --------------------------------------------------------
-
-    description = (
-        data.description.strip()
-        if data.description
-        else None
-    )
-
     ton = Ton(
         nom=nom,
-        description=description,
+        description=(
+            data.description.strip()
+            if data.description
+            else None
+        ),
         actif=True,
     )
 
@@ -196,7 +182,7 @@ def modifier_ton(
         )
 
     donnees = data.model_dump(
-        exclude_unset=True
+        exclude_unset=True,
     )
 
     # --------------------------------------------------------
@@ -262,7 +248,7 @@ def modifier_ton(
 
 
 # ============================================================
-# DÉSACTIVATION
+# SUPPRESSION LOGIQUE
 # ============================================================
 
 @router.delete(
@@ -291,49 +277,8 @@ def supprimer_ton(
             detail="Ton introuvable.",
         )
 
-    # --------------------------------------------------------
-    # Suppression logique
-    # --------------------------------------------------------
-
     ton.actif = False
 
     db.commit()
 
     return None
-
-
-# ============================================================
-# RÉACTIVATION
-# ============================================================
-
-@router.patch(
-    "/{ton_id}/activer",
-    response_model=TonResponse,
-)
-def activer_ton(
-    ton_id: int,
-    db: Session = Depends(get_db),
-    current_user=Depends(
-        require_permission("KOUREL_MODIFIER")
-    ),
-):
-    ton = (
-        db.query(Ton)
-        .filter(
-            Ton.id == ton_id,
-        )
-        .first()
-    )
-
-    if not ton:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ton introuvable.",
-        )
-
-    ton.actif = True
-
-    db.commit()
-    db.refresh(ton)
-
-    return ton

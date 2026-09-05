@@ -42,6 +42,8 @@ class TonUpdate(BaseModel):
         max_length=255,
     )
 
+    actif: bool | None = None
+
 
 # ============================================================
 # RÉPONSE
