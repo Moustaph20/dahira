@@ -65,6 +65,7 @@ from app.routers import communications
 from app.routers import programmes
 from app.routers import choix_khassidas
 from app.routers import audios
+from app.routers import tons
 from app.routers.galerie import router as galerie_router
 
 from app.routers.repetitions import (
@@ -165,6 +166,8 @@ app.include_router(fonctions.router)
 app.include_router(kourels.router)
 
 app.include_router(khassidas_router)
+
+app.include_router(tons.router)
 
 app.include_router(repetitions_router)
 

@@ -55,17 +55,17 @@ class DeclamationKhassida(Base):
         server_default="1",
     )
 
-    declamation = relationship(
+    declamation: Mapped["Declamation"] = relationship(
         "Declamation",
         back_populates="khassidas",
     )
 
-    khassida = relationship(
+    khassida: Mapped["Khassida"] = relationship(
         "Khassida",
         back_populates="declamations",
     )
 
-    ton = relationship(
+    ton: Mapped["Ton"] = relationship(
         "Ton",
         back_populates="declamations",
     )

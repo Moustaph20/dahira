@@ -1,20 +1,11 @@
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.ton import TonResponse
+
 
 # ============================================================
 # AUDIO
 # ============================================================
-
-class TonResponse(BaseModel):
-
-    id: int
-    nom: str
-    description: str | None = None
-
-    model_config = ConfigDict(
-        from_attributes=True
-    )
-
 
 class AudioResponse(BaseModel):
 

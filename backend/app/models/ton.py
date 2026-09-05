@@ -48,12 +48,33 @@ class Ton(Base):
         default=datetime.utcnow,
     )
 
-    audios = relationship(
+    # ==========================================================
+    # AUDIOS
+    # ==========================================================
+
+    audios: Mapped[list["Audio"]] = relationship(
         "Audio",
         back_populates="ton",
+        passive_deletes=True,
     )
 
-    declamations = relationship(
+    # ==========================================================
+    # DÉCLAMATIONS
+    # ==========================================================
+
+    declamations: Mapped[list["DeclamationKhassida"]] = relationship(
         "DeclamationKhassida",
         back_populates="ton",
+        passive_deletes=True,
+    )
+
+    # ==========================================================
+    # ASSOCIATIONS KHASSIDA ↔ TON
+    # ==========================================================
+
+    khassida_tons: Mapped[list["KhassidaTon"]] = relationship(
+        "KhassidaTon",
+        back_populates="ton",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )

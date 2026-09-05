@@ -71,17 +71,17 @@ class Audio(Base):
         default=datetime.utcnow,
     )
 
-    khassida = relationship(
+    khassida: Mapped["Khassida"] = relationship(
         "Khassida",
         back_populates="audios",
     )
 
-    ton = relationship(
+    ton: Mapped["Ton"] = relationship(
         "Ton",
         back_populates="audios",
     )
 
-    repetitions = relationship(
+    repetitions: Mapped[list["RepetitionKhassida"]] = relationship(
         "RepetitionKhassida",
         back_populates="audio",
     )

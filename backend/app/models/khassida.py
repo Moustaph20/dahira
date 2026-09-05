@@ -7,7 +7,11 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
 from app.core.database import Base
 
@@ -56,20 +60,46 @@ class Khassida(Base):
         onupdate=datetime.utcnow,
     )
 
-    audios = relationship(
+    # ==========================================================
+    # AUDIOS
+    # ==========================================================
+
+    audios: Mapped[list["Audio"]] = relationship(
         "Audio",
         back_populates="khassida",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
-    repetitions = relationship(
+    # ==========================================================
+    # RÉPÉTITIONS
+    # ==========================================================
+
+    repetitions: Mapped[list["RepetitionKhassida"]] = relationship(
         "RepetitionKhassida",
         back_populates="khassida",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
-    declamations = relationship(
+    # ==========================================================
+    # DÉCLAMATIONS
+    # ==========================================================
+
+    declamations: Mapped[list["DeclamationKhassida"]] = relationship(
         "DeclamationKhassida",
         back_populates="khassida",
         cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+    # ==========================================================
+    # TONS ASSOCIÉS
+    # ==========================================================
+
+    khassida_tons: Mapped[list["KhassidaTon"]] = relationship(
+        "KhassidaTon",
+        back_populates="khassida",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )

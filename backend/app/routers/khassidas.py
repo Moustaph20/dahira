@@ -12,8 +12,9 @@ from app.schemas.khassida import (
     KhassidaCreate,
     KhassidaResponse,
     KhassidaUpdate,
-    TonResponse,
 )
+
+from app.schemas.ton import TonResponse
 
 
 router = APIRouter(
@@ -61,7 +62,6 @@ def lister_khassidas(
 # ============================================================
 # TOUS LES TONS DISPONIBLES POUR UNE KHASSIDA
 # ============================================================
-
 @router.get(
     "/{khassida_id}/tons",
     response_model=list[TonResponse],
@@ -93,13 +93,7 @@ def lister_tons_khassida(
         )
 
     # --------------------------------------------------------
-    # Récupérer TOUS les tons actifs
-    #
-    # IMPORTANT :
-    # On ne passe plus par Audio.
-    #
-    # Ainsi, même si aucun audio n'utilise encore un ton,
-    # celui-ci apparaît quand même dans la liste.
+    # Tous les tons actifs
     # --------------------------------------------------------
 
     tons = (
@@ -107,48 +101,6 @@ def lister_tons_khassida(
         .filter(
             Ton.actif.is_(True),
         )
-        .order_by(
-            Ton.nom.asc()
-        )
-        .all()
-    )
-
-    return tons
-    # --------------------------------------------------------
-    # Vérifier que la Khassida existe
-    # --------------------------------------------------------
-
-    khassida = (
-        db.query(Khassida)
-        .filter(
-            Khassida.id == khassida_id,
-            Khassida.actif.is_(True),
-        )
-        .first()
-    )
-
-    if not khassida:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Khassida introuvable.",
-        )
-
-    # --------------------------------------------------------
-    # Récupérer les Tons associés via les Audios
-    # --------------------------------------------------------
-
-    tons = (
-        db.query(Ton)
-        .join(
-            Audio,
-            Audio.ton_id == Ton.id,
-        )
-        .filter(
-            Audio.khassida_id == khassida_id,
-            Audio.actif.is_(True),
-            Ton.actif.is_(True),
-        )
-        .distinct()
         .order_by(
             Ton.nom.asc()
         )
