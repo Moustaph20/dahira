@@ -1,3 +1,4 @@
+
 import {
   useEffect,
   useState,
@@ -23,7 +24,6 @@ import {
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
 
-
 // ============================================================
 // URL AUDIO
 // ============================================================
@@ -33,6 +33,7 @@ function getAudioUrl(fichier) {
     return "";
   }
 
+  // URL Cloudinary ou autre URL externe
   if (
     fichier.startsWith("http://") ||
     fichier.startsWith("https://")
@@ -40,15 +41,16 @@ function getAudioUrl(fichier) {
     return fichier;
   }
 
-  const baseURL = api.defaults.baseURL;
+  const baseURL = (
+    api.defaults.baseURL || ""
+  ).replace(/\/+$/, "");
 
   const chemin = fichier
     .replace(/\\/g, "/")
     .replace(/^\/+/, "");
 
-  return `${baseURL.replace(/\/+$/, "")}/${chemin}`;
+  return `${baseURL}/${chemin}`;
 }
-
 
 // ============================================================
 // COMPOSANT
@@ -63,15 +65,22 @@ export default function Khassidas() {
 
   const [khassidas, setKhassidas] = useState([]);
 
-  const [chargement, setChargement] = useState(true);
+  const [chargement, setChargement] =
+    useState(true);
 
-  const [erreur, setErreur] = useState("");
+  // Rafraîchissement silencieux :
+  // ne démonte pas toute la liste pendant un GET
+  const [rafraichissement, setRafraichissement] =
+    useState(false);
 
-  const [message, setMessage] = useState("");
+  const [erreur, setErreur] =
+    useState("");
+
+  const [message, setMessage] =
+    useState("");
 
   const [khassidaOuverte, setKhassidaOuverte] =
     useState(null);
-
 
   // ==========================================================
   // FORMULAIRE KHASSIDA
@@ -86,15 +95,15 @@ export default function Khassidas() {
   const [khassidaSelectionnee, setKhassidaSelectionnee] =
     useState(null);
 
-  const [formKhassida, setFormKhassida] = useState({
-    titre: "",
-    auteur: "",
-    description: "",
-  });
+  const [formKhassida, setFormKhassida] =
+    useState({
+      titre: "",
+      auteur: "",
+      description: "",
+    });
 
   const [chargementKhassida, setChargementKhassida] =
     useState(false);
-
 
   // ==========================================================
   // FORMULAIRE AUDIO
@@ -112,21 +121,22 @@ export default function Khassidas() {
   const [khassidaAudio, setKhassidaAudio] =
     useState(null);
 
-  const [tons, setTons] = useState([]);
+  const [tons, setTons] =
+    useState([]);
 
   const [chargementTons, setChargementTons] =
     useState(false);
 
-  const [formAudio, setFormAudio] = useState({
-    ton_id: "",
-    titre: "",
-    description: "",
-    fichier: null,
-  });
+  const [formAudio, setFormAudio] =
+    useState({
+      ton_id: "",
+      titre: "",
+      description: "",
+      fichier: null,
+    });
 
   const [chargementAudio, setChargementAudio] =
     useState(false);
-
 
   // ==========================================================
   // PERMISSIONS
@@ -144,7 +154,6 @@ export default function Khassidas() {
   const peutGererProgramme =
     aPermission("PROGRAMME_GERER");
 
-
   // ==========================================================
   // MESSAGE TEMPORAIRE
   // ==========================================================
@@ -157,13 +166,28 @@ export default function Khassidas() {
     }, 4000);
   }
 
-
   // ==========================================================
   // CHARGER LES KHASSIDAS
   // ==========================================================
+  //
+  // afficherLoader = true
+  //   → utilisé uniquement au premier chargement
+  //
+  // afficherLoader = false
+  //   → rafraîchissement silencieux après CRUD
+  //   → la liste reste affichée pendant le GET
+  //
+  // ==========================================================
 
-  async function chargerKhassidas() {
-    setChargement(true);
+  async function chargerKhassidas(
+    afficherLoader = true
+  ) {
+    if (afficherLoader) {
+      setChargement(true);
+    } else {
+      setRafraichissement(true);
+    }
+
     setErreur("");
 
     try {
@@ -175,11 +199,12 @@ export default function Khassidas() {
         response.data
       );
 
-      setKhassidas(
+      const nouvellesKhassidas =
         Array.isArray(response.data)
           ? response.data
-          : []
-      );
+          : [];
+
+      setKhassidas(nouvellesKhassidas);
     } catch (error) {
       console.error(
         "ERREUR CHARGEMENT KHASSIDAS :",
@@ -191,19 +216,21 @@ export default function Khassidas() {
         "Impossible de charger les Khassidas."
       );
     } finally {
-      setChargement(false);
+      if (afficherLoader) {
+        setChargement(false);
+      } else {
+        setRafraichissement(false);
+      }
     }
   }
-
 
   // ==========================================================
   // CHARGEMENT INITIAL
   // ==========================================================
 
   useEffect(() => {
-    chargerKhassidas();
+    chargerKhassidas(true);
   }, []);
-
 
   // ==========================================================
   // OUVRIR / FERMER KHASSIDA
@@ -217,7 +244,6 @@ export default function Khassidas() {
           : id
     );
   }
-
 
   // ==========================================================
   // FORMULAIRE KHASSIDA
@@ -239,8 +265,9 @@ export default function Khassidas() {
     setModalKhassida(true);
   }
 
-
-  function ouvrirModificationKhassida(khassida) {
+  function ouvrirModificationKhassida(
+    khassida
+  ) {
     setModeKhassida("modification");
 
     setKhassidaSelectionnee(khassida);
@@ -248,14 +275,14 @@ export default function Khassidas() {
     setFormKhassida({
       titre: khassida.titre || "",
       auteur: khassida.auteur || "",
-      description: khassida.description || "",
+      description:
+        khassida.description || "",
     });
 
     setErreur("");
 
     setModalKhassida(true);
   }
-
 
   function fermerModalKhassida() {
     if (chargementKhassida) {
@@ -267,7 +294,6 @@ export default function Khassidas() {
     setKhassidaSelectionnee(null);
   }
 
-
   function modifierChampKhassida(e) {
     const { name, value } = e.target;
 
@@ -276,7 +302,6 @@ export default function Khassidas() {
       [name]: value,
     }));
   }
-
 
   // ==========================================================
   // CREER / MODIFIER KHASSIDA
@@ -294,7 +319,6 @@ export default function Khassidas() {
       setErreur(
         "Le titre de la Khassida est obligatoire."
       );
-
       return;
     }
 
@@ -304,12 +328,17 @@ export default function Khassidas() {
       const donnees = {
         titre,
         auteur:
-          formKhassida.auteur.trim() || null,
+          formKhassida.auteur.trim() ||
+          null,
         description:
-          formKhassida.description.trim() || null,
+          formKhassida.description.trim() ||
+          null,
       };
 
-      if (modeKhassida === "creation") {
+      if (
+        modeKhassida ===
+        "creation"
+      ) {
         await api.post(
           "/khassidas",
           donnees
@@ -331,7 +360,7 @@ export default function Khassidas() {
 
       fermerModalKhassida();
 
-      await chargerKhassidas();
+      await chargerKhassidas(false);
     } catch (error) {
       console.error(
         "ERREUR KHASSIDA :",
@@ -347,15 +376,17 @@ export default function Khassidas() {
     }
   }
 
-
   // ==========================================================
   // SUPPRIMER KHASSIDA
   // ==========================================================
 
-  async function supprimerKhassida(khassida) {
-    const confirmation = window.confirm(
-      `Voulez-vous vraiment supprimer la Khassida "${khassida.titre}" ?`
-    );
+  async function supprimerKhassida(
+    khassida
+  ) {
+    const confirmation =
+      window.confirm(
+        `Voulez-vous vraiment supprimer la Khassida "${khassida.titre}" ?`
+      );
 
     if (!confirmation) {
       return;
@@ -379,7 +410,7 @@ export default function Khassidas() {
         "Khassida supprimée avec succès."
       );
 
-      await chargerKhassidas();
+      await chargerKhassidas(false);
     } catch (error) {
       console.error(
         "ERREUR SUPPRESSION KHASSIDA :",
@@ -393,18 +424,8 @@ export default function Khassidas() {
     }
   }
 
-
   // ==========================================================
   // CHARGER LES TONS
-  // ==========================================================
-  //
-  // CORRECTION :
-  // Les tons sont maintenant chargés directement depuis
-  // GET /tons.
-  //
-  // Swagger confirme que cette route retourne les 13 tons
-  // actifs de la base de données.
-  //
   // ==========================================================
 
   async function chargerTons() {
@@ -448,12 +469,13 @@ export default function Khassidas() {
     }
   }
 
-
   // ==========================================================
   // OUVRIR AJOUT AUDIO
   // ==========================================================
 
-  async function ouvrirAjoutAudio(khassida) {
+  async function ouvrirAjoutAudio(
+    khassida
+  ) {
     setModeAudio("creation");
 
     setAudioSelectionne(null);
@@ -476,7 +498,6 @@ export default function Khassidas() {
     await chargerTons();
   }
 
-
   // ==========================================================
   // OUVRIR MODIFICATION AUDIO
   // ==========================================================
@@ -496,10 +517,13 @@ export default function Khassidas() {
         audio.ton?.id ||
         audio.ton_id ||
         "",
+
       titre:
         audio.titre || "",
+
       description:
         audio.description || "",
+
       fichier: null,
     });
 
@@ -511,7 +535,6 @@ export default function Khassidas() {
 
     await chargerTons();
   }
-
 
   // ==========================================================
   // FERMER MODAL AUDIO
@@ -538,7 +561,6 @@ export default function Khassidas() {
     });
   }
 
-
   // ==========================================================
   // MODIFICATION CHAMP AUDIO
   // ==========================================================
@@ -552,21 +574,20 @@ export default function Khassidas() {
     }));
   }
 
-
   // ==========================================================
   // FICHIER AUDIO
   // ==========================================================
 
   function selectionnerFichier(e) {
     const fichier =
-      e.target.files?.[0] || null;
+      e.target.files?.[0] ||
+      null;
 
     setFormAudio((ancien) => ({
       ...ancien,
       fichier,
     }));
   }
-
 
   // ==========================================================
   // CREER / MODIFIER AUDIO
@@ -581,7 +602,6 @@ export default function Khassidas() {
       setErreur(
         "La Khassida est obligatoire."
       );
-
       return;
     }
 
@@ -589,7 +609,6 @@ export default function Khassidas() {
       setErreur(
         "Veuillez sélectionner un ton."
       );
-
       return;
     }
 
@@ -597,7 +616,6 @@ export default function Khassidas() {
       setErreur(
         "Le titre de l'audio est obligatoire."
       );
-
       return;
     }
 
@@ -608,7 +626,6 @@ export default function Khassidas() {
       setErreur(
         "Veuillez sélectionner un fichier audio."
       );
-
       return;
     }
 
@@ -619,8 +636,11 @@ export default function Khassidas() {
       // CREATION
       // ======================================================
 
-      if (modeAudio === "creation") {
-        const formData = new FormData();
+      if (
+        modeAudio === "creation"
+      ) {
+        const formData =
+          new FormData();
 
         formData.append(
           "khassida_id",
@@ -674,7 +694,8 @@ export default function Khassidas() {
           );
         }
 
-        const formData = new FormData();
+        const formData =
+          new FormData();
 
         formData.append(
           "khassida_id",
@@ -700,7 +721,9 @@ export default function Khassidas() {
           );
         }
 
-        if (formAudio.fichier) {
+        if (
+          formAudio.fichier
+        ) {
           formData.append(
             "fichier",
             formAudio.fichier
@@ -717,9 +740,16 @@ export default function Khassidas() {
         );
       }
 
+      // ======================================================
+      // IMPORTANT :
+      // on ferme la modale AVANT le rafraîchissement,
+      // mais on NE démonte PAS toute la page.
+      // ======================================================
+
       fermerModalAudio();
 
-      await chargerKhassidas();
+      // Rafraîchissement silencieux
+      await chargerKhassidas(false);
     } catch (error) {
       console.error(
         "ERREUR AUDIO :",
@@ -735,7 +765,6 @@ export default function Khassidas() {
       setChargementAudio(false);
     }
   }
-
 
   // ==========================================================
   // SUPPRIMER AUDIO
@@ -764,7 +793,8 @@ export default function Khassidas() {
         "Audio supprimé avec succès."
       );
 
-      await chargerKhassidas();
+      // Rafraîchissement silencieux
+      await chargerKhassidas(false);
     } catch (error) {
       console.error(
         "ERREUR SUPPRESSION AUDIO :",
@@ -778,9 +808,8 @@ export default function Khassidas() {
     }
   }
 
-
   // ==========================================================
-  // CHARGEMENT
+  // CHARGEMENT INITIAL
   // ==========================================================
 
   if (chargement) {
@@ -801,14 +830,12 @@ export default function Khassidas() {
     );
   }
 
-
   // ==========================================================
   // INTERFACE
   // ==========================================================
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
-
       <div className="mx-auto max-w-6xl">
 
         {/* ====================================================
@@ -825,14 +852,12 @@ export default function Khassidas() {
           </div>
         )}
 
-
         {/* ====================================================
             ERREUR
         ==================================================== */}
 
         {erreur && (
           <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">
-
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
 
             <div className="flex-1">
@@ -850,19 +875,27 @@ export default function Khassidas() {
             >
               <X className="h-5 w-5" />
             </button>
-
           </div>
         )}
 
+        {/* ====================================================
+            INDICATEUR RAFRAÎCHISSEMENT
+        ==================================================== */}
+
+        {rafraichissement && (
+          <div className="mb-4 flex items-center gap-2 text-xs text-slate-500">
+            <Loader2 className="h-4 w-4 animate-spin" />
+
+            Actualisation des Khassidas...
+          </div>
+        )}
 
         {/* ====================================================
             EN-TÊTE
         ==================================================== */}
 
         <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-
           <div className="flex items-center gap-3">
-
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
               <Music className="h-6 w-6" />
             </div>
@@ -876,9 +909,7 @@ export default function Khassidas() {
                 Gestion des Khassidas, tons et audios.
               </p>
             </div>
-
           </div>
-
 
           {peutCreer && (
             <button
@@ -893,18 +924,14 @@ export default function Khassidas() {
               Ajouter une Khassida
             </button>
           )}
-
         </div>
-
 
         {/* ====================================================
             AUCUNE KHASSIDA
         ==================================================== */}
 
         {khassidas.length === 0 ? (
-
           <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center">
-
             <Music className="mx-auto h-12 w-12 text-slate-300" />
 
             <h2 className="mt-4 font-semibold text-slate-700">
@@ -928,16 +955,12 @@ export default function Khassidas() {
                 Ajouter une Khassida
               </button>
             )}
-
           </div>
-
         ) : (
-
           <div className="space-y-4">
 
             {khassidas.map(
               (khassida) => {
-
                 const audios =
                   Array.isArray(
                     khassida.audios
@@ -953,7 +976,6 @@ export default function Khassidas() {
                   khassida.id;
 
                 return (
-
                   <div
                     key={khassida.id}
                     className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
@@ -964,7 +986,6 @@ export default function Khassidas() {
                     ========================================== */}
 
                     <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-
                       <button
                         type="button"
                         onClick={() =>
@@ -974,13 +995,11 @@ export default function Khassidas() {
                         }
                         className="flex min-w-0 flex-1 items-center gap-4 text-left"
                       >
-
                         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
                           <Music className="h-6 w-6" />
                         </div>
 
                         <div className="min-w-0">
-
                           <h2 className="truncate text-lg font-semibold text-slate-900">
                             {khassida.titre}
                           </h2>
@@ -997,25 +1016,20 @@ export default function Khassidas() {
                               {khassida.description}
                             </p>
                           )}
-
                         </div>
-
                       </button>
-
 
                       {/* ========================================
                           ACTIONS
                       ======================================== */}
 
                       <div className="flex flex-wrap items-center gap-2">
-
                         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
                           {audios.length}{" "}
                           {audios.length > 1
                             ? "audios"
                             : "audio"}
                         </span>
-
 
                         {peutModifier && (
                           <button
@@ -1032,7 +1046,6 @@ export default function Khassidas() {
                           </button>
                         )}
 
-
                         {peutSupprimer && (
                           <button
                             type="button"
@@ -1047,7 +1060,6 @@ export default function Khassidas() {
                             <Trash2 className="h-4 w-4" />
                           </button>
                         )}
-
 
                         <button
                           type="button"
@@ -1064,18 +1076,14 @@ export default function Khassidas() {
                             <ChevronDown className="h-5 w-5" />
                           )}
                         </button>
-
                       </div>
-
                     </div>
-
 
                     {/* ==========================================
                         CONTENU
                     ========================================== */}
 
                     {ouverte && (
-
                       <div className="border-t border-slate-200 bg-slate-50 p-5">
 
                         {/* ======================================
@@ -1083,7 +1091,6 @@ export default function Khassidas() {
                         ====================================== */}
 
                         <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-
                           <div>
                             <h3 className="font-semibold text-slate-800">
                               Audios
@@ -1093,7 +1100,6 @@ export default function Khassidas() {
                               Les différents tons et fichiers audio de cette Khassida.
                             </p>
                           </div>
-
 
                           {peutGererProgramme && (
                             <button
@@ -1110,18 +1116,14 @@ export default function Khassidas() {
                               Ajouter un audio
                             </button>
                           )}
-
                         </div>
-
 
                         {/* ======================================
                             AUCUN AUDIO
                         ====================================== */}
 
                         {audios.length === 0 ? (
-
                           <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
-
                             <Headphones className="mx-auto h-10 w-10 text-slate-300" />
 
                             <p className="mt-3 text-sm text-slate-500">
@@ -1143,26 +1145,23 @@ export default function Khassidas() {
                                 Ajouter le premier audio
                               </button>
                             )}
-
                           </div>
-
                         ) : (
-
                           <div className="space-y-4">
 
                             {audios.map(
-                              (audio, index) => {
-
+                              (
+                                audio,
+                                index
+                              ) => {
                                 const ton =
                                   audio.ton;
 
                                 return (
-
                                   <div
                                     key={audio.id}
                                     className="rounded-xl border border-slate-200 bg-white p-5"
                                   >
-
                                     <div className="flex flex-col gap-4">
 
                                       {/* ====================
@@ -1170,21 +1169,16 @@ export default function Khassidas() {
                                       ==================== */}
 
                                       <div className="flex items-start gap-3">
-
                                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
                                           <Headphones className="h-5 w-5" />
                                         </div>
 
-
                                         <div className="min-w-0 flex-1">
-
                                           <div className="flex flex-wrap items-center gap-2">
-
                                             <h4 className="font-semibold text-slate-900">
                                               {audio.titre ||
                                                 `Audio ${index + 1}`}
                                             </h4>
-
 
                                             {ton && (
                                               <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
@@ -1192,18 +1186,14 @@ export default function Khassidas() {
                                                 {ton.nom}
                                               </span>
                                             )}
-
                                           </div>
-
 
                                           {audio.description && (
                                             <p className="mt-1 text-sm text-slate-500">
                                               {audio.description}
                                             </p>
                                           )}
-
                                         </div>
-
 
                                         {/* ====================
                                             ACTIONS AUDIO
@@ -1211,7 +1201,6 @@ export default function Khassidas() {
 
                                         {peutGererProgramme && (
                                           <div className="flex shrink-0 items-center gap-1">
-
                                             <button
                                               type="button"
                                               onClick={() =>
@@ -1226,7 +1215,6 @@ export default function Khassidas() {
                                               <Pencil className="h-4 w-4" />
                                             </button>
 
-
                                             <button
                                               type="button"
                                               onClick={() =>
@@ -1239,27 +1227,20 @@ export default function Khassidas() {
                                             >
                                               <Trash2 className="h-4 w-4" />
                                             </button>
-
                                           </div>
                                         )}
-
                                       </div>
-
 
                                       {/* ====================
                                           LECTEUR
                                       ==================== */}
 
                                       <div className="rounded-xl bg-slate-50 p-3">
-
                                         <div className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-500">
-
                                           <Headphones className="h-4 w-4" />
 
                                           Écouter l'audio
-
                                         </div>
-
 
                                         <audio
                                           controls
@@ -1271,25 +1252,17 @@ export default function Khassidas() {
                                         >
                                           Votre navigateur ne supporte pas la lecture audio.
                                         </audio>
-
                                       </div>
-
                                     </div>
-
                                   </div>
-
                                 );
                               }
                             )}
 
                           </div>
-
                         )}
-
                       </div>
-
                     )}
-
                   </div>
                 );
               }
@@ -1297,25 +1270,21 @@ export default function Khassidas() {
 
           </div>
         )}
-
       </div>
-
 
       {/* ========================================================
           MODAL KHASSIDA
       ======================================================== */}
 
       {modalKhassida && (
-
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-
           <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
 
             <div className="flex items-center justify-between border-b border-slate-200 p-5">
-
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
-                  {modeKhassida === "creation"
+                  {modeKhassida ===
+                  "creation"
                     ? "Ajouter une Khassida"
                     : "Modifier la Khassida"}
                 </h2>
@@ -1325,19 +1294,19 @@ export default function Khassidas() {
                 </p>
               </div>
 
-
               <button
                 type="button"
                 onClick={
                   fermerModalKhassida
                 }
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                disabled={
+                  chargementKhassida
+                }
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <X className="h-5 w-5" />
               </button>
-
             </div>
-
 
             <form
               onSubmit={
@@ -1347,7 +1316,6 @@ export default function Khassidas() {
             >
 
               <div>
-
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Titre *
                 </label>
@@ -1365,12 +1333,9 @@ export default function Khassidas() {
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                   required
                 />
-
               </div>
 
-
               <div>
-
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Auteur
                 </label>
@@ -1387,12 +1352,9 @@ export default function Khassidas() {
                   placeholder="Nom de l'auteur"
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                 />
-
               </div>
 
-
               <div>
-
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Description
                 </label>
@@ -1409,9 +1371,7 @@ export default function Khassidas() {
                   placeholder="Description..."
                   className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                 />
-
               </div>
-
 
               {erreur && (
                 <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -1419,9 +1379,7 @@ export default function Khassidas() {
                 </div>
               )}
 
-
               <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
-
                 <button
                   type="button"
                   onClick={
@@ -1435,7 +1393,6 @@ export default function Khassidas() {
                   Annuler
                 </button>
 
-
                 <button
                   type="submit"
                   disabled={
@@ -1443,72 +1400,58 @@ export default function Khassidas() {
                   }
                   className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-
                   {chargementKhassida ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Save className="h-4 w-4" />
                   )}
 
-                  {modeKhassida === "creation"
+                  {modeKhassida ===
+                  "creation"
                     ? "Ajouter"
                     : "Enregistrer"}
-
                 </button>
-
               </div>
-
             </form>
-
           </div>
-
         </div>
       )}
-
 
       {/* ========================================================
           MODAL AUDIO
       ======================================================== */}
 
       {modalAudio && (
-
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
 
             <div className="flex items-center justify-between border-b border-slate-200 p-5">
-
               <div>
-
                 <h2 className="text-lg font-bold text-slate-900">
-
-                  {modeAudio === "creation"
+                  {modeAudio ===
+                  "creation"
                     ? "Ajouter un audio"
                     : "Modifier l'audio"}
-
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
-
                   {khassidaAudio?.titre}
-
                 </p>
-
               </div>
-
 
               <button
                 type="button"
                 onClick={
                   fermerModalAudio
                 }
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                disabled={
+                  chargementAudio
+                }
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <X className="h-5 w-5" />
               </button>
-
             </div>
-
 
             <form
               onSubmit={
@@ -1522,23 +1465,17 @@ export default function Khassidas() {
               ============================================== */}
 
               <div>
-
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Ton *
                 </label>
 
                 {chargementTons ? (
-
                   <div className="flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-500">
-
                     <Loader2 className="h-4 w-4 animate-spin" />
 
                     Chargement des tons...
-
                   </div>
-
                 ) : (
-
                   <select
                     name="ton_id"
                     value={
@@ -1550,7 +1487,6 @@ export default function Khassidas() {
                     className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                     required
                   >
-
                     <option value="">
                       Sélectionner un ton
                     </option>
@@ -1565,9 +1501,7 @@ export default function Khassidas() {
                         </option>
                       )
                     )}
-
                   </select>
-
                 )}
 
                 {!chargementTons &&
@@ -1576,16 +1510,13 @@ export default function Khassidas() {
                       Aucun ton disponible. Vérifiez que des tons actifs existent dans la base de données.
                     </p>
                   )}
-
               </div>
-
 
               {/* ==============================================
                   TITRE
               ============================================== */}
 
               <div>
-
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Titre de l'audio *
                 </label>
@@ -1603,16 +1534,13 @@ export default function Khassidas() {
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                   required
                 />
-
               </div>
-
 
               {/* ==============================================
                   DESCRIPTION
               ============================================== */}
 
               <div>
-
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Description
                 </label>
@@ -1629,22 +1557,18 @@ export default function Khassidas() {
                   placeholder="Description de l'audio..."
                   className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                 />
-
               </div>
-
 
               {/* ==============================================
                   FICHIER
               ============================================== */}
 
               <div>
-
                 <label className="mb-2 block text-sm font-medium text-slate-700">
-
-                  {modeAudio === "creation"
+                  {modeAudio ===
+                  "creation"
                     ? "Fichier audio *"
                     : "Nouveau fichier audio"}
-
                 </label>
 
                 <input
@@ -1663,9 +1587,7 @@ export default function Khassidas() {
                 <p className="mt-2 text-xs text-slate-500">
                   Formats acceptés : MP3, WAV, M4A et OGG.
                 </p>
-
               </div>
-
 
               {/* ==============================================
                   APERÇU AUDIO EXISTANT
@@ -1674,9 +1596,7 @@ export default function Khassidas() {
               {modeAudio ===
                 "modification" &&
                 audioSelectionne?.fichier && (
-
                   <div className="rounded-xl bg-slate-50 p-4">
-
                     <p className="mb-2 text-xs font-medium text-slate-500">
                       Audio actuel
                     </p>
@@ -1689,11 +1609,8 @@ export default function Khassidas() {
                         audioSelectionne.fichier
                       )}
                     />
-
                   </div>
-
                 )}
-
 
               {erreur && (
                 <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -1701,13 +1618,11 @@ export default function Khassidas() {
                 </div>
               )}
 
-
               {/* ==============================================
                   BOUTONS
               ============================================== */}
 
               <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
-
                 <button
                   type="button"
                   onClick={
@@ -1716,11 +1631,10 @@ export default function Khassidas() {
                   disabled={
                     chargementAudio
                   }
-                  className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                  className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Annuler
                 </button>
-
 
                 <button
                   type="submit"
@@ -1730,7 +1644,6 @@ export default function Khassidas() {
                   }
                   className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-
                   {chargementAudio ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : modeAudio ===
@@ -1744,18 +1657,11 @@ export default function Khassidas() {
                   "creation"
                     ? "Ajouter l'audio"
                     : "Enregistrer"}
-
                 </button>
-
               </div>
-
             </form>
-
           </div>
-
         </div>
       )}
-
     </div>
   );
-}
