@@ -1,7 +1,10 @@
-import uuid
+import asyncio
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import urlparse
 
+import cloudinary
+import cloudinary.uploader
 from fastapi import (
     APIRouter,
     Depends,
@@ -11,9 +14,10 @@ from fastapi import (
     UploadFile,
     status,
 )
-from fastapi.responses import FileResponse
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.permissions import require_permission
 from app.models.galerie import Galerie
@@ -30,21 +34,22 @@ router = APIRouter(
 
 
 # ==========================================================
-# CONFIGURATION DES FICHIERS
+# CONFIGURATION CLOUDINARY
 # ==========================================================
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-
-UPLOAD_DIR = BASE_DIR / "uploads" / "galerie"
-
-UPLOAD_DIR.mkdir(
-    parents=True,
-    exist_ok=True,
+cloudinary.config(
+    cloud_name=settings.cloudinary_cloud_name,
+    api_key=settings.cloudinary_api_key,
+    api_secret=settings.cloudinary_api_secret,
+    secure=True,
 )
 
 
-# Taille maximale : 100 Mo
-TAILLE_MAX = 100 * 1024 * 1024
+# ==========================================================
+# CONFIGURATION
+# ==========================================================
+
+TAILLE_MAX = 100 * 1024 * 1024  # 100 MB
 
 
 EXTENSIONS_IMAGES = {
@@ -62,6 +67,9 @@ EXTENSIONS_VIDEOS = {
     ".mov",
     ".m4v",
 }
+
+
+DOSSIER_CLOUDINARY = "dahira/galerie"
 
 
 # ==========================================================
@@ -93,8 +101,16 @@ def determiner_type_media(filename: str) -> str:
 
 def construire_url(galerie: Galerie) -> str:
     """
-    Construit l'URL publique permettant de récupérer le fichier.
+    Retourne directement l'URL Cloudinary du média.
+
+    Pour les anciens médias encore enregistrés avec un chemin
+    local, on conserve temporairement l'ancien endpoint.
     """
+
+    chemin = galerie.chemin_fichier or ""
+
+    if chemin.startswith("http://") or chemin.startswith("https://"):
+        return chemin
 
     return f"/galerie/fichier/{galerie.id}"
 
@@ -119,31 +135,86 @@ def vers_response(galerie: Galerie) -> GalerieResponse:
     )
 
 
-def supprimer_fichier(chemin: str) -> None:
+def extraire_public_id_depuis_url(url: str) -> str | None:
     """
-    Supprime un fichier du disque s'il existe.
+    Extrait le public_id Cloudinary depuis une URL Cloudinary.
+
+    Exemple :
+
+    https://res.cloudinary.com/demo/image/upload/v123456/
+    dahira/galerie/abc123.jpg
+
+    devient :
+
+    dahira/galerie/abc123
     """
+
+    if not url:
+        return None
+
+    if not (
+        url.startswith("http://")
+        or url.startswith("https://")
+    ):
+        return None
 
     try:
-        fichier = Path(chemin)
+        parsed = urlparse(url)
 
-        if fichier.exists():
-            fichier.unlink()
+        chemin = parsed.path.strip("/")
+
+        morceaux = chemin.split("/")
+
+        if "upload" not in morceaux:
+            return None
+
+        index_upload = morceaux.index("upload")
+
+        apres_upload = morceaux[index_upload + 1 :]
+
+        if not apres_upload:
+            return None
+
+        # Suppression de la version Cloudinary : v123456
+        if apres_upload[0].startswith("v"):
+            if apres_upload[0][1:].isdigit():
+                apres_upload = apres_upload[1:]
+
+        if not apres_upload:
+            return None
+
+        public_id_avec_extension = "/".join(
+            apres_upload
+        )
+
+        extension = Path(
+            public_id_avec_extension
+        ).suffix
+
+        if extension:
+            public_id = (
+                public_id_avec_extension[
+                    :-len(extension)
+                ]
+            )
+        else:
+            public_id = public_id_avec_extension
+
+        return public_id
 
     except Exception:
-        # Une erreur de suppression du fichier ne doit
-        # pas faire échouer la réponse API.
-        pass
+        return None
 
 
-async def sauvegarder_fichier(
+async def uploader_vers_cloudinary(
     fichier: UploadFile,
 ) -> tuple[str, str]:
     """
-    Sauvegarde physiquement le fichier sur le serveur.
+    Upload le fichier vers Cloudinary.
 
     Retourne :
-        (type_media, chemin_complet)
+
+        (type_media, url_cloudinary)
     """
 
     if not fichier.filename:
@@ -152,76 +223,149 @@ async def sauvegarder_fichier(
             detail="Aucun fichier sélectionné.",
         )
 
-    # ------------------------------------------------------
-    # Déterminer le type
-    # ------------------------------------------------------
-
     type_media = determiner_type_media(
         fichier.filename
     )
-
-    # ------------------------------------------------------
-    # Extension
-    # ------------------------------------------------------
 
     extension = Path(
         fichier.filename
     ).suffix.lower()
 
     # ------------------------------------------------------
-    # Nom unique
+    # Vérification de la taille
     # ------------------------------------------------------
 
-    nom_unique = (
-        f"{uuid.uuid4().hex}{extension}"
-    )
-
-    chemin = UPLOAD_DIR / nom_unique
-
+    contenu = bytearray()
     taille = 0
-
-    # ------------------------------------------------------
-    # Écriture du fichier
-    # ------------------------------------------------------
 
     try:
 
-        with chemin.open("wb") as buffer:
+        while True:
 
-            while True:
+            morceau = await fichier.read(
+                1024 * 1024
+            )
 
-                morceau = await fichier.read(
-                    1024 * 1024
+            if not morceau:
+                break
+
+            taille += len(morceau)
+
+            if taille > TAILLE_MAX:
+
+                raise HTTPException(
+                    status_code=(
+                        status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+                    ),
+                    detail=(
+                        "Le fichier est trop volumineux. "
+                        "Taille maximale : 100 MB."
+                    ),
                 )
 
-                if not morceau:
-                    break
-
-                taille += len(morceau)
-
-                if taille > TAILLE_MAX:
-
-                    # Suppression du fichier partiellement écrit
-                    if chemin.exists():
-                        chemin.unlink()
-
-                    raise HTTPException(
-                        status_code=(
-                            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
-                        ),
-                        detail=(
-                            "Le fichier est trop volumineux. "
-                            "Taille maximale : 100 MB."
-                        ),
-                    )
-
-                buffer.write(morceau)
+            contenu.extend(morceau)
 
     finally:
 
         await fichier.close()
 
-    return type_media, str(chemin)
+    # ------------------------------------------------------
+    # Nom public unique
+    # ------------------------------------------------------
+
+    import uuid
+
+    nom_public = (
+        f"{uuid.uuid4().hex}{extension}"
+    )
+
+    public_id = (
+        f"{DOSSIER_CLOUDINARY}/"
+        f"{Path(nom_public).stem}"
+    )
+
+    # ------------------------------------------------------
+    # Type de ressource Cloudinary
+    # ------------------------------------------------------
+
+    resource_type = (
+        "image"
+        if type_media == "image"
+        else "video"
+    )
+
+    # ------------------------------------------------------
+    # Upload Cloudinary
+    # ------------------------------------------------------
+
+    try:
+
+        resultat = await asyncio.to_thread(
+            cloudinary.uploader.upload,
+            bytes(contenu),
+            public_id=public_id,
+            resource_type=resource_type,
+            overwrite=False,
+        )
+
+    except Exception as exc:
+
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=(
+                "Impossible d'envoyer le fichier "
+                f"vers Cloudinary : {str(exc)}"
+            ),
+        ) from exc
+
+    url = resultat.get("secure_url")
+
+    if not url:
+
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=(
+                "Cloudinary n'a pas retourné "
+                "d'URL pour le fichier."
+            ),
+        )
+
+    return type_media, url
+
+
+def supprimer_fichier_cloudinary(
+    url: str,
+    type_media: str,
+) -> None:
+    """
+    Supprime un média de Cloudinary à partir de son URL.
+    """
+
+    public_id = extraire_public_id_depuis_url(
+        url
+    )
+
+    if not public_id:
+        return
+
+    resource_type = (
+        "image"
+        if type_media == "image"
+        else "video"
+    )
+
+    try:
+
+        cloudinary.uploader.destroy(
+            public_id,
+            resource_type=resource_type,
+            invalidate=True,
+        )
+
+    except Exception:
+        # Une erreur Cloudinary ne doit pas empêcher
+        # la suppression de l'enregistrement DB.
+        pass
 
 
 # ==========================================================
@@ -237,9 +381,6 @@ def galerie_publique(
 ):
     """
     Retourne uniquement les médias actifs.
-
-    Cette route est destinée à la page publique Home.jsx.
-    Elle ne nécessite donc pas de permission particulière.
     """
 
     medias = (
@@ -272,7 +413,13 @@ def recuperer_fichier(
     db: Session = Depends(get_db),
 ):
     """
-    Retourne physiquement le fichier demandé.
+    Ancien endpoint conservé pour compatibilité.
+
+    Pour les nouveaux médias Cloudinary, on redirige
+    directement vers l'URL Cloudinary.
+
+    Pour les anciens médias locaux, on essaie encore
+    de récupérer le fichier sur le disque.
     """
 
     galerie = (
@@ -284,23 +431,50 @@ def recuperer_fichier(
     )
 
     if not galerie:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Média introuvable.",
         )
 
-    chemin = Path(
-        galerie.chemin_fichier
-    )
+    chemin = galerie.chemin_fichier or ""
 
-    if not chemin.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Fichier introuvable sur le serveur.",
+    # ------------------------------------------------------
+    # Nouveau média Cloudinary
+    # ------------------------------------------------------
+
+    if chemin.startswith(
+        "http://"
+    ) or chemin.startswith(
+        "https://"
+    ):
+
+        return RedirectResponse(
+            url=chemin,
+            status_code=status.HTTP_307_TEMPORARY_REDIRECT,
         )
 
+    # ------------------------------------------------------
+    # Ancien média local
+    # ------------------------------------------------------
+
+    chemin_local = Path(chemin)
+
+    if not chemin_local.exists():
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                "Fichier introuvable sur le serveur. "
+                "Ce média a probablement été supprimé "
+                "après un redémarrage de Render."
+            ),
+        )
+
+    from fastapi.responses import FileResponse
+
     return FileResponse(
-        path=str(chemin),
+        path=str(chemin_local),
         filename=galerie.nom_fichier,
     )
 
@@ -324,10 +498,7 @@ def lister_galerie(
     db: Session = Depends(get_db),
 ):
     """
-    Liste tous les médias, actifs ou non.
-
-    Cette route est destinée à Galerie.jsx
-    côté administration.
+    Liste tous les médias.
     """
 
     medias = (
@@ -364,24 +535,22 @@ def lister_galerie(
 async def creer_media(
     titre: Annotated[
         str,
-        Form(...)
+        Form(...),
     ],
 
-    # IMPORTANT :
-    # Le défaut est placé APRÈS Annotated.
     description: Annotated[
         str | None,
-        Form()
+        Form(),
     ] = None,
 
     ordre: Annotated[
         int,
-        Form()
+        Form(),
     ] = 0,
 
     actif: Annotated[
         bool,
-        Form()
+        Form(),
     ] = True,
 
     fichier: UploadFile = File(...),
@@ -389,166 +558,10 @@ async def creer_media(
     db: Session = Depends(get_db),
 ):
     """
-    Crée un nouveau média dans la galerie.
+    Crée un nouveau média.
+
+    Le fichier est envoyé directement à Cloudinary.
     """
-
-    # ------------------------------------------------------
-    # Validation du titre
-    # ------------------------------------------------------
-
-    titre_nettoye = titre.strip()
-
-    if len(titre_nettoye) < 2:
-
-        raise HTTPException(
-            status_code=(
-                status.HTTP_422_UNPROCESSABLE_ENTITY
-            ),
-            detail=(
-                "Le titre doit contenir "
-                "au moins 2 caractères."
-            ),
-        )
-
-    # ------------------------------------------------------
-    # Validation de l'ordre
-    # ------------------------------------------------------
-
-    if ordre < 0:
-
-        raise HTTPException(
-            status_code=(
-                status.HTTP_422_UNPROCESSABLE_ENTITY
-            ),
-            detail=(
-                "L'ordre ne peut pas être négatif."
-            ),
-        )
-
-    # ------------------------------------------------------
-    # Nettoyage description
-    # ------------------------------------------------------
-
-    description_nettoyee = (
-        description.strip()
-        if description
-        else None
-    )
-
-    # ------------------------------------------------------
-    # Sauvegarde physique
-    # ------------------------------------------------------
-
-    type_media, chemin = (
-        await sauvegarder_fichier(fichier)
-    )
-
-    # ------------------------------------------------------
-    # Création SQL
-    # ------------------------------------------------------
-
-    galerie = Galerie(
-        titre=titre_nettoye,
-        description=description_nettoyee,
-        type_media=type_media,
-        nom_fichier=fichier.filename,
-        chemin_fichier=chemin,
-        ordre=ordre,
-        actif=actif,
-    )
-
-    try:
-
-        db.add(galerie)
-
-        db.commit()
-
-        db.refresh(galerie)
-
-    except Exception:
-
-        db.rollback()
-
-        # Si la base échoue après l'upload,
-        # on supprime le fichier pour éviter
-        # un fichier orphelin.
-        supprimer_fichier(chemin)
-
-        raise
-
-    return vers_response(galerie)
-
-
-# ==========================================================
-# MODIFIER UN MÉDIA
-# ==========================================================
-
-@router.put(
-    "/{galerie_id}",
-    response_model=GalerieResponse,
-    dependencies=[
-        Depends(
-            require_permission(
-                "GALERIE_MODIFIER"
-            )
-        )
-    ],
-)
-async def modifier_media(
-    galerie_id: int,
-
-    titre: Annotated[
-        str,
-        Form(...)
-    ],
-
-    # Même règle ici :
-    # Form() ne contient PAS le défaut.
-    description: Annotated[
-        str | None,
-        Form()
-    ] = None,
-
-    ordre: Annotated[
-        int,
-        Form()
-    ] = 0,
-
-    actif: Annotated[
-        bool,
-        Form()
-    ] = True,
-
-    fichier: UploadFile | None = File(None),
-
-    db: Session = Depends(get_db),
-):
-    """
-    Modifie les informations d'un média.
-
-    Le fichier est facultatif :
-    - s'il n'est pas envoyé, l'ancien fichier reste.
-    - s'il est envoyé, l'ancien fichier est remplacé.
-    """
-
-    # ------------------------------------------------------
-    # Recherche
-    # ------------------------------------------------------
-
-    galerie = (
-        db.query(Galerie)
-        .filter(
-            Galerie.id == galerie_id
-        )
-        .first()
-    )
-
-    if not galerie:
-
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Média introuvable.",
-        )
 
     # ------------------------------------------------------
     # Validation titre
@@ -578,13 +591,163 @@ async def modifier_media(
             status_code=(
                 status.HTTP_422_UNPROCESSABLE_ENTITY
             ),
-            detail=(
-                "L'ordre ne peut pas être négatif."
-            ),
+            detail="L'ordre ne peut pas être négatif.",
+        )
+
+    description_nettoyee = (
+        description.strip()
+        if description
+        else None
+    )
+
+    # ------------------------------------------------------
+    # Upload Cloudinary
+    # ------------------------------------------------------
+
+    type_media, url_cloudinary = (
+        await uploader_vers_cloudinary(
+            fichier
+        )
+    )
+
+    # ------------------------------------------------------
+    # Création DB
+    # ------------------------------------------------------
+
+    galerie = Galerie(
+        titre=titre_nettoye,
+        description=description_nettoyee,
+        type_media=type_media,
+        nom_fichier=fichier.filename,
+        chemin_fichier=url_cloudinary,
+        ordre=ordre,
+        actif=actif,
+    )
+
+    try:
+
+        db.add(galerie)
+
+        db.commit()
+
+        db.refresh(galerie)
+
+    except Exception:
+
+        db.rollback()
+
+        supprimer_fichier_cloudinary(
+            url_cloudinary,
+            type_media,
+        )
+
+        raise
+
+    return vers_response(galerie)
+
+
+# ==========================================================
+# MODIFIER UN MÉDIA
+# ==========================================================
+
+@router.put(
+    "/{galerie_id}",
+    response_model=GalerieResponse,
+    dependencies=[
+        Depends(
+            require_permission(
+                "GALERIE_MODIFIER"
+            )
+        )
+    ],
+)
+async def modifier_media(
+    galerie_id: int,
+
+    titre: Annotated[
+        str,
+        Form(...),
+    ],
+
+    description: Annotated[
+        str | None,
+        Form(),
+    ] = None,
+
+    ordre: Annotated[
+        int,
+        Form(),
+    ] = 0,
+
+    actif: Annotated[
+        bool,
+        Form(),
+    ] = True,
+
+    fichier: UploadFile | None = File(None),
+
+    db: Session = Depends(get_db),
+):
+    """
+    Modifie les informations d'un média.
+
+    Si un nouveau fichier est envoyé :
+    - upload du nouveau fichier sur Cloudinary ;
+    - mise à jour DB ;
+    - suppression de l'ancien média Cloudinary.
+    """
+
+    galerie = (
+        db.query(Galerie)
+        .filter(
+            Galerie.id == galerie_id
+        )
+        .first()
+    )
+
+    if not galerie:
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Média introuvable.",
         )
 
     # ------------------------------------------------------
-    # Mise à jour des informations
+    # Validation
+    # ------------------------------------------------------
+
+    titre_nettoye = titre.strip()
+
+    if len(titre_nettoye) < 2:
+
+        raise HTTPException(
+            status_code=(
+                status.HTTP_422_UNPROCESSABLE_ENTITY
+            ),
+            detail=(
+                "Le titre doit contenir "
+                "au moins 2 caractères."
+            ),
+        )
+
+    if ordre < 0:
+
+        raise HTTPException(
+            status_code=(
+                status.HTTP_422_UNPROCESSABLE_ENTITY
+            ),
+            detail="L'ordre ne peut pas être négatif.",
+        )
+
+    # ------------------------------------------------------
+    # Informations actuelles
+    # ------------------------------------------------------
+
+    ancien_url = galerie.chemin_fichier
+    ancien_type = galerie.type_media
+
+    # ------------------------------------------------------
+    # Mise à jour texte
     # ------------------------------------------------------
 
     galerie.titre = titre_nettoye
@@ -596,36 +759,32 @@ async def modifier_media(
     )
 
     galerie.ordre = ordre
-
     galerie.actif = actif
 
-    # ------------------------------------------------------
-    # Remplacement du fichier
-    # ------------------------------------------------------
+    nouveau_url = None
+    nouveau_type = None
 
-    ancien_fichier = None
+    # ------------------------------------------------------
+    # Nouveau fichier
+    # ------------------------------------------------------
 
     if fichier and fichier.filename:
 
-        ancien_fichier = galerie.chemin_fichier
-
         (
-            nouveau_type_media,
-            nouveau_chemin,
-        ) = await sauvegarder_fichier(
+            nouveau_type,
+            nouveau_url,
+        ) = await uploader_vers_cloudinary(
             fichier
         )
 
-        galerie.type_media = (
-            nouveau_type_media
-        )
+        galerie.type_media = nouveau_type
 
         galerie.nom_fichier = (
             fichier.filename
         )
 
         galerie.chemin_fichier = (
-            nouveau_chemin
+            nouveau_url
         )
 
     # ------------------------------------------------------
@@ -642,47 +801,40 @@ async def modifier_media(
 
         db.rollback()
 
-        # Si un nouveau fichier a été enregistré
-        # mais que la base échoue, on le supprime.
-        if (
-            fichier
-            and fichier.filename
-            and galerie.chemin_fichier
-        ):
-            nouveau_fichier = (
-                galerie.chemin_fichier
-            )
+        # Si le nouveau fichier a été uploadé mais
+        # que la DB échoue, on supprime le nouveau fichier.
+        if nouveau_url and nouveau_type:
 
-            if (
-                nouveau_fichier
-                != ancien_fichier
-            ):
-                supprimer_fichier(
-                    nouveau_fichier
-                )
+            supprimer_fichier_cloudinary(
+                nouveau_url,
+                nouveau_type,
+            )
 
         raise
 
     # ------------------------------------------------------
-    # Suppression de l'ancien fichier
+    # Suppression ancien média Cloudinary
     # ------------------------------------------------------
 
     if (
-        ancien_fichier
-        and fichier
-        and fichier.filename
-        and ancien_fichier
-        != galerie.chemin_fichier
+        nouveau_url
+        and ancien_url
+        and (
+            ancien_url.startswith("http://")
+            or ancien_url.startswith("https://")
+        )
     ):
-        supprimer_fichier(
-            ancien_fichier
+
+        supprimer_fichier_cloudinary(
+            ancien_url,
+            ancien_type,
         )
 
     return vers_response(galerie)
 
 
 # ==========================================================
-# ACTIVER / DÉSACTIVER UN MÉDIA
+# ACTIVER / DÉSACTIVER
 # ==========================================================
 
 @router.patch(
@@ -699,11 +851,9 @@ async def modifier_media(
 def modifier_statut(
     galerie_id: int,
 
-    # Ici le champ est obligatoire.
-    # Form(...) est donc parfaitement correct.
     actif: Annotated[
         bool,
-        Form(...)
+        Form(...),
     ],
 
     db: Session = Depends(get_db),
@@ -807,8 +957,7 @@ def supprimer_media(
     db: Session = Depends(get_db),
 ):
     """
-    Supprime le média de la base et son fichier
-    du serveur.
+    Supprime le média de la base et de Cloudinary.
     """
 
     galerie = (
@@ -826,13 +975,29 @@ def supprimer_media(
             detail="Média introuvable.",
         )
 
-    chemin = galerie.chemin_fichier
+    url = galerie.chemin_fichier
+    type_media = galerie.type_media
+
+    # ------------------------------------------------------
+    # Suppression DB
+    # ------------------------------------------------------
 
     db.delete(galerie)
 
     db.commit()
 
-    # Suppression physique
-    supprimer_fichier(chemin)
+    # ------------------------------------------------------
+    # Suppression Cloudinary
+    # ------------------------------------------------------
+
+    if url and (
+        url.startswith("http://")
+        or url.startswith("https://")
+    ):
+
+        supprimer_fichier_cloudinary(
+            url,
+            type_media,
+        )
 
     return None
