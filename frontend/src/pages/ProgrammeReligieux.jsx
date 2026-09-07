@@ -429,78 +429,29 @@ export default function ProgrammeReligieux() {
     setMessage("");
 
     try {
-      const kourelId =
-        utilisateur?.gestionnaire_kourel_id;
+      const kourelId = utilisateur?.gestionnaire_kourel_id;
 
-      if (!kourelId) {
-        throw new Error(
-          "Aucun Kourel de gestion n'est associé à votre compte."
-        );
-      }
+if (!kourelId) {
+  throw new Error(
+    "Aucun Kourel de gestion n'est associé à votre compte."
+  );
+}
 
-      if (!estGestionnaireKourel(kourelId)) {
-        throw new Error(
-          "Vous n'êtes pas gestionnaire de ce Kourel."
-        );
-      }
+const params = new URLSearchParams();
 
-      const annee = Number(
-        formProgramme.annee
-      );
+params.append("kourel_id", String(kourelId));
+params.append("annee", String(annee));
+params.append("mois", String(mois));
 
-      if (
-        !Number.isInteger(annee) ||
-        annee < 2000 ||
-        annee > 2100
-      ) {
-        throw new Error(
-          "Veuillez saisir une année valide."
-        );
-      }
+console.log("CRÉATION PROGRAMME RELIGIEUX :", {
+  kourel_id: kourelId,
+  annee,
+  mois,
+});
 
-      const mois = Number(
-        formProgramme.mois
-      );
-
-      if (
-        !Number.isInteger(mois) ||
-        mois < 1 ||
-        mois > 12
-      ) {
-        throw new Error(
-          "Veuillez sélectionner un mois valide."
-        );
-      }
-
-      const params = new URLSearchParams();
-
-      params.append(
-        "kourel_id",
-        String(kourelId)
-      );
-
-      params.append(
-        "annee",
-        String(annee)
-      );
-
-      params.append(
-        "mois",
-        String(mois)
-      );
-
-      console.log(
-        "CRÉATION PROGRAMME RELIGIEUX :",
-        {
-          kourel_id: kourelId,
-          annee,
-          mois,
-        }
-      );
-
-      await api.post(
-        `/programmes-religieux?${params.toString()}`
-      );
+await api.post(
+  `/programmes-religieux?${params.toString()}`
+);
 
       setMessage(
         "Programme religieux créé avec succès."
