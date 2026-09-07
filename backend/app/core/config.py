@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     cloudinary_api_secret: str
 
     # ==========================================================
+    # FIREBASE CLOUD MESSAGING
+    # ==========================================================
+
+    firebase_credentials_path: str
+
+    # ==========================================================
     # CONFIGURATION PYDANTIC
     # ==========================================================
 

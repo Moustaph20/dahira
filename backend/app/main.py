@@ -6,8 +6,10 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 
+from app.core.firebase import initialiser_firebase
+
 from app.seed.tons import seed_tons
-from app.core.database import SessionLocal
+from app.core.database import Base, SessionLocal, engine
 # ============================================================
 # MODÈLES
 # ============================================================
@@ -19,6 +21,7 @@ from app.models.permission import Permission
 from app.models.fonction_permission import FonctionPermission
 from app.models.utilisateur_fonction import UtilisateurFonction
 from app.models.galerie import Galerie
+from app.models.appareil_notification import AppareilNotification
 
 
 # ============================================================
@@ -91,6 +94,9 @@ from app.routers.programmes_religieux import (
 from app.routers.notifications import (
     router as notifications_router
 )
+from app.routers.appareils_notifications import (
+    router as appareils_notifications_router
+)
 
 from app.routers import depenses
 from app.routers import aides_exterieures
@@ -121,13 +127,28 @@ app.add_middleware(
 
 @app.on_event("startup")
 def initialiser_donnees():
+    # ========================================================
+    # CRÉATION DES TABLES MANQUANTES
+    # ========================================================
+
+    Base.metadata.create_all(bind=engine)
+
+    # ========================================================
+    # FIREBASE
+    # ========================================================
+
+    initialiser_firebase()
+
+    # ========================================================
+    # DONNÉES INITIALES
+    # ========================================================
+
     db = SessionLocal()
 
     try:
         seed_tons(db)
     finally:
         db.close()
-
 
 # ============================================================
 # UPLOADS
@@ -187,6 +208,8 @@ app.include_router(depenses.router)
 app.include_router(aides_exterieures.router)
 
 app.include_router(notifications_router)
+
+app.include_router(appareils_notifications_router)
 
 app.include_router(galerie_router)
 

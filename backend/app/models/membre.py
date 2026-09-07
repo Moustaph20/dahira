@@ -128,3 +128,10 @@ class Membre(Base):
         back_populates="membre",
         cascade="all, delete-orphan",
     )
+
+
+    appareils_notifications = relationship(
+    "AppareilNotification",
+    back_populates="membre",
+    cascade="all, delete-orphan",
+    )

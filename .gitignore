@@ -84,3 +84,9 @@ backend/uploads/*
 !backend/uploads/audios/
 !backend/uploads/audios/.gitkeep
 ```
+
+# ==========================================================
+# FIREBASE ADMIN SDK / CREDENTIALS
+# ==========================================================
+
+backend/*firebase-adminsdk*.json

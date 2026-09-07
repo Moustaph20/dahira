@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 
@@ -37,6 +36,9 @@ import { useAuth } from "../context/AuthContext";
 import {
   getCommunications,
 } from "../services/communications";
+
+import api from "../api/client";
+import { demanderTokenNotification } from "../firebase-messaging";
 
 
 // ============================================================
@@ -193,13 +195,6 @@ const KHASSIDAS_DU_JOUR = [
 
 // ============================================================
 // RUBRIQUES DU MENU
-// ============================================================
-//
-// Une rubrique apparaît uniquement si l'utilisateur possède
-// la permission correspondante.
-//
-// Aucun nombre de permissions n'est affiché.
-//
 // ============================================================
 
 const RUBRIQUES = [
@@ -608,6 +603,25 @@ function Espace() {
     setMenuOuvert,
   ] = useState(false);
 
+  // ==========================================================
+  // ETATS NOTIFICATIONS PUSH
+  // ==========================================================
+
+  const [
+    activationNotifications,
+    setActivationNotifications,
+  ] = useState(false);
+
+  const [
+    notificationsActivees,
+    setNotificationsActivees,
+  ] = useState(false);
+
+  const [
+    erreurNotifications,
+    setErreurNotifications,
+  ] = useState("");
+
 
   // ==========================================================
   // MENU DYNAMIQUE SELON LES DROITS
@@ -817,6 +831,67 @@ function Espace() {
       chargerCommunications();
     }
   }, [utilisateur]);
+
+
+  // ==========================================================
+  // ACTIVATION DES NOTIFICATIONS PUSH
+  // ==========================================================
+
+  const activerNotifications = async () => {
+    setActivationNotifications(true);
+    setErreurNotifications("");
+
+    try {
+      const token =
+        await demanderTokenNotification();
+
+      if (!token) {
+        setErreurNotifications(
+          "Les notifications n'ont pas pu être activées."
+        );
+
+        return;
+      }
+
+      const response =
+        await api.post(
+          "/notifications/appareil",
+          {
+            token,
+            plateforme: "web",
+          }
+        );
+
+      console.log(
+        "📲 APPAREIL FCM ENREGISTRÉ :",
+        response.data
+      );
+
+      setNotificationsActivees(
+        true
+      );
+
+    } catch (error) {
+      console.error(
+        "❌ Erreur activation notifications :",
+        error
+      );
+
+      const detail =
+        error?.response?.data?.detail;
+
+      setErreurNotifications(
+        typeof detail === "string"
+          ? detail
+          : "Impossible d'activer les notifications."
+      );
+
+    } finally {
+      setActivationNotifications(
+        false
+      );
+    }
+  };
 
 
   // ==========================================================
@@ -1518,6 +1593,98 @@ function Espace() {
       ====================================================== */}
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+
+        {/* ====================================================
+            NOTIFICATIONS PUSH
+        ==================================================== */}
+
+        <section className="mb-8">
+
+          <div className="rounded-3xl bg-white border border-gray-200 shadow-sm p-5 md:p-6">
+
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+
+              <div className="flex items-start gap-4">
+
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0">
+
+                  <Bell
+                    size={22}
+                    className="text-blue-600"
+                  />
+
+                </div>
+
+
+                <div>
+
+                  <h2 className="text-lg font-bold text-gray-900">
+                    Notifications du Dahira
+                  </h2>
+
+
+                  <p className="mt-1 text-sm text-gray-500 leading-relaxed">
+                    Recevez les nouvelles communications directement
+                    sur votre appareil.
+                  </p>
+
+
+                  {notificationsActivees && (
+                    <p className="mt-2 text-sm font-medium text-emerald-600">
+                      ✓ Notifications activées
+                    </p>
+                  )}
+
+
+                  {erreurNotifications && (
+                    <p className="mt-2 text-sm text-red-600">
+                      {erreurNotifications}
+                    </p>
+                  )}
+
+                </div>
+
+              </div>
+
+
+              {!notificationsActivees && (
+                <button
+                  type="button"
+                  onClick={
+                    activerNotifications
+                  }
+                  disabled={
+                    activationNotifications
+                  }
+                  className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                >
+
+                  {activationNotifications ? (
+                    <>
+                      <RefreshCw
+                        size={17}
+                        className="animate-spin"
+                      />
+
+                      Activation...
+                    </>
+                  ) : (
+                    <>
+                      <Bell size={17} />
+
+                      Activer les notifications
+                    </>
+                  )}
+
+                </button>
+              )}
+
+            </div>
+
+          </div>
+
+        </section>
 
 
         {/* ====================================================

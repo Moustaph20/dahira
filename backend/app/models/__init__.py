@@ -33,6 +33,7 @@ from app.models.repetition_khassida import RepetitionKhassida
 from app.models.declamation import Declamation
 from app.models.declamation_khassida import DeclamationKhassida
 
+from app.models.appareil_notification import AppareilNotification
 
 __all__ = [
     "Membre",

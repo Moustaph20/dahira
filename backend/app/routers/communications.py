@@ -1,4 +1,3 @@
-
 # app/routers/communications.py
 
 from datetime import datetime
@@ -8,12 +7,18 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.permissions import require_permission
+
 from app.models.communication import Communication
+
 from app.schemas.communication import (
     CommunicationCreate,
     CommunicationResponse,
     CommunicationStatutUpdate,
     CommunicationUpdate,
+)
+
+from app.services.notifications_push import (
+    envoyer_communication_push,
 )
 
 
@@ -31,9 +36,12 @@ def verifier_communication_existante(
     communication_id: int,
     db: Session,
 ) -> Communication:
+
     communication = (
         db.query(Communication)
-        .filter(Communication.id == communication_id)
+        .filter(
+            Communication.id == communication_id
+        )
         .first()
     )
 
@@ -69,30 +77,18 @@ def lister_communications(
     ),
     db: Session = Depends(get_db),
     utilisateur=Depends(
-        require_permission("COMMUNICATION_CONSULTER")
+        require_permission(
+            "COMMUNICATION_CONSULTER"
+        )
     ),
 ):
-    """
-    Retourne la liste des communications.
-
-    Permission :
-    COMMUNICATION_CONSULTER
-    """
 
     query = db.query(Communication)
-
-    # --------------------------------------------------------
-    # Filtre actif / inactif
-    # --------------------------------------------------------
 
     if actif is not None:
         query = query.filter(
             Communication.actif == actif
         )
-
-    # --------------------------------------------------------
-    # Filtre type
-    # --------------------------------------------------------
 
     if type_communication:
         query = query.filter(
@@ -100,20 +96,11 @@ def lister_communications(
             == type_communication.strip().upper()
         )
 
-    # --------------------------------------------------------
-    # Filtre priorité
-    # --------------------------------------------------------
-
     if priorite:
         query = query.filter(
             Communication.priorite
             == priorite.strip().upper()
         )
-
-    # --------------------------------------------------------
-    # Tri
-    # Plus récente en premier
-    # --------------------------------------------------------
 
     communications = (
         query
@@ -139,15 +126,11 @@ def obtenir_communication(
     communication_id: int,
     db: Session = Depends(get_db),
     utilisateur=Depends(
-        require_permission("COMMUNICATION_CONSULTER")
+        require_permission(
+            "COMMUNICATION_CONSULTER"
+        )
     ),
 ):
-    """
-    Retourne une communication précise.
-
-    Permission :
-    COMMUNICATION_CONSULTER
-    """
 
     return verifier_communication_existante(
         communication_id,
@@ -168,15 +151,11 @@ def creer_communication(
     donnees: CommunicationCreate,
     db: Session = Depends(get_db),
     utilisateur=Depends(
-        require_permission("COMMUNICATION_CREER")
+        require_permission(
+            "COMMUNICATION_CREER"
+        )
     ),
 ):
-    """
-    Crée une nouvelle communication.
-
-    Permission :
-    COMMUNICATION_CREER
-    """
 
     # --------------------------------------------------------
     # Vérification des dates
@@ -203,20 +182,55 @@ def creer_communication(
     communication = Communication(
         titre=donnees.titre,
         contenu=donnees.contenu,
-        type_communication=donnees.type_communication,
+        type_communication=(
+            donnees.type_communication
+        ),
         priorite=donnees.priorite,
         date_publication=(
             donnees.date_publication
             if donnees.date_publication is not None
             else datetime.now()
         ),
-        date_expiration=donnees.date_expiration,
+        date_expiration=(
+            donnees.date_expiration
+        ),
         actif=donnees.actif,
     )
 
     db.add(communication)
     db.commit()
     db.refresh(communication)
+
+    # --------------------------------------------------------
+    # ENVOI PUSH
+    # --------------------------------------------------------
+    #
+    # La communication est déjà enregistrée.
+    # L'envoi FCM ne doit pas empêcher la création
+    # de la communication si Firebase rencontre
+    # temporairement un problème.
+    #
+
+    try:
+
+        resultat_push = (
+            envoyer_communication_push(
+                communication,
+                db,
+            )
+        )
+
+        print(
+            "📲 PUSH COMMUNICATION :",
+            resultat_push,
+        )
+
+    except Exception as erreur:
+
+        print(
+            "⚠️ ERREUR PUSH COMMUNICATION :",
+            erreur,
+        )
 
     return communication
 
@@ -234,15 +248,11 @@ def modifier_communication(
     donnees: CommunicationUpdate,
     db: Session = Depends(get_db),
     utilisateur=Depends(
-        require_permission("COMMUNICATION_MODIFIER")
+        require_permission(
+            "COMMUNICATION_MODIFIER"
+        )
     ),
 ):
-    """
-    Modifie une communication existante.
-
-    Permission :
-    COMMUNICATION_MODIFIER
-    """
 
     communication = verifier_communication_existante(
         communication_id,
@@ -282,7 +292,7 @@ def modifier_communication(
         )
 
     # --------------------------------------------------------
-    # Mise à jour uniquement des champs fournis
+    # Mise à jour
     # --------------------------------------------------------
 
     if donnees.titre is not None:
@@ -297,7 +307,9 @@ def modifier_communication(
         )
 
     if donnees.priorite is not None:
-        communication.priorite = donnees.priorite
+        communication.priorite = (
+            donnees.priorite
+        )
 
     if donnees.date_publication is not None:
         communication.date_publication = (
@@ -311,10 +323,6 @@ def modifier_communication(
 
     if donnees.actif is not None:
         communication.actif = donnees.actif
-
-    # --------------------------------------------------------
-    # Mise à jour de updated_at
-    # --------------------------------------------------------
 
     communication.updated_at = datetime.now()
 
@@ -337,15 +345,11 @@ def modifier_statut_communication(
     donnees: CommunicationStatutUpdate,
     db: Session = Depends(get_db),
     utilisateur=Depends(
-        require_permission("COMMUNICATION_MODIFIER")
+        require_permission(
+            "COMMUNICATION_MODIFIER"
+        )
     ),
 ):
-    """
-    Active ou désactive une communication.
-
-    Permission :
-    COMMUNICATION_MODIFIER
-    """
 
     communication = verifier_communication_existante(
         communication_id,
@@ -373,15 +377,11 @@ def supprimer_communication(
     communication_id: int,
     db: Session = Depends(get_db),
     utilisateur=Depends(
-        require_permission("COMMUNICATION_SUPPRIMER")
+        require_permission(
+            "COMMUNICATION_SUPPRIMER"
+        )
     ),
 ):
-    """
-    Supprime définitivement une communication.
-
-    Permission :
-    COMMUNICATION_SUPPRIMER
-    """
 
     communication = verifier_communication_existante(
         communication_id,
