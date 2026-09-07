@@ -422,93 +422,102 @@ export default function ProgrammeReligieux() {
   // CREER PROGRAMME
   // ========================================================
 
-  async function creerProgramme(event) {
-    event.preventDefault();
+ async function creerProgramme(event) {
+  event.preventDefault();
 
-    setErreur("");
-    setMessage("");
+  setErreur("");
+  setMessage("");
 
-    try {
-      const kourelId = utilisateur?.gestionnaire_kourel_id;
+  try {
+    const kourelId =
+      utilisateur?.gestionnaire_kourel_id;
 
-if (!kourelId) {
-  throw new Error(
-    "Aucun Kourel de gestion n'est associé à votre compte."
-  );
-}
-
-const params = new URLSearchParams();
-
-params.append("kourel_id", String(kourelId));
-params.append("annee", String(annee));
-params.append("mois", String(mois));
-
-console.log("CRÉATION PROGRAMME RELIGIEUX :", {
-  kourel_id: kourelId,
-  annee,
-  mois,
-});
-
-await api.post(
-  `/programmes-religieux?${params.toString()}`
-);
-
-      setMessage(
-        "Programme religieux créé avec succès."
-      );
-
-      fermerModalProgramme();
-
-      await chargerProgrammes(false);
-    } catch (error) {
-      console.error(
-        "ERREUR CRÉATION PROGRAMME :",
-        error
-      );
-
-      afficherErreur(
-        error,
-        error?.message ||
-          "Impossible de créer le programme."
+    if (!kourelId) {
+      throw new Error(
+        "Aucun Kourel de gestion n'est associé à votre compte."
       );
     }
-  }
 
-  // ========================================================
-  // SUPPRIMER PROGRAMME
-  // ========================================================
+    if (!estGestionnaireKourel(kourelId)) {
+      throw new Error(
+        "Vous n'êtes pas gestionnaire de ce Kourel."
+      );
+    }
 
-  async function supprimerProgramme(programmeId) {
-    if (!programmeId) return;
+    const annee = Number(formProgramme.annee);
 
-    const confirmation = window.confirm(
-      "Voulez-vous vraiment supprimer ce programme religieux ?"
+    if (
+      !Number.isInteger(annee) ||
+      annee < 2000 ||
+      annee > 2100
+    ) {
+      throw new Error(
+        "Veuillez saisir une année valide."
+      );
+    }
+
+    const mois = Number(formProgramme.mois);
+
+    if (
+      !Number.isInteger(mois) ||
+      mois < 1 ||
+      mois > 12
+    ) {
+      throw new Error(
+        "Veuillez sélectionner un mois valide."
+      );
+    }
+
+    const params = new URLSearchParams();
+
+    params.append(
+      "kourel_id",
+      String(kourelId)
     );
 
-    if (!confirmation) return;
+    params.append(
+      "annee",
+      String(annee)
+    );
 
-    setErreur("");
-    setMessage("");
+    params.append(
+      "mois",
+      String(mois)
+    );
 
-    try {
-      await api.delete(
-        `/programmes-religieux/${programmeId}`
-      );
+    console.log(
+      "CRÉATION PROGRAMME RELIGIEUX :",
+      {
+        kourel_id: kourelId,
+        annee,
+        mois,
+      }
+    );
 
-      setMessage(
-        "Programme religieux supprimé avec succès."
-      );
+    await api.post(
+      `/programmes-religieux?${params.toString()}`
+    );
 
-      setProgrammeSelectionne(null);
+    setMessage(
+      "Programme religieux créé avec succès."
+    );
 
-      await chargerProgrammes(false);
-    } catch (error) {
-      afficherErreur(
-        error,
-        "Impossible de supprimer le programme."
-      );
-    }
+    fermerModalProgramme();
+
+    await chargerProgrammes(false);
+  } catch (error) {
+    console.error(
+      "ERREUR CRÉATION PROGRAMME :",
+      error
+    );
+
+    afficherErreur(
+      error,
+      error?.message ||
+        "Impossible de créer le programme."
+    );
   }
+}
 
   // ========================================================
   // REPETITIONS
