@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -22,119 +23,76 @@ import {
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
-
-/* ============================================================
-   UTILITAIRES
-============================================================ */
-
-const MOIS = [
-  "Janvier",
-  "Février",
-  "Mars",
-  "Avril",
-  "Mai",
-  "Juin",
-  "Juillet",
-  "Août",
-  "Septembre",
-  "Octobre",
-  "Novembre",
-  "Décembre",
-];
-
+// ==========================================================
+// UTILITAIRES
+// ==========================================================
 
 function formaterDate(dateValue) {
-  if (!dateValue) return "-";
+  if (!dateValue) return "—";
 
-  const date = new Date(`${dateValue}T00:00:00`);
-
-  if (Number.isNaN(date.getTime())) {
+  try {
+    return new Date(dateValue).toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  } catch {
     return dateValue;
   }
-
-  return date.toLocaleDateString("fr-FR", {
-    weekday: "long",
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
 }
 
+function formaterHeure(heureValue) {
+  if (!heureValue) return "—";
 
-function formaterHeure(heure) {
-  if (!heure) return null;
-
-  return String(heure).slice(0, 5);
-}
-
-
-function messageErreur(error) {
-  const detail = error?.response?.data?.detail;
-
-  if (typeof detail === "string") {
-    return detail;
+  if (typeof heureValue === "string") {
+    return heureValue.slice(0, 5);
   }
 
-  if (Array.isArray(detail)) {
-    return detail
-      .map((item) => item?.msg || JSON.stringify(item))
-      .join(", ");
-  }
-
-  return (
-    error?.message ||
-    "Une erreur est survenue."
-  );
+  return heureValue;
 }
 
-
-function construireUrlAudio(audio) {
-  if (!audio) return "";
-
-  const url = audio.url || audio.fichier;
-
+function construireUrlAudio(url) {
   if (!url) return "";
 
+  // URL Cloudinary ou autre URL externe
   if (/^https?:\/\//i.test(url)) {
     return url;
   }
 
   const base =
-    api.defaults.baseURL?.replace(/\/$/, "") || "";
+    api.defaults.baseURL?.replace(/\/+$/, "") || "";
 
-  return `${base}${
-    url.startsWith("/") ? url : `/${url}`
-  }`;
+  return `${base}${url.startsWith("/") ? url : `/${url}`}`;
 }
 
-
 function extraireKhassidasDeclamation(declamation) {
-  if (Array.isArray(declamation?.khassidas)) {
+  if (!declamation) return [];
+
+  if (Array.isArray(declamation.khassidas)) {
     return declamation.khassidas;
   }
 
-  if (
-    Array.isArray(
-      declamation?.declamation?.khassidas
-    )
-  ) {
-    return declamation.declamation.khassidas;
+  if (Array.isArray(declamation.declamation_khassidas)) {
+    return declamation.declamation_khassidas;
   }
 
   return [];
 }
 
-
-/* ============================================================
-   COMPOSANT
-============================================================ */
+// ==========================================================
+// COMPOSANT PRINCIPAL
+// ==========================================================
 
 export default function ProgrammeReligieux() {
-  const { aPermission } = useAuth();
+  const {
+    utilisateur,
+    aPermission,
+    estGestionnaireKourel,
+  } = useAuth();
 
-  /* ==========================================================
-     PERMISSIONS
-  ========================================================== */
+  // ========================================================
+  // PERMISSIONS
+  // ========================================================
 
   const peutConsulter = useMemo(
     () => aPermission("KOUREL_CONSULTER"),
@@ -148,188 +106,193 @@ export default function ProgrammeReligieux() {
     [aPermission]
   );
 
-
-  /* ==========================================================
-     PROGRAMMES
-  ========================================================== */
+  // ========================================================
+  // PROGRAMMES
+  // ========================================================
 
   const [programmes, setProgrammes] = useState([]);
-
   const [programmeSelectionne, setProgrammeSelectionne] =
     useState(null);
 
-  const [chargement, setChargement] =
-    useState(true);
-
+  const [chargement, setChargement] = useState(true);
   const [chargementProgramme, setChargementProgramme] =
+    useState(false);
+  const [rafraichissement, setRafraichissement] =
     useState(false);
 
   const [erreur, setErreur] = useState("");
-
   const [message, setMessage] = useState("");
-
-
-  /* ==========================================================
-     MODAL PROGRAMME
-  ========================================================== */
 
   const [modalProgramme, setModalProgramme] =
     useState(false);
 
-  const [formProgramme, setFormProgramme] =
-    useState({
-      kourel_id: "",
-      annee: new Date().getFullYear(),
-      mois: new Date().getMonth() + 1,
-    });
+  const [formProgramme, setFormProgramme] = useState({
+    kourel_id: "",
+    annee: new Date().getFullYear(),
+    mois: new Date().getMonth() + 1,
+  });
 
-
-  /* ==========================================================
-     RÉPÉTITIONS
-  ========================================================== */
-
-  const [modalRepetition, setModalRepetition] =
-    useState(false);
-
-  const [formRepetition, setFormRepetition] =
-    useState({
-      date_repetition: "",
-      heure_debut: "",
-      heure_fin: "",
-      lieu: "",
-    });
-
-  const [repetitionEdition, setRepetitionEdition] =
-    useState(null);
-
-
-  /* ==========================================================
-     KHASSIDAS D'UNE RÉPÉTITION
-     
-     IMPORTANT :
-     Cette liste contient uniquement les Khassidas
-     de la répétition actuellement ouverte.
-  ========================================================== */
+  // ========================================================
+  // REPETITIONS
+  // ========================================================
 
   const [repetitionSelectionnee, setRepetitionSelectionnee] =
     useState(null);
 
-  const [khassidas, setKhassidas] =
-    useState([]);
-
-  const [chargementKhassidas, setChargementKhassidas] =
+  const [modalRepetition, setModalRepetition] =
     useState(false);
 
+  const [formRepetition, setFormRepetition] = useState({
+    date_repetition: "",
+    heure_debut: "",
+    heure_fin: "",
+    lieu: "",
+    ordre: 1,
+  });
 
-  /* ==========================================================
-     RÉFÉRENTIEL KHASSIDAS
-     
-     Cette liste sert uniquement à ajouter/modifier
-     une Khassida.
-  ========================================================== */
+  const [repetitions, setRepetitions] = useState([]);
+  const [chargementRepetitions, setChargementRepetitions] =
+    useState(false);
 
-  const [listeKhassidas, setListeKhassidas] =
-    useState([]);
-
-  const [tons, setTons] = useState([]);
-
-  const [audios, setAudios] = useState([]);
-
-  const [khassidaSelectionnee, setKhassidaSelectionnee] =
-    useState(null);
-
-  const [tonSelectionne, setTonSelectionne] =
-    useState(null);
-
-  const [audioSelectionne, setAudioSelectionne] =
-    useState(null);
-
-  const [ordreKhassida, setOrdreKhassida] =
-    useState(1);
+  // ========================================================
+  // KHASSIDAS REPETITION
+  // ========================================================
 
   const [modalKhassida, setModalKhassida] =
     useState(false);
 
-  const [chargementKhassida, setChargementKhassida] =
-    useState(false);
+  const [khassidas, setKhassidas] = useState([]);
+  const [khassidasProgramme, setKhassidasProgramme] =
+    useState([]);
 
-
-  /* ==========================================================
-     DÉCLAMATIONS
-  ========================================================== */
-
-  const [modalDeclamation, setModalDeclamation] =
-    useState(false);
-
-  const [declamationEdition, setDeclamationEdition] =
+  const [khassidaSelectionnee, setKhassidaSelectionnee] =
     useState(null);
 
-  const [formDeclamation, setFormDeclamation] =
-    useState({
-      date_declamation: "",
-      heure: "",
-      lieu: "",
-      evenement: "",
-    });
+  const [tons, setTons] = useState([]);
+  const [audios, setAudios] = useState([]);
 
+  const [tonSelectionne, setTonSelectionne] =
+    useState("");
 
-  /* ==========================================================
-     KHASSIDAS D'UNE DÉCLAMATION
-  ========================================================== */
+  const [audioSelectionne, setAudioSelectionne] =
+    useState("");
 
-  const [modalKhassidaDeclamation, setModalKhassidaDeclamation] =
+  const [ordreKhassida, setOrdreKhassida] =
+    useState(1);
+
+  const [chargementKhassidas, setChargementKhassidas] =
+    useState(false);
+
+  const [chargementTons, setChargementTons] =
+    useState(false);
+
+  const [chargementAudios, setChargementAudios] =
+    useState(false);
+
+  // ========================================================
+  // DECLAMATIONS
+  // ========================================================
+
+  const [modalDeclamation, setModalDeclamation] =
     useState(false);
 
   const [declamationSelectionnee, setDeclamationSelectionnee] =
     useState(null);
 
-  const [
-    khassidaDeclamationSelectionnee,
-    setKhassidaDeclamationSelectionnee,
-  ] = useState(null);
+  const [formDeclamation, setFormDeclamation] = useState({
+    date_declamaion: "",
+    date_declamation: "",
+    heure_debut: "",
+    heure_fin: "",
+    lieu: "",
+    ordre: 1,
+  });
 
-  const [
-    tonDeclamationSelectionne,
-    setTonDeclamationSelectionne,
-  ] = useState(null);
+  const [declamations, setDeclamations] =
+    useState([]);
 
-  const [
-    audioDeclamationSelectionne,
-    setAudioDeclamationSelectionne,
-  ] = useState(null);
+  const [chargementDeclamations, setChargementDeclamations] =
+    useState(false);
 
-  const [
-    ordreKhassidaDeclamation,
-    setOrdreKhassidaDeclamation,
-  ] = useState(1);
+  const [modalKhassidaDeclamation, setModalKhassidaDeclamation] =
+    useState(false);
 
-  const [
-    chargementKhassidaDeclamation,
-    setChargementKhassidaDeclamation,
-  ] = useState(false);
+  const [khassidasDeclamation, setKhassidasDeclamation] =
+    useState([]);
 
+  const [khassidaDeclamationSelectionnee, setKhassidaDeclamationSelectionnee] =
+    useState(null);
 
-  /* ============================================================
-     ERREUR
-  ============================================================ */
+  const [tonsDeclamation, setTonsDeclamation] =
+    useState([]);
 
-  function afficherErreur(error, messageDefaut) {
-    setErreur(
-      error?.response?.data?.detail ||
-        messageDefaut ||
-        "Une erreur est survenue."
-    );
+  const [audiosDeclamation, setAudiosDeclamation] =
+    useState([]);
+
+  const [tonDeclamationSelectionne, setTonDeclamationSelectionne] =
+    useState("");
+
+  const [audioDeclamationSelectionne, setAudioDeclamationSelectionne] =
+    useState("");
+
+  const [ordreKhassidaDeclamation, setOrdreKhassidaDeclamation] =
+    useState(1);
+
+  const [chargementKhassidasDeclamation, setChargementKhassidasDeclamation] =
+    useState(false);
+
+  // ========================================================
+  // GESTION DES ERREURS
+  // ========================================================
+
+  function afficherErreur(error, messageParDefaut) {
+    console.error(error);
+
+    const detail = error?.response?.data?.detail;
+
+    if (typeof detail === "string") {
+      setErreur(detail);
+      return;
+    }
+
+    if (Array.isArray(detail)) {
+      setErreur(
+        detail
+          .map((item) => {
+            if (typeof item === "string") return item;
+
+            return (
+              item?.msg ||
+              item?.message ||
+              "Erreur de validation."
+            );
+          })
+          .join(" ")
+      );
+      return;
+    }
+
+    if (error?.message) {
+      setErreur(error.message);
+      return;
+    }
+
+    setErreur(messageParDefaut);
   }
 
-
-  /* ============================================================
-     CHARGER TOUS LES PROGRAMMES
-  ============================================================ */
+  // ========================================================
+  // CHARGER LES PROGRAMMES
+  // ========================================================
 
   async function chargerProgrammes(
-    programmeIdASelectionner = null
+    afficherLoader = true
   ) {
-    setChargement(true);
+    if (afficherLoader) {
+      setChargement(true);
+    } else {
+      setRafraichissement(true);
+    }
+
     setErreur("");
 
     try {
@@ -337,48 +300,80 @@ export default function ProgrammeReligieux() {
         "/programmes-religieux"
       );
 
-      const data = Array.isArray(response.data)
+      const liste = Array.isArray(response.data)
         ? response.data
         : [];
 
-      setProgrammes(data);
+      setProgrammes(liste);
 
-      if (programmeIdASelectionner) {
-        await chargerProgramme(
-          programmeIdASelectionner
-        );
-      } else if (data.length > 0) {
-        await chargerProgramme(data[0].id);
-      } else {
+      if (liste.length === 0) {
         setProgrammeSelectionne(null);
+        setRepetitions([]);
+        setDeclamations([]);
+        return;
       }
+
+      const programmeCourant =
+        programmeSelectionne &&
+        liste.find(
+          (programme) =>
+            Number(programme.id) ===
+            Number(programmeSelectionne.id)
+        );
+
+      const programme =
+        programmeCourant || liste[0];
+
+      await chargerProgramme(programme.id);
     } catch (error) {
       afficherErreur(
         error,
         "Impossible de charger les programmes religieux."
       );
     } finally {
-      setChargement(false);
+      if (afficherLoader) {
+        setChargement(false);
+      } else {
+        setRafraichissement(false);
+      }
     }
   }
 
-
-  /* ============================================================
-     CHARGER UN PROGRAMME
-  ============================================================ */
+  // ========================================================
+  // CHARGER UN PROGRAMME
+  // ========================================================
 
   async function chargerProgramme(programmeId) {
     if (!programmeId) return;
 
     setChargementProgramme(true);
-    setErreur("");
 
     try {
       const response = await api.get(
         `/programmes-religieux/${programmeId}`
       );
 
-      setProgrammeSelectionne(response.data);
+      const programme = response.data;
+
+      setProgrammeSelectionne(programme);
+
+      setRepetitions(
+        Array.isArray(programme?.repetitions)
+          ? programme.repetitions
+          : []
+      );
+
+      setDeclamations(
+        extraireKhassidasDeclamation(programme)
+      );
+
+      if (
+        Array.isArray(programme?.declamations)
+      ) {
+        setDeclamations(
+          programme.declamations
+        );
+      }
     } catch (error) {
       afficherErreur(
         error,
@@ -389,112 +384,29 @@ export default function ProgrammeReligieux() {
     }
   }
 
-
-  /* ============================================================
-     CHARGEMENT INITIAL
-  ============================================================ */
+  // ========================================================
+  // CHARGEMENT INITIAL
+  // ========================================================
 
   useEffect(() => {
     if (peutConsulter) {
-      chargerProgrammes();
+      chargerProgrammes(true);
     } else {
       setChargement(false);
     }
   }, [peutConsulter]);
 
-
-  /* ============================================================
-     CHARGER LES KHASSIDAS D'UNE RÉPÉTITION
-     
-     C'EST LA CORRECTION PRINCIPALE.
-     
-     On ne fait PAS :
-       GET /khassidas
-     
-     pour afficher les Khassidas d'une répétition.
-     
-     On fait :
-       GET /programmes-religieux/{programmeId}
-             /repetitions/{repetitionId}/khassidas
-  ============================================================ */
-
-  async function chargerKhassidas(repetitionId) {
-    if (!programmeSelectionne?.id || !repetitionId) {
-      setKhassidas([]);
-      return;
-    }
-
-    setChargementKhassidas(true);
-    setErreur("");
-
-    try {
-      const response = await api.get(
-        `/programmes-religieux/${programmeSelectionne.id}/repetitions/${repetitionId}/khassidas`
-      );
-
-      const data = Array.isArray(response.data)
-        ? response.data
-        : Array.isArray(response.data?.items)
-        ? response.data.items
-        : Array.isArray(response.data?.data)
-        ? response.data.data
-        : Array.isArray(response.data?.results)
-        ? response.data.results
-        : [];
-
-      console.log(
-        "Khassidas de la répétition",
-        repetitionId,
-        ":",
-        data
-      );
-
-      setKhassidas(data);
-    } catch (error) {
-      console.error(
-        "Erreur chargement Khassidas répétition :",
-        error
-      );
-
-      afficherErreur(
-        error,
-        "Impossible de charger les Khassidas de cette répétition."
-      );
-
-      setKhassidas([]);
-    } finally {
-      setChargementKhassidas(false);
-    }
-  }
-
-
-  /* ============================================================
-     OUVRIR / FERMER UNE RÉPÉTITION
-  ============================================================ */
-
-  async function ouvrirRepetition(repetition) {
-    if (
-      repetitionSelectionnee?.id === repetition.id
-    ) {
-      setRepetitionSelectionnee(null);
-      setKhassidas([]);
-      return;
-    }
-
-    setRepetitionSelectionnee(repetition);
-    setKhassidas([]);
-
-    await chargerKhassidas(repetition.id);
-  }
-
-
-  /* ============================================================
-     CRÉER UN PROGRAMME
-  ============================================================ */
+  // ========================================================
+  // MODAL PROGRAMME
+  // ========================================================
 
   function ouvrirModalProgramme() {
+    setErreur("");
+    setMessage("");
+
     setFormProgramme({
-      kourel_id: "",
+      kourel_id:
+        utilisateur?.gestionnaire_kourel_id || "",
       annee: new Date().getFullYear(),
       mois: new Date().getMonth() + 1,
     });
@@ -502,11 +414,13 @@ export default function ProgrammeReligieux() {
     setModalProgramme(true);
   }
 
-
   function fermerModalProgramme() {
     setModalProgramme(false);
   }
 
+  // ========================================================
+  // CREER PROGRAMME
+  // ========================================================
 
   async function creerProgramme(event) {
     event.preventDefault();
@@ -515,23 +429,73 @@ export default function ProgrammeReligieux() {
     setMessage("");
 
     try {
-      const params = new URLSearchParams();
+      const kourelId =
+        utilisateur?.gestionnaire_kourel_id;
 
-      if (formProgramme.kourel_id) {
-        params.append(
-          "kourel_id",
-          formProgramme.kourel_id
+      if (!kourelId) {
+        throw new Error(
+          "Aucun Kourel de gestion n'est associé à votre compte."
         );
       }
 
+      if (!estGestionnaireKourel(kourelId)) {
+        throw new Error(
+          "Vous n'êtes pas gestionnaire de ce Kourel."
+        );
+      }
+
+      const annee = Number(
+        formProgramme.annee
+      );
+
+      if (
+        !Number.isInteger(annee) ||
+        annee < 2000 ||
+        annee > 2100
+      ) {
+        throw new Error(
+          "Veuillez saisir une année valide."
+        );
+      }
+
+      const mois = Number(
+        formProgramme.mois
+      );
+
+      if (
+        !Number.isInteger(mois) ||
+        mois < 1 ||
+        mois > 12
+      ) {
+        throw new Error(
+          "Veuillez sélectionner un mois valide."
+        );
+      }
+
+      const params = new URLSearchParams();
+
+      params.append(
+        "kourel_id",
+        String(kourelId)
+      );
+
       params.append(
         "annee",
-        String(formProgramme.annee)
+        String(annee)
       );
 
       params.append(
         "mois",
-        String(formProgramme.mois)
+        String(mois)
+      );
+
+      console.log(
+        "CRÉATION PROGRAMME RELIGIEUX :",
+        {
+          kourel_id: kourelId,
+          annee,
+          mois,
+        }
       );
 
       await api.post(
@@ -544,39 +508,49 @@ export default function ProgrammeReligieux() {
 
       fermerModalProgramme();
 
-      await chargerProgrammes();
+      await chargerProgrammes(false);
     } catch (error) {
+      console.error(
+        "ERREUR CRÉATION PROGRAMME :",
+        error
+      );
+
       afficherErreur(
         error,
-        "Impossible de créer le programme."
+        error?.message ||
+          "Impossible de créer le programme."
       );
     }
   }
 
+  // ========================================================
+  // SUPPRIMER PROGRAMME
+  // ========================================================
 
-  /* ============================================================
-     SUPPRIMER PROGRAMME
-  ============================================================ */
+  async function supprimerProgramme(programmeId) {
+    if (!programmeId) return;
 
-  async function supprimerProgramme(programme) {
-    if (
-      !window.confirm(
-        "Voulez-vous vraiment supprimer ce programme religieux ?"
-      )
-    ) {
-      return;
-    }
+    const confirmation = window.confirm(
+      "Voulez-vous vraiment supprimer ce programme religieux ?"
+    );
+
+    if (!confirmation) return;
+
+    setErreur("");
+    setMessage("");
 
     try {
       await api.delete(
-        `/programmes-religieux/${programme.id}`
+        `/programmes-religieux/${programmeId}`
       );
 
       setMessage(
         "Programme religieux supprimé avec succès."
       );
 
-      await chargerProgrammes();
+      setProgrammeSelectionne(null);
+
+      await chargerProgrammes(false);
     } catch (error) {
       afficherErreur(
         error,
@@ -585,93 +559,124 @@ export default function ProgrammeReligieux() {
     }
   }
 
+  // ========================================================
+  // REPETITIONS
+  // ========================================================
 
-  /* ============================================================
-     MODAL RÉPÉTITION
-  ============================================================ */
+  async function ouvrirRepetition(repetition) {
+    setRepetitionSelectionnee(repetition);
 
-  function ouvrirNouvelleRepetition() {
-    setRepetitionEdition(null);
+    setKhassidasProgramme([]);
+
+    try {
+      await chargerKhassidas(
+        repetition.id
+      );
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  async function chargerKhassidas(
+    repetitionId
+  ) {
+    if (!programmeSelectionne?.id) return;
+
+    setChargementKhassidas(true);
+
+    try {
+      const response = await api.get(
+        `/programmes-religieux/${programmeSelectionne.id}/repetitions/${repetitionId}/khassidas`
+      );
+
+      const liste = Array.isArray(response.data)
+        ? response.data
+        : [];
+
+      setKhassidasProgramme(liste);
+    } catch (error) {
+      afficherErreur(
+        error,
+        "Impossible de charger les Khassidas."
+      );
+    } finally {
+      setChargementKhassidas(false);
+    }
+  }
+
+  function ouvrirModalRepetition() {
+    setErreur("");
 
     setFormRepetition({
-      date_repetition:
-        programmeSelectionne?.date_debut || "",
+      date_repetition: "",
       heure_debut: "",
       heure_fin: "",
       lieu: "",
+      ordre: repetitions.length + 1,
     });
 
+    setRepetitionSelectionnee(null);
     setModalRepetition(true);
   }
 
+  function fermerModalRepetition() {
+    setModalRepetition(false);
+    setRepetitionSelectionnee(null);
+  }
 
-  function ouvrirEditionRepetition(repetition) {
-    setRepetitionEdition(repetition);
+  function modifierRepetition(repetition) {
+    setRepetitionSelectionnee(repetition);
 
     setFormRepetition({
       date_repetition:
         repetition.date_repetition || "",
       heure_debut:
-        formaterHeure(repetition.heure_debut) || "",
+        repetition.heure_debut?.slice(0, 5) ||
+        "",
       heure_fin:
-        formaterHeure(repetition.heure_fin) || "",
+        repetition.heure_fin?.slice(0, 5) ||
+        "",
       lieu: repetition.lieu || "",
+      ordre:
+        repetition.ordre ||
+        repetitions.length + 1,
     });
 
     setModalRepetition(true);
   }
 
-
-  function fermerModalRepetition() {
-    setModalRepetition(false);
-    setRepetitionEdition(null);
-  }
-
-
-  /* ============================================================
-     ENREGISTRER RÉPÉTITION
-  ============================================================ */
-
   async function enregistrerRepetition(event) {
     event.preventDefault();
 
-    if (!programmeSelectionne?.id) return;
+    if (!programmeSelectionne?.id) {
+      setErreur(
+        "Aucun programme sélectionné."
+      );
+      return;
+    }
 
     setErreur("");
     setMessage("");
 
     try {
-      const params = new URLSearchParams();
+      const payload = {
+        date_repetition:
+          formRepetition.date_repetition,
+        heure_debut:
+          formRepetition.heure_debut || null,
+        heure_fin:
+          formRepetition.heure_fin || null,
+        lieu:
+          formRepetition.lieu || null,
+        ordre: Number(
+          formRepetition.ordre
+        ),
+      };
 
-      params.append(
-        "date_repetition",
-        formRepetition.date_repetition
-      );
-
-      if (formRepetition.heure_debut) {
-        params.append(
-          "heure_debut",
-          formRepetition.heure_debut
-        );
-      }
-
-      if (formRepetition.heure_fin) {
-        params.append(
-          "heure_fin",
-          formRepetition.heure_fin
-        );
-      }
-
-      if (formRepetition.lieu.trim()) {
-        params.append(
-          "lieu",
-          formRepetition.lieu.trim()
-        );
-      }
-
-      if (repetitionEdition) {
+      if (repetitionSelectionnee?.id) {
         await api.put(
-          `/programmes-religieux/${programmeSelectionne.id}/repetitions/${repetitionEdition.id}?${params.toString()}`
+          `/programmes-religieux/${programmeSelectionne.id}/repetitions/${repetitionSelectionnee.id}`,
+          payload
         );
 
         setMessage(
@@ -679,11 +684,12 @@ export default function ProgrammeReligieux() {
         );
       } else {
         await api.post(
-          `/programmes-religieux/${programmeSelectionne.id}/repetitions?${params.toString()}`
+          `/programmes-religieux/${programmeSelectionne.id}/repetitions`,
+          payload
         );
 
         setMessage(
-          "Répétition ajoutée avec succès."
+          "Répétition créée avec succès."
         );
       }
 
@@ -700,17 +706,58 @@ export default function ProgrammeReligieux() {
     }
   }
 
+  async function supprimerRepetition(
+    repetitionId
+  ) {
+    if (!programmeSelectionne?.id) return;
 
-  /* ============================================================
-     GÉNÉRER LES RÉPÉTITIONS
-  ============================================================ */
+    if (
+      !window.confirm(
+        "Voulez-vous vraiment supprimer cette répétition ?"
+      )
+    ) {
+      return;
+    }
+
+    setErreur("");
+
+    try {
+      await api.delete(
+        `/programmes-religieux/${programmeSelectionne.id}/repetitions/${repetitionId}`
+      );
+
+      setMessage(
+        "Répétition supprimée avec succès."
+      );
+
+      if (
+        repetitionSelectionnee?.id ===
+        repetitionId
+      ) {
+        setRepetitionSelectionnee(null);
+      }
+
+      await chargerProgramme(
+        programmeSelectionne.id
+      );
+    } catch (error) {
+      afficherErreur(
+        error,
+        "Impossible de supprimer la répétition."
+      );
+    }
+  }
+
+  // ========================================================
+  // GENERER LES REPETITIONS
+  // ========================================================
 
   async function genererRepetitions() {
     if (!programmeSelectionne?.id) return;
 
     if (
       !window.confirm(
-        "Voulez-vous générer automatiquement les répétitions de ce programme ?"
+        "Voulez-vous générer automatiquement les répétitions du programme ?"
       )
     ) {
       return;
@@ -739,280 +786,153 @@ export default function ProgrammeReligieux() {
     }
   }
 
+  // ========================================================
+  // CATALOGUE KHASSIDAS
+  // ========================================================
 
-  /* ============================================================
-     SUPPRIMER RÉPÉTITION
-  ============================================================ */
-
-  async function supprimerRepetition(repetitionId) {
-    if (!programmeSelectionne?.id) return;
-
-    if (
-      !window.confirm(
-        "Voulez-vous vraiment supprimer cette répétition ?"
-      )
-    ) {
-      return;
-    }
-
-    try {
-      await api.delete(
-        `/programmes-religieux/${programmeSelectionne.id}/repetitions/${repetitionId}`
-      );
-
-      if (
-        repetitionSelectionnee?.id ===
-        repetitionId
-      ) {
-        setRepetitionSelectionnee(null);
-        setKhassidas([]);
-      }
-
-      setMessage(
-        "Répétition supprimée avec succès."
-      );
-
-      await chargerProgramme(
-        programmeSelectionne.id
-      );
-    } catch (error) {
-      afficherErreur(
-        error,
-        "Impossible de supprimer la répétition."
-      );
-    }
-  }
-
-
-  /* ============================================================
-     CHARGER LE CATALOGUE DES KHASSIDAS
-     
-     UTILISÉ UNIQUEMENT DANS LE MODAL AJOUT/MODIFICATION.
-  ============================================================ */
-
-  async function chargerListeKhassidas() {
+  async function chargerCatalogueKhassidas() {
     try {
       const response = await api.get(
         "/khassidas"
       );
 
-      const data = Array.isArray(response.data)
-        ? response.data
-        : Array.isArray(response.data?.items)
-        ? response.data.items
-        : Array.isArray(response.data?.data)
-        ? response.data.data
-        : [];
-
-      setListeKhassidas(data);
-
-      return data;
+      setKhassidas(
+        Array.isArray(response.data)
+          ? response.data
+          : []
+      );
     } catch (error) {
       afficherErreur(
         error,
         "Impossible de charger les Khassidas."
       );
-
-      setListeKhassidas([]);
-
-      return [];
     }
   }
-
-
-  /* ============================================================
-     CHARGER LES TONS D'UNE KHASSIDA
-  ============================================================ */
-
-  async function selectionnerKhassida(
-    khassidaId
-  ) {
-    if (
-      !programmeSelectionne?.id ||
-      !repetitionSelectionnee?.id ||
-      !khassidaId
-    ) {
-      setTons([]);
-      setAudios([]);
-      return;
-    }
-
-    setKhassidaSelectionnee(khassidaId);
-    setTonSelectionne(null);
-    setAudioSelectionne(null);
-    setTons([]);
-    setAudios([]);
-
-    setChargementKhassida(true);
-
-    try {
-      const response = await api.get(
-        `/programmes-religieux/${programmeSelectionne.id}/repetitions/${repetitionSelectionnee.id}/khassidas/${khassidaId}/tons`
-      );
-
-      const data = Array.isArray(response.data)
-        ? response.data
-        : Array.isArray(response.data?.items)
-        ? response.data.items
-        : Array.isArray(response.data?.data)
-        ? response.data.data
-        : [];
-
-      setTons(data);
-    } catch (error) {
-      afficherErreur(
-        error,
-        "Impossible de charger les tons de cette Khassida."
-      );
-    } finally {
-      setChargementKhassida(false);
-    }
-  }
-
-
-  /* ============================================================
-     CHARGER LES AUDIOS D'UN TON
-  ============================================================ */
-
-  async function selectionnerTon(tonId) {
-    if (
-      !programmeSelectionne?.id ||
-      !repetitionSelectionnee?.id ||
-      !khassidaSelectionnee ||
-      !tonId
-    ) {
-      setAudios([]);
-      return;
-    }
-
-    setTonSelectionne(tonId);
-    setAudioSelectionne(null);
-    setAudios([]);
-
-    try {
-      const response = await api.get(
-        `/programmes-religieux/${programmeSelectionne.id}/repetitions/${repetitionSelectionnee.id}/khassidas/${khassidaSelectionnee}/tons/${tonId}/audios`
-      );
-
-      const data = Array.isArray(response.data)
-        ? response.data
-        : Array.isArray(response.data?.items)
-        ? response.data.items
-        : Array.isArray(response.data?.data)
-        ? response.data.data
-        : [];
-
-      setAudios(data);
-    } catch (error) {
-      afficherErreur(
-        error,
-        "Impossible de charger les audios de ce ton."
-      );
-    }
-  }
-
-
-  /* ============================================================
-     OUVRIR MODAL AJOUT KHASSIDA
-  ============================================================ */
 
   async function ouvrirKhassidaModal(
     repetition
   ) {
+    if (!programmeSelectionne?.id) return;
+
     setRepetitionSelectionnee(repetition);
 
     setKhassidaSelectionnee(null);
-    setTonSelectionne(null);
-    setAudioSelectionne(null);
-
-    setTons([]);
-    setAudios([]);
-
-    const nombre =
-      khassidas.length || 0;
+    setTonSelectionne("");
+    setAudioSelectionne("");
 
     setOrdreKhassida(
-      String(nombre + 1)
+      (khassidasProgramme?.length || 0) + 1
     );
 
     setModalKhassida(true);
 
-    await chargerListeKhassidas();
+    await chargerCatalogueKhassidas();
+
+    await chargerKhassidas(
+      repetition.id
+    );
   }
-
-
-  /* ============================================================
-     OUVRIR MODAL MODIFICATION KHASSIDA
-  ============================================================ */
-
-  async function ouvrirEditionKhassida(
-    item
-  ) {
-    setKhassidaSelectionnee(
-      item.khassida_id ||
-        item.khassida?.id ||
-        null
-    );
-
-    setTonSelectionne(
-      item.ton_id ||
-        item.ton?.id ||
-        null
-    );
-
-    setAudioSelectionne(
-      item.audio_id ||
-        item.audio?.id ||
-        null
-    );
-
-    setOrdreKhassida(
-      item.ordre || 1
-    );
-
-    setModalKhassida(true);
-
-    await chargerListeKhassidas();
-
-    const khassidaId =
-      item.khassida_id ||
-      item.khassida?.id;
-
-    if (khassidaId) {
-      await selectionnerKhassida(
-        khassidaId
-      );
-    }
-
-    const tonId =
-      item.ton_id ||
-      item.ton?.id;
-
-    if (tonId) {
-      await selectionnerTon(tonId);
-    }
-  }
-
-
-  /* ============================================================
-     FERMER MODAL KHASSIDA
-  ============================================================ */
 
   function fermerModalKhassida() {
     setModalKhassida(false);
 
     setKhassidaSelectionnee(null);
-    setTonSelectionne(null);
-    setAudioSelectionne(null);
-
     setTons([]);
     setAudios([]);
+
+    setTonSelectionne("");
+    setAudioSelectionne("");
+
+    setOrdreKhassida(1);
   }
 
+  // ========================================================
+  // TONS KHASSIDA
+  // ========================================================
 
-  /* ============================================================
-     ENREGISTRER KHASSIDA DANS RÉPÉTITION
-  ============================================================ */
+  async function selectionnerKhassida(
+    khassidaId
+  ) {
+    setKhassidaSelectionnee(
+      khassidas.find(
+        (item) =>
+          Number(item.id) ===
+          Number(khassidaId)
+      ) || null
+    );
+
+    setTonSelectionne("");
+    setAudioSelectionne("");
+    setTons([]);
+    setAudios([]);
+
+    if (!khassidaId) return;
+
+    setChargementTons(true);
+
+    try {
+      const response = await api.get(
+        `/programmes-religieux/khassidas/${khassidaId}/tons`
+      );
+
+      setTons(
+        Array.isArray(response.data)
+          ? response.data
+          : []
+      );
+    } catch (error) {
+      afficherErreur(
+        error,
+        "Impossible de charger les tons."
+      );
+    } finally {
+      setChargementTons(false);
+    }
+  }
+
+  // ========================================================
+  // AUDIOS KHASSIDA
+  // ========================================================
+
+  async function selectionnerTon(
+    tonId
+  ) {
+    setTonSelectionne(tonId);
+    setAudioSelectionne("");
+    setAudios([]);
+
+    if (
+      !khassidaSelectionnee?.id ||
+      !tonId
+    ) {
+      return;
+    }
+
+    setChargementAudios(true);
+
+    try {
+      const response = await api.get(
+        `/programmes-religieux/khassidas/${khassidaSelectionnee.id}/tons/${tonId}/audios`
+      );
+
+      setAudios(
+        Array.isArray(response.data)
+          ? response.data
+          : []
+      );
+    } catch (error) {
+      afficherErreur(
+        error,
+        "Impossible de charger les audios."
+      );
+    } finally {
+      setChargementAudios(false);
+    }
+  }
+
+  // ========================================================
+  // AJOUTER KHASSIDA A UNE REPETITION
+  // ========================================================
 
   async function ajouterKhassidaARepetition(
     event
@@ -1023,10 +943,13 @@ export default function ProgrammeReligieux() {
       !programmeSelectionne?.id ||
       !repetitionSelectionnee?.id
     ) {
+      setErreur(
+        "Aucune répétition sélectionnée."
+      );
       return;
     }
 
-    if (!khassidaSelectionnee) {
+    if (!khassidaSelectionnee?.id) {
       setErreur(
         "Veuillez sélectionner une Khassida."
       );
@@ -1040,60 +963,25 @@ export default function ProgrammeReligieux() {
       return;
     }
 
-    if (!audioSelectionne) {
-      setErreur(
-        "Veuillez sélectionner un audio."
-      );
-      return;
-    }
-
-    if (
-      !ordreKhassida ||
-      Number(ordreKhassida) < 1
-    ) {
-      setErreur(
-        "L'ordre doit être supérieur ou égal à 1."
-      );
-      return;
-    }
-
     setErreur("");
     setMessage("");
 
     try {
-      const params = new URLSearchParams();
-
-      params.append(
-        "khassida_id",
-        String(khassidaSelectionnee)
-      );
-
-      params.append(
-        "ton_id",
-        String(tonSelectionne)
-      );
-
-      params.append(
-        "audio_id",
-        String(audioSelectionne)
-      );
-
-      params.append(
-        "ordre",
-        String(ordreKhassida)
-      );
-
-      if (
-        window.__PROGRAMME_KHASSSIDA_DEBUG__
-      ) {
-        console.log(
-          "Ajout Khassida répétition :",
-          params.toString()
-        );
-      }
+      const payload = {
+        khassida_id: Number(
+          khassidaSelectionnee.id
+        ),
+        ton_id: Number(
+          tonSelectionne
+        ),
+        ordre: Number(
+          ordreKhassida
+        ),
+      };
 
       await api.post(
-        `/programmes-religieux/${programmeSelectionne.id}/repetitions/${repetitionSelectionnee.id}/khassidas?${params.toString()}`
+        `/programmes-religieux/${programmeSelectionne.id}/repetitions/${repetitionSelectionnee.id}/khassidas`,
+        payload
       );
 
       setMessage(
@@ -1102,37 +990,27 @@ export default function ProgrammeReligieux() {
 
       fermerModalKhassida();
 
-      /*
-       * IMPORTANT :
-       * On recharge directement les Khassidas de
-       * CETTE répétition.
-       */
-      await chargerKhassidas(
-        repetitionSelectionnee.id
-      );
-
-      /*
-       * Puis on rafraîchit le programme pour avoir
-       * les éventuelles autres modifications.
-       */
       await chargerProgramme(
         programmeSelectionne.id
+      );
+
+      await chargerKhassidas(
+        repetitionSelectionnee.id
       );
     } catch (error) {
       afficherErreur(
         error,
-        "Impossible d'ajouter la Khassida à la répétition."
+        "Impossible d'ajouter la Khassida."
       );
     }
   }
 
+  // ========================================================
+  // SUPPRIMER KHASSIDA REPETITION
+  // ========================================================
 
-  /* ============================================================
-     SUPPRIMER KHASSIDA D'UNE RÉPÉTITION
-  ============================================================ */
-
-  async function supprimerKhassida(
-    item
+  async function supprimerKhassidaRepetition(
+    repetitionKhassidaId
   ) {
     if (
       !programmeSelectionne?.id ||
@@ -1143,30 +1021,29 @@ export default function ProgrammeReligieux() {
 
     if (
       !window.confirm(
-        `Retirer "${
-          item.khassida?.titre ||
-          "cette Khassida"
-        }" de cette répétition ?`
+        "Voulez-vous supprimer cette Khassida de la répétition ?"
       )
     ) {
       return;
     }
 
+    setErreur("");
+
     try {
       await api.delete(
-        `/programmes-religieux/${programmeSelectionne.id}/repetitions/${repetitionSelectionnee.id}/khassidas/${item.id}`
+        `/programmes-religieux/${programmeSelectionne.id}/repetitions/${repetitionSelectionnee.id}/khassidas/${repetitionKhassidaId}`
       );
 
       setMessage(
         "Khassida retirée de la répétition."
       );
 
-      await chargerKhassidas(
-        repetitionSelectionnee.id
-      );
-
       await chargerProgramme(
         programmeSelectionne.id
+      );
+
+      await chargerKhassidas(
+        repetitionSelectionnee.id
       );
     } catch (error) {
       afficherErreur(
@@ -1176,62 +1053,65 @@ export default function ProgrammeReligieux() {
     }
   }
 
+  // ========================================================
+  // DECLAMATIONS
+  // ========================================================
 
-  /* ============================================================
-     MODAL DÉCLAMATION
-  ============================================================ */
+  function ouvrirModalDeclamation() {
+    setErreur("");
 
-  function ouvrirNouvelleDeclamation() {
-    setDeclamationEdition(null);
+    setDeclamationSelectionnee(null);
 
     setFormDeclamation({
-      date_declamation:
-        programmeSelectionne?.date_debut ||
-        "",
-      heure: "",
+      date_declamaion: "",
+      date_declamation: "",
+      heure_debut: "",
+      heure_fin: "",
       lieu: "",
-      evenement: "",
+      ordre: declamations.length + 1,
     });
 
     setModalDeclamation(true);
   }
 
+  function fermerModalDeclamation() {
+    setModalDeclamation(false);
+    setDeclamationSelectionnee(null);
+  }
 
-  function ouvrirEditionDeclamation(
+  function modifierDeclamation(
     declamation
   ) {
-    setDeclamationEdition(
+    setDeclamationSelectionnee(
       declamation
     );
 
     setFormDeclamation({
+      date_declamaion:
+        declamation.date_declamaion ||
+        "",
       date_declamation:
         declamation.date_declamation ||
-        declamation.date ||
         "",
-      heure:
-        formaterHeure(
-          declamation.heure
+      heure_debut:
+        declamation.heure_debut?.slice(
+          0,
+          5
+        ) || "",
+      heure_fin:
+        declamation.heure_fin?.slice(
+          0,
+          5
         ) || "",
       lieu:
         declamation.lieu || "",
-      evenement:
-        declamation.evenement || "",
+      ordre:
+        declamation.ordre ||
+        declamations.length + 1,
     });
 
     setModalDeclamation(true);
   }
-
-
-  function fermerModalDeclamation() {
-    setModalDeclamation(false);
-    setDeclamationEdition(null);
-  }
-
-
-  /* ============================================================
-     ENREGISTRER DÉCLAMATION
-  ============================================================ */
 
   async function enregistrerDeclamation(
     event
@@ -1239,12 +1119,8 @@ export default function ProgrammeReligieux() {
     event.preventDefault();
 
     if (!programmeSelectionne?.id) {
-      return;
-    }
-
-    if (!formDeclamation.date_declamation) {
       setErreur(
-        "Veuillez sélectionner une date."
+        "Aucun programme sélectionné."
       );
       return;
     }
@@ -1253,39 +1129,33 @@ export default function ProgrammeReligieux() {
     setMessage("");
 
     try {
-      const params = new URLSearchParams();
+      const dateDeclamation =
+        formDeclamation.date_declamation ||
+        formDeclamation.date_declamaion;
 
-      params.append(
-        "date_declamation",
-        formDeclamation.date_declamation
-      );
-
-      if (formDeclamation.heure) {
-        params.append(
-          "heure",
-          formDeclamation.heure
-        );
-      }
-
-      if (formDeclamation.lieu.trim()) {
-        params.append(
-          "lieu",
-          formDeclamation.lieu.trim()
-        );
-      }
+      const payload = {
+        date_declamation:
+          dateDeclamation,
+        heure_debut:
+          formDeclamation.heure_debut ||
+          null,
+        heure_fin:
+          formDeclamation.heure_fin ||
+          null,
+        lieu:
+          formDeclamation.lieu ||
+          null,
+        ordre: Number(
+          formDeclamation.ordre
+        ),
+      };
 
       if (
-        formDeclamation.evenement.trim()
+        declamationSelectionnee?.id
       ) {
-        params.append(
-          "evenement",
-          formDeclamation.evenement.trim()
-        );
-      }
-
-      if (declamationEdition) {
         await api.put(
-          `/programmes-religieux/${programmeSelectionne.id}/declamations/${declamationEdition.id}?${params.toString()}`
+          `/programmes-religieux/${programmeSelectionne.id}/declamations/${declamationSelectionnee.id}`,
+          payload
         );
 
         setMessage(
@@ -1293,11 +1163,12 @@ export default function ProgrammeReligieux() {
         );
       } else {
         await api.post(
-          `/programmes-religieux/${programmeSelectionne.id}/declamations?${params.toString()}`
+          `/programmes-religieux/${programmeSelectionne.id}/declamations`,
+          payload
         );
 
         setMessage(
-          "Déclamation ajoutée avec succès."
+          "Déclamation créée avec succès."
         );
       }
 
@@ -1314,17 +1185,10 @@ export default function ProgrammeReligieux() {
     }
   }
 
-
-  /* ============================================================
-     SUPPRIMER DÉCLAMATION
-  ============================================================ */
-
   async function supprimerDeclamation(
-    declamation
+    declamationId
   ) {
-    if (!programmeSelectionne?.id) {
-      return;
-    }
+    if (!programmeSelectionne?.id) return;
 
     if (
       !window.confirm(
@@ -1334,9 +1198,11 @@ export default function ProgrammeReligieux() {
       return;
     }
 
+    setErreur("");
+
     try {
       await api.delete(
-        `/programmes-religieux/${programmeSelectionne.id}/declamations/${declamation.id}`
+        `/programmes-religieux/${programmeSelectionne.id}/declamations/${declamationId}`
       );
 
       setMessage(
@@ -1354,10 +1220,40 @@ export default function ProgrammeReligieux() {
     }
   }
 
+  // ========================================================
+  // KHASSIDAS DECLAMATION
+  // ========================================================
 
-  /* ============================================================
-     OUVRIR MODAL KHASSIDA DÉCLAMATION
-  ============================================================ */
+  async function chargerKhassidasDeclamation(
+    declamationId
+  ) {
+    if (!programmeSelectionne?.id) return;
+
+    setChargementKhassidasDeclamation(
+      true
+    );
+
+    try {
+      const response = await api.get(
+        `/programmes-religieux/${programmeSelectionne.id}/declamations/${declamationId}/khassidas`
+      );
+
+      setKhassidasDeclamation(
+        Array.isArray(response.data)
+          ? response.data
+          : []
+      );
+    } catch (error) {
+      afficherErreur(
+        error,
+        "Impossible de charger les Khassidas de la déclamation."
+      );
+    } finally {
+      setChargementKhassidasDeclamation(
+        false
+      );
+    }
+  }
 
   async function ouvrirKhassidaDeclamationModal(
     declamation
@@ -1370,146 +1266,127 @@ export default function ProgrammeReligieux() {
       null
     );
 
-    setTonDeclamationSelectionne(
-      null
-    );
+    setTonDeclamationSelectionne("");
+    setAudioDeclamationSelectionne("");
 
-    setAudioDeclamationSelectionne(
-      null
-    );
-
-    const existantes =
-      extraireKhassidasDeclamation(
-        declamation
-      );
-
-    setOrdreKhassidaDeclamation(
-      existantes.length + 1
-    );
+    setKhassidasDeclamation([]);
 
     setModalKhassidaDeclamation(
       true
     );
 
-    if (listeKhassidas.length === 0) {
-      await chargerListeKhassidas();
-    }
+    await chargerCatalogueKhassidas();
+
+    await chargerKhassidasDeclamation(
+      declamation.id
+    );
   }
 
+  function fermerModalKhassidaDeclamation() {
+    setModalKhassidaDeclamation(
+      false
+    );
 
-  /* ============================================================
-     SÉLECTION KHASSIDA DÉCLAMATION
-  ============================================================ */
+    setKhassidaDeclamationSelectionnee(
+      null
+    );
+
+    setTonsDeclamation([]);
+    setAudiosDeclamation([]);
+
+    setTonDeclamationSelectionne("");
+    setAudioDeclamationSelectionne("");
+
+    setOrdreKhassidaDeclamation(1);
+  }
 
   async function selectionnerKhassidaDeclamation(
     khassidaId
   ) {
-    if (
-      !programmeSelectionne?.id ||
-      !declamationSelectionnee?.id ||
-      !khassidaId
-    ) {
-      return;
-    }
+    const khassida =
+      khassidas.find(
+        (item) =>
+          Number(item.id) ===
+          Number(khassidaId)
+      );
 
     setKhassidaDeclamationSelectionnee(
-      khassidaId
+      khassida || null
     );
 
-    setTonDeclamationSelectionne(
-      null
-    );
+    setTonDeclamationSelectionne("");
+    setAudioDeclamationSelectionne("");
 
-    setAudioDeclamationSelectionne(
-      null
-    );
+    setTonsDeclamation([]);
+    setAudiosDeclamation([]);
 
-    setChargementKhassidaDeclamation(
-      true
-    );
+    if (!khassidaId) return;
+
+    setChargementTons(true);
 
     try {
       const response = await api.get(
-        `/programmes-religieux/${programmeSelectionne.id}/declamations/${declamationSelectionnee.id}/khassidas/${khassidaId}/tons`
+        `/programmes-religieux/declamations/khassidas/${khassidaId}/tons`
       );
 
-      const data = Array.isArray(response.data)
-        ? response.data
-        : Array.isArray(response.data?.items)
-        ? response.data.items
-        : Array.isArray(response.data?.data)
-        ? response.data.data
-        : [];
-
-      setTons(data);
+      setTonsDeclamation(
+        Array.isArray(response.data)
+          ? response.data
+          : []
+      );
     } catch (error) {
       afficherErreur(
         error,
-        "Impossible de charger les tons de la Khassida."
+        "Impossible de charger les tons."
       );
     } finally {
-      setChargementKhassidaDeclamation(
-        false
-      );
+      setChargementTons(false);
     }
   }
-
-
-  /* ============================================================
-     SÉLECTION TON DÉCLAMATION
-  ============================================================ */
 
   async function selectionnerTonDeclamation(
     tonId
   ) {
-    if (
-      !programmeSelectionne?.id ||
-      !declamationSelectionnee?.id ||
-      !khassidaDeclamationSelectionnee ||
-      !tonId
-    ) {
-      return;
-    }
-
     setTonDeclamationSelectionne(
       tonId
     );
 
     setAudioDeclamationSelectionne(
-      null
+      ""
     );
+
+    setAudiosDeclamation([]);
+
+    if (
+      !khassidaDeclamationSelectionnee?.id ||
+      !tonId
+    ) {
+      return;
+    }
+
+    setChargementAudios(true);
 
     try {
       const response = await api.get(
-        `/programmes-religieux/${programmeSelectionne.id}/declamations/${declamationSelectionnee.id}/khassidas/${khassidaDeclamationSelectionnee}/tons/${tonId}/audios`
+        `/programmes-religieux/declamations/khassidas/${khassidaDeclamationSelectionnee.id}/tons/${tonId}/audios`
       );
 
-      const data = Array.isArray(response.data)
-        ? response.data
-        : Array.isArray(response.data?.items)
-        ? response.data.items
-        : Array.isArray(response.data?.data)
-        ? response.data.data
-        : [];
-
-      /*
-       * On réutilise la variable audios du composant.
-       */
-      setAudios(data);
+      setAudiosDeclamation(
+        Array.isArray(response.data)
+          ? response.data
+          : []
+      );
     } catch (error) {
       afficherErreur(
         error,
         "Impossible de charger les audios."
       );
+    } finally {
+      setChargementAudios(false);
     }
   }
 
-
-  /* ============================================================
-     AJOUTER KHASSIDA À UNE DÉCLAMATION
-  ============================================================ */
-
-  async function ajouterKhassidaADeclamation(
+  async function ajouterKhassidaDeclamation(
     event
   ) {
     event.preventDefault();
@@ -1518,11 +1395,14 @@ export default function ProgrammeReligieux() {
       !programmeSelectionne?.id ||
       !declamationSelectionnee?.id
     ) {
+      setErreur(
+        "Aucune déclamation sélectionnée."
+      );
       return;
     }
 
     if (
-      !khassidaDeclamationSelectionnee
+      !khassidaDeclamationSelectionnee?.id
     ) {
       setErreur(
         "Veuillez sélectionner une Khassida."
@@ -1530,21 +1410,9 @@ export default function ProgrammeReligieux() {
       return;
     }
 
-    if (
-      !tonDeclamationSelectionne
-    ) {
+    if (!tonDeclamationSelectionne) {
       setErreur(
         "Veuillez sélectionner un ton."
-      );
-      return;
-    }
-
-    if (
-      !ordreKhassidaDeclamation ||
-      Number(ordreKhassidaDeclamation) < 1
-    ) {
-      setErreur(
-        "L'ordre doit être supérieur ou égal à 1."
       );
       return;
     }
@@ -1553,40 +1421,28 @@ export default function ProgrammeReligieux() {
     setMessage("");
 
     try {
-      const params = new URLSearchParams();
-
-      params.append(
-        "khassida_id",
-        String(
-          khassidaDeclamationSelectionnee
-        )
-      );
-
-      params.append(
-        "ton_id",
-        String(
+      const payload = {
+        khassida_id: Number(
+          khassidaDeclamationSelectionnee.id
+        ),
+        ton_id: Number(
           tonDeclamationSelectionne
-        )
-      );
-
-      params.append(
-        "ordre",
-        String(
+        ),
+        ordre: Number(
           ordreKhassidaDeclamation
-        )
-      );
+        ),
+      };
 
       await api.post(
-        `/programmes-religieux/${programmeSelectionne.id}/declamations/${declamationSelectionnee.id}/khassidas?${params.toString()}`
+        `/programmes-religieux/${programmeSelectionne.id}/declamations/${declamationSelectionnee.id}/khassidas`,
+        payload
       );
 
       setMessage(
         "Khassida ajoutée à la déclamation."
       );
 
-      setModalKhassidaDeclamation(
-        false
-      );
+      fermerModalKhassidaDeclamation();
 
       await chargerProgramme(
         programmeSelectionne.id
@@ -1599,25 +1455,19 @@ export default function ProgrammeReligieux() {
     }
   }
 
-
-  /* ============================================================
-     SUPPRIMER KHASSIDA DÉCLAMATION
-  ============================================================ */
-
   async function supprimerKhassidaDeclamation(
-    declamation,
-    item
+    declamationKhassidaId
   ) {
-    if (!programmeSelectionne?.id) {
+    if (
+      !programmeSelectionne?.id ||
+      !declamationSelectionnee?.id
+    ) {
       return;
     }
 
     if (
       !window.confirm(
-        `Retirer "${
-          item.khassida?.titre ||
-          "cette Khassida"
-        }" de la déclamation ?`
+        "Voulez-vous supprimer cette Khassida de la déclamation ?"
       )
     ) {
       return;
@@ -1625,7 +1475,7 @@ export default function ProgrammeReligieux() {
 
     try {
       await api.delete(
-        `/programmes-religieux/${programmeSelectionne.id}/declamations/${declamation.id}/khassidas/${item.id}`
+        `/programmes-religieux/${programmeSelectionne.id}/declamations/${declamationSelectionnee.id}/khassidas/${declamationKhassidaId}`
       );
 
       setMessage(
@@ -1643,1227 +1493,859 @@ export default function ProgrammeReligieux() {
     }
   }
 
+  // ========================================================
+  // PROGRAMME NON AUTORISE
+  // ========================================================
 
-  /* ============================================================
-     DÉCLAMATIONS DU PROGRAMME
-  ============================================================ */
+  if (!chargement && !peutConsulter) {
+    return (
+      <div className="p-6">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700">
+          <h2 className="text-lg font-semibold">
+            Accès refusé
+          </h2>
 
-  const declamations = useMemo(() => {
-    if (
-      Array.isArray(
-        programmeSelectionne?.declamations
-      )
-    ) {
-      return programmeSelectionne.declamations;
-    }
+          <p className="mt-2 text-sm">
+            Vous n'avez pas la permission de consulter
+            les programmes religieux.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-    if (
-      Array.isArray(
-        programmeSelectionne?.evenements
-      )
-    ) {
-      return programmeSelectionne.evenements;
-    }
-
-    return [];
-  }, [programmeSelectionne]);
-
-
-  /* ============================================================
-     RENDU CHARGEMENT
-  ============================================================ */
+  // ========================================================
+  // CHARGEMENT INITIAL
+  // ========================================================
 
   if (chargement) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="flex items-center gap-3 text-emerald-700">
-          <Loader2
-            size={25}
-            className="animate-spin"
-          />
-
-          <span className="font-semibold">
-            Chargement du programme...
+      <div className="flex min-h-[300px] items-center justify-center">
+        <div className="flex items-center gap-3 text-slate-600">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>
+            Chargement des programmes religieux...
           </span>
         </div>
       </div>
     );
   }
 
+  // ========================================================
+  // RENDER
+  // ========================================================
 
-  /* ============================================================
-     ACCÈS REFUSÉ
-  ============================================================ */
+  return (
+    <div className="space-y-6 p-4 md:p-6">
+      {/* ================================================== */}
+      {/* EN-TETE */}
+      {/* ================================================== */}
 
-  if (!peutConsulter) {
-    return (
-      <div className="mx-auto max-w-3xl p-6">
-        <div className="rounded-3xl border border-red-200 bg-red-50 p-8 text-center">
-          <X
-            size={42}
-            className="mx-auto text-red-500"
-          />
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-emerald-100 p-3 text-emerald-700">
+              <Music className="h-6 w-6" />
+            </div>
 
-          <h2 className="mt-4 text-xl font-black text-red-800">
-            Accès refusé
-          </h2>
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">
+                Programme religieux
+              </h1>
 
-          <p className="mt-2 text-sm text-red-600">
-            Vous n'avez pas la permission de
-            consulter le programme religieux.
-          </p>
+              <p className="text-sm text-slate-500">
+                Gestion des répétitions et des déclamations
+                du Kourel.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              chargerProgrammes(false)
+            }
+            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${
+                rafraichissement
+                  ? "animate-spin"
+                  : ""
+              }`}
+            />
+
+            Actualiser
+          </button>
+
+          {peutModifier && (
+            <button
+              type="button"
+              onClick={ouvrirModalProgramme}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-emerald-700"
+            >
+              <Plus className="h-4 w-4" />
+              Nouveau programme
+            </button>
+          )}
         </div>
       </div>
-    );
-  }
 
+      {/* ================================================== */}
+      {/* MESSAGES */}
+      {/* ================================================== */}
 
-  /* ============================================================
-     AUCUN PROGRAMME
-  ============================================================ */
+      {rafraichissement && (
+        <div className="flex items-center gap-2 text-xs text-slate-500">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Actualisation...
+        </div>
+      )}
 
-  if (!programmeSelectionne) {
-    return (
-      <div className="mx-auto max-w-6xl p-6">
-        <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-          <CalendarDays
-            size={50}
-            className="mx-auto text-slate-300"
-          />
+      {erreur && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {erreur}
+        </div>
+      )}
 
-          <h2 className="mt-5 text-xl font-black text-slate-800">
+      {message && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {message}
+        </div>
+      )}
+
+      {/* ================================================== */}
+      {/* LISTE PROGRAMMES */}
+      {/* ================================================== */}
+
+      {programmes.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+          <CalendarDays className="mx-auto h-10 w-10 text-slate-400" />
+
+          <h2 className="mt-4 text-lg font-semibold text-slate-800">
             Aucun programme religieux
           </h2>
 
           <p className="mt-2 text-sm text-slate-500">
-            Aucun programme mensuel n'est
-            actuellement disponible pour votre
-            Kourel.
+            Aucun programme n'a encore été créé pour
+            votre Kourel.
           </p>
 
           {peutModifier && (
             <button
               type="button"
-              onClick={
-                ouvrirModalProgramme
-              }
-              className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-emerald-700 px-5 py-3 text-sm font-black text-white"
+              onClick={ouvrirModalProgramme}
+              className="mt-5 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700"
             >
-              <Plus size={17} />
+              <Plus className="h-4 w-4" />
               Créer un programme
             </button>
           )}
         </div>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+          {/* ============================================== */}
+          {/* PROGRAMMES */}
+          {/* ============================================== */}
 
-        {modalProgramme && (
-          <ModalProgramme
-            formProgramme={
-              formProgramme
-            }
-            setFormProgramme={
-              setFormProgramme
-            }
-            onClose={
-              fermerModalProgramme
-            }
-            onSubmit={
-              creerProgramme
-            }
-          />
-        )}
-      </div>
-    );
-  }
+          <div className="space-y-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+              Programmes
+            </h2>
 
+            {programmes.map((programme) => {
+              const selectionne =
+                Number(programme.id) ===
+                Number(
+                  programmeSelectionne?.id
+                );
 
-  const repetitions =
-    Array.isArray(
-      programmeSelectionne.repetitions
-    )
-      ? programmeSelectionne.repetitions
-      : [];
-
-
-  /* ============================================================
-     RENDU PRINCIPAL
-  ============================================================ */
-
-  return (
-    <div className="min-h-screen bg-slate-50 p-4 sm:p-6 lg:p-8">
-      <div className="mx-auto max-w-7xl">
-
-        {/* ====================================================
-            EN-TÊTE
-        ==================================================== */}
-
-        <div className="mb-8 overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-900 p-6 text-white shadow-xl sm:p-8">
-
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-
-            <div>
-              <div className="mb-3 flex items-center gap-2 text-emerald-300">
-                <CalendarDays size={18} />
-
-                <span className="text-xs font-black uppercase tracking-[0.2em]">
-                  Programme du Kourel
-                </span>
-              </div>
-
-              <h1 className="text-3xl font-black sm:text-4xl">
-                Programme religieux
-              </h1>
-
-              <p className="mt-3 text-sm text-emerald-100/70">
-                Programme du mois{" "}
-                <strong>
-                  {MOIS[
-                    Number(
-                      programmeSelectionne.mois
-                    ) - 1
-                  ] ||
-                    String(
-                      programmeSelectionne.mois
-                    ).padStart(2, "0")}
-                  {" "}
-                  {programmeSelectionne.annee}
-                </strong>
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-
-              {peutModifier && (
-                <>
-                  <button
-                    type="button"
-                    onClick={
-                      genererRepetitions
-                    }
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-black text-white backdrop-blur transition hover:bg-white/20"
-                  >
-                    <RefreshCw
-                      size={17}
-                    />
-                    Générer les répétitions
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={
-                      ouvrirNouvelleRepetition
-                    }
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-black text-emerald-900 shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
-                  >
-                    <Plus size={18} />
-                    Ajouter une répétition
-                  </button>
-                </>
-              )}
-
-            </div>
-
-          </div>
-        </div>
-
-
-        {/* ====================================================
-            MESSAGES
-        ==================================================== */}
-
-        {message && (
-          <div className="mb-5 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-            <Check size={18} />
-
-            <span>{message}</span>
-
-            <button
-              type="button"
-              className="ml-auto"
-              onClick={() =>
-                setMessage("")
-              }
-            >
-              <X size={16} />
-            </button>
-          </div>
-        )}
-
-
-        {erreur && (
-          <div className="mb-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
-            <X
-              size={18}
-              className="mt-0.5 shrink-0"
-            />
-
-            <span>{erreur}</span>
-
-            <button
-              type="button"
-              className="ml-auto"
-              onClick={() =>
-                setErreur("")
-              }
-            >
-              <X size={16} />
-            </button>
-          </div>
-        )}
-
-
-        {/* ====================================================
-            INFORMATIONS PROGRAMME
-        ==================================================== */}
-
-        <div className="mb-8 grid gap-4 sm:grid-cols-3">
-
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Début
-            </p>
-
-            <p className="mt-2 font-black capitalize text-slate-800">
-              {formaterDate(
-                programmeSelectionne.date_debut
-              )}
-            </p>
-          </div>
-
-
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Fin
-            </p>
-
-            <p className="mt-2 font-black capitalize text-slate-800">
-              {formaterDate(
-                programmeSelectionne.date_fin
-              )}
-            </p>
-          </div>
-
-
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Répétitions
-            </p>
-
-            <p className="mt-2 text-2xl font-black text-emerald-700">
-              {repetitions.length}
-            </p>
-          </div>
-
-        </div>
-
-
-        {/* ====================================================
-            RÉPÉTITIONS
-        ==================================================== */}
-
-        <section className="mb-10">
-
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <Music
-                  size={20}
-                  className="text-emerald-700"
-                />
-
-                <h2 className="text-xl font-black text-slate-900">
-                  Répétitions
-                </h2>
-              </div>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Les séances de répétition du
-                programme religieux.
-              </p>
-            </div>
-          </div>
-
-
-          {repetitions.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center">
-              <CalendarDays
-                size={42}
-                className="mx-auto text-slate-300"
-              />
-
-              <p className="mt-4 font-bold text-slate-600">
-                Aucune répétition programmée.
-              </p>
-
-              {peutModifier && (
+              return (
                 <button
+                  key={programme.id}
                   type="button"
-                  onClick={
-                    ouvrirNouvelleRepetition
+                  onClick={() =>
+                    chargerProgramme(
+                      programme.id
+                    )
                   }
-                  className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white"
+                  className={`w-full rounded-2xl border p-4 text-left transition ${
+                    selectionne
+                      ? "border-emerald-500 bg-emerald-50 shadow-sm"
+                      : "border-slate-200 bg-white hover:border-emerald-300 hover:bg-slate-50"
+                  }`}
                 >
-                  <Plus size={17} />
-                  Ajouter une répétition
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4 text-emerald-600" />
 
-              {repetitions.map(
-                (repetition) => {
-                  const ouverte =
-                    repetitionSelectionnee?.id ===
-                    repetition.id;
-
-                  return (
-                    <div
-                      key={repetition.id}
-                      className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
-                    >
-
-                      {/* EN-TÊTE */}
-
-                      <div className="p-5 sm:p-6">
-
-                        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              ouvrirRepetition(
-                                repetition
-                              )
-                            }
-                            className="flex min-w-0 flex-1 items-center gap-4 text-left"
-                          >
-
-                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
-                              <CalendarDays
-                                size={25}
-                              />
-                            </div>
-
-
-                            <div className="min-w-0">
-
-                              <p className="text-lg font-black capitalize text-slate-900">
-                                {formaterDate(
-                                  repetition.date_repetition
-                                )}
-                              </p>
-
-                              <div className="mt-2 flex flex-wrap gap-3 text-xs font-semibold text-slate-500">
-
-                                {(repetition.heure_debut ||
-                                  repetition.heure_fin) && (
-                                  <span className="inline-flex items-center gap-1.5">
-                                    <Clock
-                                      size={14}
-                                    />
-
-                                    {formaterHeure(
-                                      repetition.heure_debut
-                                    )}
-
-                                    {repetition.heure_fin &&
-                                      ` - ${formaterHeure(
-                                        repetition.heure_fin
-                                      )}`}
-                                  </span>
-                                )}
-
-
-                                {repetition.lieu && (
-                                  <span className="inline-flex items-center gap-1.5">
-                                    <MapPin
-                                      size={14}
-                                    />
-                                    {repetition.lieu}
-                                  </span>
-                                )}
-
-                              </div>
-
-                            </div>
-
-
-                            <div className="ml-auto">
-                              <ChevronRight
-                                size={21}
-                                className={`text-slate-400 transition-transform ${
-                                  ouverte
-                                    ? "rotate-90"
-                                    : ""
-                                }`}
-                              />
-                            </div>
-
-                          </button>
-
-
-                          {peutModifier && (
-                            <div className="flex items-center gap-2">
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  ouvrirEditionRepetition(
-                                    repetition
-                                  )
-                                }
-                                className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-200"
-                              >
-                                <Pencil
-                                  size={15}
-                                />
-                                Modifier
-                              </button>
-
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  supprimerRepetition(
-                                    repetition.id
-                                  )
-                                }
-                                className="inline-flex items-center gap-2 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-600 transition hover:bg-red-100"
-                              >
-                                <Trash2
-                                  size={15}
-                                />
-                                Supprimer
-                              </button>
-
-                            </div>
-                          )}
-
-                        </div>
+                        <span className="font-semibold text-slate-800">
+                          {String(
+                            programme.mois
+                          ).padStart(2, "0")}
+                          /
+                          {programme.annee}
+                        </span>
                       </div>
 
-
-                      {/* ==================================================
-                          CONTENU DE LA RÉPÉTITION
-                      ================================================== */}
-
-                      {ouverte && (
-                        <div className="border-t border-slate-100 bg-slate-50/70 p-5 sm:p-6">
-
-                          <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <BookOpen
-                                  size={19}
-                                  className="text-emerald-700"
-                                />
-
-                                <h3 className="font-black text-slate-900">
-                                  Khassidas à répéter
-                                </h3>
-                              </div>
-
-                              <p className="mt-1 text-xs text-slate-500">
-                                Les Khassidas, leurs
-                                tons et leurs audios
-                                pour cette répétition.
-                              </p>
-                            </div>
-
-
-                            {peutModifier && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  ouvrirKhassidaModal(
-                                    repetition
-                                  )
-                                }
-                                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-700 px-4 py-2.5 text-xs font-black text-white shadow-md transition hover:bg-emerald-800"
-                              >
-                                <Plus size={16} />
-                                Ajouter une Khassida
-                              </button>
-                            )}
-
-                          </div>
-
-
-                          {/* CHARGEMENT */}
-
-                          {chargementKhassidas ? (
-                            <div className="flex items-center justify-center rounded-2xl bg-white py-12">
-                              <div className="flex items-center gap-3 text-emerald-700">
-                                <Loader2
-                                  size={26}
-                                  className="animate-spin"
-                                />
-
-                                <span className="text-sm font-bold">
-                                  Chargement des Khassidas...
-                                </span>
-                              </div>
-                            </div>
-                          ) : khassidas.length ===
-                            0 ? (
-
-                            /* AUCUNE KHASSIDA */
-
-                            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
-
-                              <BookOpen
-                                size={36}
-                                className="mx-auto text-slate-300"
-                              />
-
-                              <p className="mt-3 text-sm font-bold text-slate-600">
-                                Aucune Khassida
-                                programmée pour
-                                cette répétition.
-                              </p>
-
-                              {peutModifier && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    ouvrirKhassidaModal(
-                                      repetition
-                                    )
-                                  }
-                                  className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white"
-                                >
-                                  <Plus size={15} />
-                                  Ajouter la première
-                                  Khassida
-                                </button>
-                              )}
-
-                            </div>
-
-                          ) : (
-
-                            /* KHASSIDAS */
-
-                            <div className="space-y-3">
-
-                              {khassidas
-                                .slice()
-                                .sort(
-                                  (a, b) =>
-                                    Number(
-                                      a.ordre || 0
-                                    ) -
-                                    Number(
-                                      b.ordre || 0
-                                    )
-                                )
-                                .map(
-                                  (
-                                    item,
-                                    index
-                                  ) => {
-
-                                    const titre =
-                                      item.khassida
-                                        ?.titre ||
-                                      item.khassida_titre ||
-                                      "Khassida";
-
-                                    const auteur =
-                                      item.khassida
-                                        ?.auteur ||
-                                      item.khassida_auteur ||
-                                      "";
-
-                                    const ton =
-                                      item.ton?.nom ||
-                                      item.ton_nom ||
-                                      "Non défini";
-
-                                    const audioUrl =
-                                      construireUrlAudio(
-                                        item.audio
-                                      );
-
-                                    const audioTitre =
-                                      item.audio
-                                        ?.titre ||
-                                      item.audio_titre ||
-                                      "Audio";
-
-                                    return (
-                                      <div
-                                        key={
-                                          item.id ||
-                                          `${repetition.id}-${index}`
-                                        }
-                                        className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-                                      >
-
-                                        <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-
-                                          {/* ORDRE */}
-
-                                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-sm font-black text-emerald-700">
-                                            {item.ordre ||
-                                              index +
-                                                1}
-                                          </div>
-
-
-                                          {/* KHASSIDA */}
-
-                                          <div className="min-w-0 flex-1">
-
-                                            <div className="flex items-center gap-2">
-                                              <BookOpen
-                                                size={
-                                                  16
-                                                }
-                                                className="shrink-0 text-emerald-700"
-                                              />
-
-                                              <h4 className="truncate font-black text-slate-900">
-                                                {
-                                                  titre
-                                                }
-                                              </h4>
-                                            </div>
-
-                                            {auteur && (
-                                              <p className="mt-1 text-xs text-slate-400">
-                                                {
-                                                  auteur
-                                                }
-                                              </p>
-                                            )}
-
-                                          </div>
-
-
-                                          {/* TON */}
-
-                                          <div className="rounded-xl bg-violet-50 px-3 py-2">
-                                            <p className="text-[10px] font-bold uppercase tracking-wider text-violet-400">
-                                              Ton
-                                            </p>
-
-                                            <p className="mt-0.5 text-sm font-black text-violet-700">
-                                              {
-                                                ton
-                                              }
-                                            </p>
-                                          </div>
-
-
-                                          {/* AUDIO */}
-
-                                          <div className="min-w-[220px] rounded-xl bg-slate-50 px-3 py-2">
-
-                                            <div className="flex items-center gap-2">
-                                              <Headphones
-                                                size={
-                                                  15
-                                                }
-                                                className="text-slate-500"
-                                              />
-
-                                              <span className="truncate text-xs font-bold text-slate-700">
-                                                {
-                                                  audioTitre
-                                                }
-                                              </span>
-                                            </div>
-
-                                            {audioUrl && (
-                                              <audio
-                                                controls
-                                                preload="none"
-                                                className="mt-2 h-8 w-full"
-                                              >
-                                                <source
-                                                  src={
-                                                    audioUrl
-                                                  }
-                                                />
-
-                                                Votre navigateur
-                                                ne supporte
-                                                pas l'audio.
-                                              </audio>
-                                            )}
-
-                                          </div>
-
-
-                                          {/* ACTIONS */}
-
-                                          {peutModifier && (
-                                            <div className="flex items-center gap-2">
-
-                                              <button
-                                                type="button"
-                                                onClick={() =>
-                                                  ouvrirEditionKhassida(
-                                                    item
-                                                  )
-                                                }
-                                                className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
-                                                title="Modifier"
-                                              >
-                                                <Pencil
-                                                  size={
-                                                    15
-                                                  }
-                                                />
-                                              </button>
-
-
-                                              <button
-                                                type="button"
-                                                onClick={() =>
-                                                  supprimerKhassida(
-                                                    item
-                                                  )
-                                                }
-                                                className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-50 text-red-600 transition hover:bg-red-100"
-                                                title="Retirer"
-                                              >
-                                                <Trash2
-                                                  size={
-                                                    15
-                                                  }
-                                                />
-                                              </button>
-
-                                            </div>
-                                          )}
-
-                                        </div>
-                                      </div>
-                                    );
-                                  }
-                                )}
-
-                            </div>
-                          )}
-
-                        </div>
-                      )}
-
+                      <p className="mt-2 text-xs text-slate-500">
+                        Du{" "}
+                        {formaterDate(
+                          programme.date_debut
+                        )}{" "}
+                        au{" "}
+                        {formaterDate(
+                          programme.date_fin
+                        )}
+                      </p>
                     </div>
-                  );
-                }
-              )}
 
-            </div>
-          )}
-
-        </section>
-
-
-        {/* ====================================================
-            DÉCLAMATIONS
-        ==================================================== */}
-
-        <section>
-
-          <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-
-            <div>
-              <div className="flex items-center gap-2">
-                <Mic2
-                  size={20}
-                  className="text-emerald-700"
-                />
-
-                <h2 className="text-xl font-black text-slate-900">
-                  Déclamations
-                </h2>
-              </div>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Khassidas à déclamer lors des
-                réunions et programmes religieux.
-              </p>
-            </div>
-
-
-            {peutModifier && (
-              <button
-                type="button"
-                onClick={
-                  ouvrirNouvelleDeclamation
-                }
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-700 px-4 py-2.5 text-xs font-black text-white shadow-md transition hover:bg-emerald-800"
-              >
-                <Plus size={16} />
-                Ajouter une déclamation
-              </button>
-            )}
-
+                    <ChevronRight className="h-4 w-4 text-slate-400" />
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
+          {/* ============================================== */}
+          {/* DETAIL PROGRAMME */}
+          {/* ============================================== */}
 
-          {declamations.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center">
-              <Mic2
-                size={42}
-                className="mx-auto text-slate-300"
-              />
+          <div className="space-y-6">
+            {chargementProgramme ? (
+              <div className="flex min-h-[300px] items-center justify-center rounded-2xl border border-slate-200 bg-white">
+                <div className="flex items-center gap-2 text-slate-500">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Chargement du programme...
+                </div>
+              </div>
+            ) : programmeSelectionne ? (
+              <>
+                {/* ---------------------------------------- */}
+                {/* CARTE PROGRAMME */}
+                {/* ---------------------------------------- */}
 
-              <p className="mt-4 font-bold text-slate-600">
-                Aucune déclamation programmée.
-              </p>
+                <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="h-5 w-5 text-emerald-600" />
 
-              {peutModifier && (
-                <button
-                  type="button"
-                  onClick={
-                    ouvrirNouvelleDeclamation
-                  }
-                  className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white"
-                >
-                  <Plus size={17} />
-                  Ajouter une déclamation
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
+                        <h2 className="text-xl font-bold text-slate-900">
+                          Programme{" "}
+                          {String(
+                            programmeSelectionne.mois
+                          ).padStart(2, "0")}
+                          /
+                          {
+                            programmeSelectionne.annee
+                          }
+                        </h2>
+                      </div>
 
-              {declamations.map(
-                (declamation) => {
-
-                  const khassidasDeclamation =
-                    extraireKhassidasDeclamation(
-                      declamation
-                    );
-
-                  return (
-                    <div
-                      key={
-                        declamation.id
-                      }
-                      className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
-                    >
-
-                      <div className="p-5 sm:p-6">
-
-                        <div className="flex flex-col gap-5">
-
-                          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-
-                            <div className="flex min-w-0 items-start gap-4">
-
-                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
-                                <Mic2
-                                  size={22}
-                                />
-                              </div>
-
-                              <div className="min-w-0">
-
-                                <h3 className="font-black text-slate-900">
-                                  {declamation.evenement ||
-                                    "Déclamation"}
-                                </h3>
-
-                                <div className="mt-2 flex flex-wrap gap-3 text-xs font-semibold text-slate-500">
-
-                                  {(declamation.date_declamation ||
-                                    declamation.date) && (
-                                    <span className="inline-flex items-center gap-1.5">
-                                      <CalendarDays
-                                        size={
-                                          14
-                                        }
-                                      />
-
-                                      {formaterDate(
-                                        declamation.date_declamation ||
-                                          declamation.date
-                                      )}
-                                    </span>
-                                  )}
-
-                                  {declamation.heure && (
-                                    <span className="inline-flex items-center gap-1.5">
-                                      <Clock
-                                        size={
-                                          14
-                                        }
-                                      />
-
-                                      {formaterHeure(
-                                        declamation.heure
-                                      )}
-                                    </span>
-                                  )}
-
-                                  {declamation.lieu && (
-                                    <span className="inline-flex items-center gap-1.5">
-                                      <MapPin
-                                        size={
-                                          14
-                                        }
-                                      />
-
-                                      {
-                                        declamation.lieu
-                                      }
-                                    </span>
-                                  )}
-
-                                </div>
-
-                              </div>
-
-                            </div>
-
-
-                            {peutModifier && (
-                              <div className="flex items-center gap-2">
-
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    ouvrirEditionDeclamation(
-                                      declamation
-                                    )
-                                  }
-                                  className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-700"
-                                >
-                                  <Pencil
-                                    size={
-                                      15
-                                    }
-                                  />
-                                  Modifier
-                                </button>
-
-
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    supprimerDeclamation(
-                                      declamation
-                                    )
-                                  }
-                                  className="inline-flex items-center gap-2 rounded-xl bg-red-50 px-3 py-2 text-xs font-bold text-red-600"
-                                >
-                                  <Trash2
-                                    size={
-                                      15
-                                    }
-                                  />
-                                  Supprimer
-                                </button>
-
-                              </div>
+                      <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-500">
+                        <span>
+                          Du{" "}
+                          <strong className="text-slate-700">
+                            {formaterDate(
+                              programmeSelectionne.date_debut
                             )}
+                          </strong>
+                        </span>
 
-                          </div>
+                        <span>
+                          au{" "}
+                          <strong className="text-slate-700">
+                            {formaterDate(
+                              programmeSelectionne.date_fin
+                            )}
+                          </strong>
+                        </span>
+                      </div>
+                    </div>
 
+                    {peutModifier && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          supprimerProgramme(
+                            programmeSelectionne.id
+                          )
+                        }
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Supprimer
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-                          {/* KHASSIDAS DÉCLAMATION */}
+                {/* ---------------------------------------- */}
+                {/* REPETITIONS */}
+                {/* ---------------------------------------- */}
 
-                          <div className="rounded-2xl bg-slate-50 p-4">
+                <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <div className="flex flex-col gap-3 border-b border-slate-200 p-5 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="h-5 w-5 text-emerald-600" />
 
-                            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <h2 className="text-lg font-bold text-slate-900">
+                          Répétitions
+                        </h2>
+                      </div>
 
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <BookOpen
-                                    size={
-                                      17
-                                    }
-                                    className="text-violet-700"
-                                  />
+                      <p className="mt-1 text-sm text-slate-500">
+                        Khassidas à répéter durant le
+                        programme mensuel.
+                      </p>
+                    </div>
 
-                                  <h4 className="text-sm font-black text-slate-800">
-                                    Khassidas à déclamer
-                                  </h4>
-                                </div>
-                              </div>
+                    {peutModifier && (
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={
+                            genererRepetitions
+                          }
+                          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                          Générer
+                        </button>
 
+                        <button
+                          type="button"
+                          onClick={
+                            ouvrirModalRepetition
+                          }
+                          className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Répétition
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
-                              {peutModifier && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    ouvrirKhassidaDeclamationModal(
-                                      declamation
-                                    )
-                                  }
-                                  className="inline-flex items-center gap-2 rounded-xl bg-violet-700 px-3 py-2 text-xs font-bold text-white"
-                                >
-                                  <Plus
-                                    size={
-                                      15
-                                    }
-                                  />
-                                  Ajouter une Khassida
-                                </button>
-                              )}
+                  <div className="p-5">
+                    {repetitions.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center">
+                        <BookOpen className="mx-auto h-8 w-8 text-slate-400" />
 
-                            </div>
+                        <p className="mt-3 text-sm text-slate-500">
+                          Aucune répétition enregistrée.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {repetitions.map(
+                          (repetition) => {
+                            const ouverte =
+                              Number(
+                                repetitionSelectionnee?.id
+                              ) ===
+                              Number(
+                                repetition.id
+                              );
 
-
-                            {khassidasDeclamation.length ===
-                            0 ? (
-                              <p className="rounded-xl border border-dashed border-slate-300 bg-white p-5 text-center text-xs font-semibold text-slate-500">
-                                Aucune Khassida
-                                programmée.
-                              </p>
-                            ) : (
-                              <div className="space-y-2">
-
-                                {khassidasDeclamation
-                                  .slice()
-                                  .sort(
-                                    (a, b) =>
-                                      Number(
-                                        a.ordre ||
-                                          0
-                                      ) -
-                                      Number(
-                                        b.ordre ||
-                                          0
+                            return (
+                              <div
+                                key={
+                                  repetition.id
+                                }
+                                className={`rounded-2xl border p-4 ${
+                                  ouverte
+                                    ? "border-emerald-300 bg-emerald-50/40"
+                                    : "border-slate-200"
+                                }`}
+                              >
+                                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      ouvrirRepetition(
+                                        repetition
                                       )
-                                  )
-                                  .map(
-                                    (
-                                      item,
-                                      index
-                                    ) => {
+                                    }
+                                    className="flex-1 text-left"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <div className="rounded-xl bg-slate-100 p-2">
+                                        <CalendarDays className="h-5 w-5 text-slate-600" />
+                                      </div>
 
-                                      const audioUrl =
-                                        construireUrlAudio(
-                                          item.audio
-                                        );
+                                      <div>
+                                        <h3 className="font-semibold text-slate-800">
+                                          Répétition{" "}
+                                          {repetition.ordre ||
+                                            ""}
+                                        </h3>
 
-                                      return (
-                                        <div
-                                          key={
-                                            item.id ||
-                                            `${declamation.id}-${index}`
+                                        <p className="text-sm text-slate-500">
+                                          {formaterDate(
+                                            repetition.date_repetition
+                                          )}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="mt-4 grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
+                                      <div className="flex items-center gap-2">
+                                        <Clock className="h-4 w-4" />
+
+                                        <span>
+                                          {formaterHeure(
+                                            repetition.heure_debut
+                                          )}
+                                          {" - "}
+                                          {formaterHeure(
+                                            repetition.heure_fin
+                                          )}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex items-center gap-2">
+                                        <MapPin className="h-4 w-4" />
+
+                                        <span>
+                                          {repetition.lieu ||
+                                            "Lieu non précisé"}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex items-center gap-2">
+                                        <BookOpen className="h-4 w-4" />
+
+                                        <span>
+                                          {Array.isArray(
+                                            repetition.khassidas
+                                          )
+                                            ? repetition.khassidas.length
+                                            : 0}{" "}
+                                          Khassida(s)
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </button>
+
+                                  {peutModifier && (
+                                    <div className="flex gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          modifierRepetition(
+                                            repetition
+                                          )
+                                        }
+                                        className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"
+                                        title="Modifier"
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          supprimerRepetition(
+                                            repetition.id
+                                          )
+                                        }
+                                        className="rounded-lg border border-red-200 p-2 text-red-600 hover:bg-red-50"
+                                        title="Supprimer"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* KHASSIDAS DE LA REPETITION */}
+                                {ouverte && (
+                                  <div className="mt-5 border-t border-slate-200 pt-5">
+                                    <div className="mb-4 flex items-center justify-between gap-3">
+                                      <div>
+                                        <h4 className="font-semibold text-slate-800">
+                                          Khassidas à répéter
+                                        </h4>
+                                      </div>
+
+                                      {peutModifier && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            ouvrirKhassidaModal(
+                                              repetition
+                                            )
                                           }
-                                          className="rounded-xl border border-slate-200 bg-white p-3"
+                                          className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
                                         >
+                                          <Plus className="h-4 w-4" />
+                                          Ajouter
+                                        </button>
+                                      )}
+                                    </div>
 
-                                          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                                    {chargementKhassidas ? (
+                                      <div className="flex items-center gap-2 py-5 text-sm text-slate-500">
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Chargement...
+                                      </div>
+                                    ) : khassidasProgramme.length ===
+                                      0 ? (
+                                      <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center">
+                                        <Music className="mx-auto h-7 w-7 text-slate-400" />
 
-                                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-xs font-black text-violet-700">
-                                              {item.ordre ||
-                                                index +
-                                                  1}
+                                        <p className="mt-2 text-sm text-slate-500">
+                                          Aucune Khassida ajoutée.
+                                        </p>
+                                      </div>
+                                    ) : (
+                                      <div className="space-y-3">
+                                        {khassidasProgramme.map(
+                                          (
+                                            item,
+                                            index
+                                          ) => (
+                                            <div
+                                              key={
+                                                item.id ||
+                                                `${item.khassida_id}-${index}`
+                                              }
+                                              className="rounded-xl border border-slate-200 bg-white p-4"
+                                            >
+                                              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                                <div>
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
+                                                      {item.ordre ||
+                                                        index +
+                                                          1}
+                                                    </span>
+
+                                                    <span className="font-semibold text-slate-800">
+                                                      {item.khassida?.titre ||
+                                                        item.khassida?.nom ||
+                                                        item.titre ||
+                                                        "Khassida"}
+                                                    </span>
+                                                  </div>
+
+                                                  <div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-500">
+                                                    <span>
+                                                      Ton :{" "}
+                                                      <strong className="text-slate-700">
+                                                        {item.ton?.nom ||
+                                                          item.ton?.titre ||
+                                                          item.ton_nom ||
+                                                          "—"}
+                                                      </strong>
+                                                    </span>
+                                                  </div>
+
+                                                  {item.audio?.fichier && (
+                                                    <div className="mt-3">
+                                                      <audio
+                                                        controls
+                                                        preload="metadata"
+                                                        className="h-9 w-full max-w-md"
+                                                        src={construireUrlAudio(
+                                                          item.audio
+                                                            .fichier ||
+                                                            item.audio
+                                                              .url
+                                                        )}
+                                                      >
+                                                        Votre navigateur ne supporte pas la lecture audio.
+                                                      </audio>
+                                                    </div>
+                                                  )}
+                                                </div>
+
+                                                {peutModifier && (
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      supprimerKhassidaRepetition(
+                                                        item.id
+                                                      )
+                                                    }
+                                                    className="self-start rounded-lg border border-red-200 p-2 text-red-600 hover:bg-red-50"
+                                                  >
+                                                    <Trash2 className="h-4 w-4" />
+                                                  </button>
+                                                )}
+                                              </div>
                                             </div>
+                                          )
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </section>
 
+                {/* ---------------------------------------- */}
+                {/* DECLAMATIONS */}
+                {/* ---------------------------------------- */}
 
-                                            <div className="min-w-0 flex-1">
-                                              <p className="truncate text-sm font-black text-slate-800">
-                                                {item.khassida
-                                                  ?.titre ||
-                                                  item.khassida_titre ||
-                                                  "Khassida"}
-                                              </p>
+                <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <div className="flex flex-col gap-3 border-b border-slate-200 p-5 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Mic2 className="h-5 w-5 text-emerald-600" />
 
-                                              {(item.ton?.nom ||
-                                                item.ton_nom) && (
-                                                <p className="mt-1 text-xs text-violet-600">
-                                                  Ton :{" "}
-                                                  {item.ton
-                                                    ?.nom ||
-                                                    item.ton_nom}
+                        <h2 className="text-lg font-bold text-slate-900">
+                          Déclamations
+                        </h2>
+                      </div>
+
+                      <p className="mt-1 text-sm text-slate-500">
+                        Khassidas prévues pour les réunions
+                        et programmes du mois.
+                      </p>
+                    </div>
+
+                    {peutModifier && (
+                      <button
+                        type="button"
+                        onClick={
+                          ouvrirModalDeclamation
+                        }
+                        className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Déclamation
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="p-5">
+                    {declamations.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center">
+                        <Mic2 className="mx-auto h-8 w-8 text-slate-400" />
+
+                        <p className="mt-3 text-sm text-slate-500">
+                          Aucune déclamation enregistrée.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {declamations.map(
+                          (declamation) => {
+                            const listeKhassidas =
+                              extraireKhassidasDeclamation(
+                                declamation
+                              );
+
+                            return (
+                              <div
+                                key={
+                                  declamation.id
+                                }
+                                className="rounded-2xl border border-slate-200 p-4"
+                              >
+                                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                  <div>
+                                    <div className="flex items-center gap-3">
+                                      <div className="rounded-xl bg-violet-100 p-2 text-violet-700">
+                                        <Mic2 className="h-5 w-5" />
+                                      </div>
+
+                                      <div>
+                                        <h3 className="font-semibold text-slate-800">
+                                          Déclamation{" "}
+                                          {declamation.ordre ||
+                                            ""}
+                                        </h3>
+
+                                        <p className="text-sm text-slate-500">
+                                          {formaterDate(
+                                            declamation.date_declamation ||
+                                              declamation.date_declamaion
+                                          )}
+                                        </p>
+                                      </div>
+                                    </div>
+
+                                    <div className="mt-4 flex flex-wrap gap-5 text-sm text-slate-600">
+                                      <span className="flex items-center gap-2">
+                                        <Clock className="h-4 w-4" />
+
+                                        {formaterHeure(
+                                          declamation.heure_debut
+                                        )}
+                                        {" - "}
+                                        {formaterHeure(
+                                          declamation.heure_fin
+                                        )}
+                                      </span>
+
+                                      <span className="flex items-center gap-2">
+                                        <MapPin className="h-4 w-4" />
+
+                                        {declamation.lieu ||
+                                          "Lieu non précisé"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {peutModifier && (
+                                    <div className="flex gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          modifierDeclamation(
+                                            declamation
+                                          )
+                                        }
+                                        className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          supprimerDeclamation(
+                                            declamation.id
+                                          )
+                                        }
+                                        className="rounded-lg border border-red-200 p-2 text-red-600 hover:bg-red-50"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="mt-5 border-t border-slate-200 pt-4">
+                                  <div className="mb-3 flex items-center justify-between">
+                                    <h4 className="font-semibold text-slate-800">
+                                      Khassidas
+                                    </h4>
+
+                                    {peutModifier && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          ouvrirKhassidaDeclamationModal(
+                                            declamation
+                                          )
+                                        }
+                                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                                      >
+                                        <Plus className="h-4 w-4" />
+                                        Ajouter
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {listeKhassidas.length ===
+                                  0 ? (
+                                    <p className="text-sm text-slate-500">
+                                      Aucune Khassida
+                                      ajoutée.
+                                    </p>
+                                  ) : (
+                                    <div className="space-y-2">
+                                      {listeKhassidas.map(
+                                        (
+                                          item,
+                                          index
+                                        ) => (
+                                          <div
+                                            key={
+                                              item.id ||
+                                              `${item.khassida_id}-${index}`
+                                            }
+                                            className="flex items-center justify-between rounded-xl bg-slate-50 p-3"
+                                          >
+                                            <div className="flex items-center gap-3">
+                                              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-600">
+                                                {item.ordre ||
+                                                  index +
+                                                    1}
+                                              </span>
+
+                                              <div>
+                                                <p className="font-medium text-slate-800">
+                                                  {item.khassida?.titre ||
+                                                    item.khassida?.nom ||
+                                                    item.titre ||
+                                                    "Khassida"}
                                                 </p>
-                                              )}
+
+                                                <p className="text-xs text-slate-500">
+                                                  Ton :{" "}
+                                                  {item.ton?.nom ||
+                                                    item.ton?.titre ||
+                                                    item.ton_nom ||
+                                                    "—"}
+                                                </p>
+                                              </div>
                                             </div>
-
-
-                                            {audioUrl && (
-                                              <audio
-                                                controls
-                                                preload="none"
-                                                className="h-8 w-full max-w-xs"
-                                              >
-                                                <source
-                                                  src={
-                                                    audioUrl
-                                                  }
-                                                />
-                                              </audio>
-                                            )}
-
 
                                             {peutModifier && (
                                               <button
                                                 type="button"
                                                 onClick={() =>
                                                   supprimerKhassidaDeclamation(
-                                                    declamation,
-                                                    item
+                                                    item.id
                                                   )
                                                 }
-                                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600"
-                                                title="Retirer"
+                                                className="rounded-lg p-2 text-red-600 hover:bg-red-100"
                                               >
-                                                <Trash2
-                                                  size={
-                                                    15
-                                                  }
-                                                />
+                                                <Trash2 className="h-4 w-4" />
                                               </button>
                                             )}
-
                                           </div>
-
-                                        </div>
-                                      );
-                                    }
+                                        )
+                                      )}
+                                    </div>
                                   )}
-
+                                </div>
                               </div>
-                            )}
-
-                          </div>
-
-                        </div>
-
+                            );
+                          }
+                        )}
                       </div>
+                    )}
+                  </div>
+                </section>
+              </>
+            ) : null}
+          </div>
+        </div>
+      )}
 
-                    </div>
-                  );
-                }
-              )}
-
-            </div>
-          )}
-
-        </section>
-
-      </div>
-
-
-      {/* ========================================================
-          MODAL PROGRAMME
-      ======================================================== */}
+      {/* ================================================== */}
+      {/* MODAL PROGRAMME */}
+      {/* ================================================== */}
 
       {modalProgramme && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-
-          <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
-
-            <div className="flex items-center justify-between border-b border-slate-100 p-5">
-
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 p-5">
               <div>
-                <h2 className="text-lg font-black text-slate-900">
+                <h2 className="text-lg font-bold text-slate-900">
                   Nouveau programme religieux
                 </h2>
 
-                <p className="mt-1 text-xs text-slate-400">
-                  Création du programme mensuel
+                <p className="mt-1 text-xs text-slate-500">
+                  Le Kourel est automatiquement associé à
+                  votre compte.
                 </p>
               </div>
 
@@ -2872,23 +2354,18 @@ export default function ProgrammeReligieux() {
                 onClick={
                   fermerModalProgramme
                 }
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500"
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
               >
-                <X size={18} />
+                <X className="h-5 w-5" />
               </button>
-
             </div>
 
-
             <form
-              onSubmit={
-                creerProgramme
-              }
+              onSubmit={creerProgramme}
               className="space-y-5 p-5"
             >
-
               <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Année
                 </label>
 
@@ -2896,10 +2373,7 @@ export default function ProgrammeReligieux() {
                   type="number"
                   min="2000"
                   max="2100"
-                  required
-                  value={
-                    formProgramme.annee
-                  }
+                  value={formProgramme.annee}
                   onChange={(event) =>
                     setFormProgramme(
                       (ancien) => ({
@@ -2909,21 +2383,18 @@ export default function ProgrammeReligieux() {
                       })
                     )
                   }
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:bg-white"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                  required
                 />
               </div>
 
-
               <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Mois
                 </label>
 
                 <select
-                  required
-                  value={
-                    formProgramme.mois
-                  }
+                  value={formProgramme.mois}
                   onChange={(event) =>
                     setFormProgramme(
                       (ancien) => ({
@@ -2933,102 +2404,115 @@ export default function ProgrammeReligieux() {
                       })
                     )
                   }
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:bg-white"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
+                  required
                 >
-                  {MOIS.map(
-                    (mois, index) => (
-                      <option
-                        key={mois}
-                        value={index + 1}
-                      >
-                        {mois}
-                      </option>
-                    )
+                  {Array.from(
+                    { length: 12 },
+                    (_, index) => {
+                      const mois =
+                        index + 1;
+
+                      return (
+                        <option
+                          key={mois}
+                          value={mois}
+                        >
+                          {new Date(
+                            2000,
+                            index,
+                            1
+                          ).toLocaleDateString(
+                            "fr-FR",
+                            {
+                              month:
+                                "long",
+                            }
+                          )}
+                        </option>
+                      );
+                    }
                   )}
                 </select>
               </div>
 
+              <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
+                <strong className="text-slate-700">
+                  Kourel :
+                </strong>{" "}
+                {utilisateur?.gestionnaire_kourel_id
+                  ? `Kourel #${utilisateur.gestionnaire_kourel_id}`
+                  : "Aucun Kourel associé"}
+              </div>
 
-              <div className="flex justify-end gap-3 pt-2">
+              {erreur && (
+                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {erreur}
+                </div>
+              )}
 
+              <div className="flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={
                     fermerModalProgramme
                   }
-                  className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600"
+                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
                 >
                   Annuler
                 </button>
 
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-black text-white"
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700"
                 >
-                  <Check size={16} />
+                  <Check className="h-4 w-4" />
                   Créer
                 </button>
-
               </div>
-
             </form>
-
           </div>
         </div>
       )}
 
-
-      {/* ========================================================
-          MODAL RÉPÉTITION
-      ======================================================== */}
+      {/* ================================================== */}
+      {/* MODAL REPETITION */}
+      {/* ================================================== */}
 
       {modalRepetition && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-
-          <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
-
-            <div className="flex items-center justify-between border-b border-slate-100 p-5">
-
-              <div>
-                <h2 className="text-lg font-black text-slate-900">
-                  {repetitionEdition
-                    ? "Modifier la répétition"
-                    : "Ajouter une répétition"}
-                </h2>
-
-                <p className="mt-1 text-xs text-slate-400">
-                  Informations de la séance
-                </p>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 p-5">
+              <h2 className="text-lg font-bold text-slate-900">
+                {repetitionSelectionnee
+                  ? "Modifier la répétition"
+                  : "Nouvelle répétition"}
+              </h2>
 
               <button
                 type="button"
                 onClick={
                   fermerModalRepetition
                 }
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500"
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
               >
-                <X size={18} />
+                <X className="h-5 w-5" />
               </button>
-
             </div>
-
 
             <form
               onSubmit={
                 enregistrerRepetition
               }
-              className="space-y-5 p-5"
+              className="space-y-4 p-5"
             >
-
               <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Date
                 </label>
 
                 <input
                   type="date"
-                  required
                   value={
                     formRepetition.date_repetition
                   }
@@ -3037,20 +2521,20 @@ export default function ProgrammeReligieux() {
                       (ancien) => ({
                         ...ancien,
                         date_repetition:
-                          event.target.value,
+                          event.target
+                            .value,
                       })
                     )
                   }
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:bg-white"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3"
+                  required
                 />
               </div>
 
-
               <div className="grid gap-4 sm:grid-cols-2">
-
                 <div>
-                  <label className="mb-2 block text-sm font-bold text-slate-700">
-                    Heure de début
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Heure début
                   </label>
 
                   <input
@@ -3063,18 +2547,18 @@ export default function ProgrammeReligieux() {
                         (ancien) => ({
                           ...ancien,
                           heure_debut:
-                            event.target.value,
+                            event.target
+                              .value,
                         })
                       )
                     }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:bg-white"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3"
                   />
                 </div>
 
-
                 <div>
-                  <label className="mb-2 block text-sm font-bold text-slate-700">
-                    Heure de fin
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Heure fin
                   </label>
 
                   <input
@@ -3087,19 +2571,18 @@ export default function ProgrammeReligieux() {
                         (ancien) => ({
                           ...ancien,
                           heure_fin:
-                            event.target.value,
+                            event.target
+                              .value,
                         })
                       )
                     }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:bg-white"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3"
                   />
                 </div>
-
               </div>
 
-
               <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Lieu
                 </label>
 
@@ -3117,59 +2600,73 @@ export default function ProgrammeReligieux() {
                       })
                     )
                   }
-                  placeholder="Ex. Castors"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:bg-white"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3"
+                  placeholder="Lieu de la répétition"
                 />
               </div>
 
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Ordre
+                </label>
+
+                <input
+                  type="number"
+                  min="1"
+                  value={
+                    formRepetition.ordre
+                  }
+                  onChange={(event) =>
+                    setFormRepetition(
+                      (ancien) => ({
+                        ...ancien,
+                        ordre:
+                          event.target.value,
+                      })
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3"
+                />
+              </div>
 
               <div className="flex justify-end gap-3 pt-2">
-
                 <button
                   type="button"
                   onClick={
                     fermerModalRepetition
                   }
-                  className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600"
+                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
                 >
                   Annuler
                 </button>
 
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-black text-white"
+                  className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700"
                 >
-                  <Check size={16} />
                   Enregistrer
                 </button>
-
               </div>
-
             </form>
-
           </div>
         </div>
       )}
 
-
-      {/* ========================================================
-          MODAL KHASSIDA RÉPÉTITION
-      ======================================================== */}
+      {/* ================================================== */}
+      {/* MODAL KHASSIDA REPETITION */}
+      {/* ================================================== */}
 
       {modalKhassida && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-
-          <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
-
-            <div className="flex items-center justify-between border-b border-slate-100 p-5">
-
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white p-5">
               <div>
-                <h2 className="text-lg font-black text-slate-900">
+                <h2 className="text-lg font-bold text-slate-900">
                   Ajouter une Khassida
                 </h2>
 
-                <p className="mt-1 text-xs text-slate-400">
-                  Khassida, ton, audio et ordre
+                <p className="text-xs text-slate-500">
+                  Sélectionnez la Khassida et son ton.
                 </p>
               </div>
 
@@ -3178,13 +2675,11 @@ export default function ProgrammeReligieux() {
                 onClick={
                   fermerModalKhassida
                 }
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500"
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
               >
-                <X size={18} />
+                <X className="h-5 w-5" />
               </button>
-
             </div>
-
 
             <form
               onSubmit={
@@ -3192,149 +2687,168 @@ export default function ProgrammeReligieux() {
               }
               className="space-y-5 p-5"
             >
-
-              {/* KHASSIDA */}
-
               <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Khassida
                 </label>
 
                 <select
-                  required
                   value={
-                    khassidaSelectionnee || ""
+                    khassidaSelectionnee?.id ||
+                    ""
                   }
                   onChange={(event) =>
                     selectionnerKhassida(
                       event.target.value
                     )
                   }
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:bg-white"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3"
+                  required
                 >
                   <option value="">
                     Sélectionner une Khassida
                   </option>
 
-                  {listeKhassidas.map(
+                  {khassidas.map(
                     (khassida) => (
                       <option
-                        key={
-                          khassida.id
-                        }
-                        value={
-                          khassida.id
-                        }
+                        key={khassida.id}
+                        value={khassida.id}
                       >
-                        {khassida.titre}
+                        {khassida.titre ||
+                          khassida.nom}
                       </option>
                     )
                   )}
                 </select>
               </div>
 
-
-              {/* TON */}
-
               <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Ton
                 </label>
 
                 <select
-                  required
-                  disabled={
-                    !khassidaSelectionnee ||
-                    tons.length === 0
-                  }
-                  value={
-                    tonSelectionne || ""
-                  }
+                  value={tonSelectionne}
                   onChange={(event) =>
                     selectionnerTon(
                       event.target.value
                     )
                   }
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3"
+                  disabled={
+                    !khassidaSelectionnee ||
+                    chargementTons
+                  }
+                  required
                 >
                   <option value="">
-                    {tons.length === 0
-                      ? "Aucun ton disponible"
+                    {chargementTons
+                      ? "Chargement..."
                       : "Sélectionner un ton"}
                   </option>
 
-                  {tons.map(
-                    (ton) => (
-                      <option
-                        key={ton.id}
-                        value={ton.id}
-                      >
-                        {ton.nom ||
-                          ton.titre ||
-                          `Ton ${ton.id}`}
-                      </option>
-                    )
-                  )}
+                  {tons.map((ton) => (
+                    <option
+                      key={ton.id}
+                      value={ton.id}
+                    >
+                      {ton.nom ||
+                        ton.titre ||
+                        ton.libelle}
+                    </option>
+                  ))}
                 </select>
               </div>
 
+              {audios.length > 0 && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Audio
+                  </label>
 
-              {/* AUDIO */}
+                  <select
+                    value={
+                      audioSelectionne
+                    }
+                    onChange={(event) =>
+                      setAudioSelectionne(
+                        event.target.value
+                      )
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3"
+                  >
+                    <option value="">
+                      Sélectionner un audio
+                    </option>
+
+                    {audios.map(
+                      (audio) => (
+                        <option
+                          key={audio.id}
+                          value={audio.id}
+                        >
+                          {audio.titre ||
+                            `Audio #${audio.id}`}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </div>
+              )}
+
+              {audioSelectionne &&
+                audios.find(
+                  (audio) =>
+                    Number(audio.id) ===
+                    Number(
+                      audioSelectionne
+                    )
+                ) && (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700">
+                      <Headphones className="h-4 w-4" />
+                      Écouter l'audio
+                    </div>
+
+                    <audio
+                      controls
+                      preload="metadata"
+                      className="w-full"
+                      src={construireUrlAudio(
+                        audios.find(
+                          (audio) =>
+                            Number(
+                              audio.id
+                            ) ===
+                            Number(
+                              audioSelectionne
+                            )
+                        )?.fichier ||
+                          audios.find(
+                            (audio) =>
+                              Number(
+                                audio.id
+                              ) ===
+                              Number(
+                                audioSelectionne
+                              )
+                          )?.url
+                      )}
+                    >
+                      Votre navigateur ne supporte pas la lecture audio.
+                    </audio>
+                  </div>
+                )}
 
               <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">
-                  Audio
-                </label>
-
-                <select
-                  required
-                  disabled={
-                    !tonSelectionne ||
-                    audios.length === 0
-                  }
-                  value={
-                    audioSelectionne ||
-                    ""
-                  }
-                  onChange={(event) =>
-                    setAudioSelectionne(
-                      event.target.value
-                    )
-                  }
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:bg-white disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">
-                    {audios.length === 0
-                      ? "Aucun audio disponible"
-                      : "Sélectionner un audio"}
-                  </option>
-
-                  {audios.map(
-                    (audio) => (
-                      <option
-                        key={audio.id}
-                        value={audio.id}
-                      >
-                        {audio.titre ||
-                          `Audio ${audio.id}`}
-                      </option>
-                    )
-                  )}
-                </select>
-              </div>
-
-
-              {/* ORDRE */}
-
-              <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Ordre
                 </label>
 
                 <input
                   type="number"
                   min="1"
-                  required
                   value={
                     ordreKhassida
                   }
@@ -3343,344 +2857,316 @@ export default function ProgrammeReligieux() {
                       event.target.value
                     )
                   }
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:bg-white"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3"
                 />
               </div>
 
-
-              <div className="flex justify-end gap-3 pt-2">
-
+              <div className="flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={
                     fermerModalKhassida
                   }
-                  className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600"
+                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
                 >
                   Annuler
                 </button>
 
                 <button
                   type="submit"
-                  disabled={
-                    chargementKhassida
-                  }
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700"
                 >
-                  {chargementKhassida ? (
-                    <Loader2
-                      size={16}
-                      className="animate-spin"
-                    />
-                  ) : (
-                    <Check
-                      size={16}
-                    />
-                  )}
-
-                  Enregistrer
+                  <Check className="h-4 w-4" />
+                  Ajouter
                 </button>
-
               </div>
-
             </form>
-
           </div>
         </div>
       )}
 
-
-      {/* ========================================================
-          MODAL DÉCLAMATION
-      ======================================================== */}
+      {/* ================================================== */}
+      {/* MODAL DECLAMATION */}
+      {/* ================================================== */}
 
       {modalDeclamation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-
-          <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
-
-            <div className="flex items-center justify-between border-b border-slate-100 p-5">
-
-              <div>
-                <h2 className="text-lg font-black text-slate-900">
-                  {declamationEdition
-                    ? "Modifier la déclamation"
-                    : "Ajouter une déclamation"}
-                </h2>
-
-                <p className="mt-1 text-xs text-slate-400">
-                  Informations de la déclamation
-                </p>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 p-5">
+              <h2 className="text-lg font-bold text-slate-900">
+                {declamationSelectionnee
+                  ? "Modifier la déclamation"
+                  : "Nouvelle déclamation"}
+              </h2>
 
               <button
                 type="button"
                 onClick={
                   fermerModalDeclamation
                 }
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500"
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
               >
-                <X size={18} />
+                <X className="h-5 w-5" />
               </button>
-
             </div>
-
 
             <form
               onSubmit={
                 enregistrerDeclamation
               }
-              className="space-y-5 p-5"
+              className="space-y-4 p-5"
             >
-
               <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">
-                  Événement
-                </label>
-
-                <input
-                  type="text"
-                  value={
-                    formDeclamation.evenement
-                  }
-                  onChange={(event) =>
-                    setFormDeclamation(
-                      (ancien) => ({
-                        ...ancien,
-                        evenement:
-                          event.target.value,
-                      })
-                    )
-                  }
-                  placeholder="Ex. Réunion mensuelle"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:bg-white"
-                />
-              </div>
-
-
-              <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Date
                 </label>
 
                 <input
                   type="date"
-                  required
                   value={
-                    formDeclamation.date_declamation
+                    formDeclamation.date_declamation ||
+                    formDeclamation.date_declamaion
                   }
                   onChange={(event) =>
                     setFormDeclamation(
                       (ancien) => ({
                         ...ancien,
                         date_declamation:
-                          event.target.value,
+                          event.target
+                            .value,
+                        date_declamaion:
+                          event.target
+                            .value,
                       })
                     )
                   }
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:bg-white"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3"
+                  required
                 />
               </div>
 
-
               <div className="grid gap-4 sm:grid-cols-2">
-
                 <div>
-                  <label className="mb-2 block text-sm font-bold text-slate-700">
-                    Heure
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Heure début
                   </label>
 
                   <input
                     type="time"
                     value={
-                      formDeclamation.heure
+                      formDeclamation.heure_debut
                     }
                     onChange={(event) =>
                       setFormDeclamation(
                         (ancien) => ({
                           ...ancien,
-                          heure:
-                            event.target.value,
+                          heure_debut:
+                            event.target
+                              .value,
                         })
                       )
                     }
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:bg-white"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3"
                   />
                 </div>
 
-
                 <div>
-                  <label className="mb-2 block text-sm font-bold text-slate-700">
-                    Lieu
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Heure fin
                   </label>
 
                   <input
-                    type="text"
+                    type="time"
                     value={
-                      formDeclamation.lieu
+                      formDeclamation.heure_fin
                     }
                     onChange={(event) =>
                       setFormDeclamation(
                         (ancien) => ({
                           ...ancien,
-                          lieu:
-                            event.target.value,
+                          heure_fin:
+                            event.target
+                              .value,
                         })
                       )
                     }
-                    placeholder="Ex. Castors"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:bg-white"
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3"
                   />
                 </div>
-
               </div>
 
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Lieu
+                </label>
+
+                <input
+                  type="text"
+                  value={
+                    formDeclamation.lieu
+                  }
+                  onChange={(event) =>
+                    setFormDeclamation(
+                      (ancien) => ({
+                        ...ancien,
+                        lieu:
+                          event.target.value,
+                      })
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3"
+                  placeholder="Lieu de la déclamation"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Ordre
+                </label>
+
+                <input
+                  type="number"
+                  min="1"
+                  value={
+                    formDeclamation.ordre
+                  }
+                  onChange={(event) =>
+                    setFormDeclamation(
+                      (ancien) => ({
+                        ...ancien,
+                        ordre:
+                          event.target.value,
+                      })
+                    )
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3"
+                />
+              </div>
 
               <div className="flex justify-end gap-3 pt-2">
-
                 <button
                   type="button"
                   onClick={
                     fermerModalDeclamation
                   }
-                  className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600"
+                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
                 >
                   Annuler
                 </button>
 
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-black text-white"
+                  className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700"
                 >
-                  <Check size={16} />
                   Enregistrer
                 </button>
-
               </div>
-
             </form>
-
           </div>
         </div>
       )}
 
-
-      {/* ========================================================
-          MODAL KHASSIDA DÉCLAMATION
-      ======================================================== */}
+      {/* ================================================== */}
+      {/* MODAL KHASSIDA DECLAMATION */}
+      {/* ================================================== */}
 
       {modalKhassidaDeclamation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-
-          <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
-
-            <div className="flex items-center justify-between border-b border-slate-100 p-5">
-
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white p-5">
               <div>
-                <h2 className="text-lg font-black text-slate-900">
+                <h2 className="text-lg font-bold text-slate-900">
                   Ajouter une Khassida
                 </h2>
 
-                <p className="mt-1 text-xs text-slate-400">
-                  Khassida et ton de déclamation
+                <p className="text-xs text-slate-500">
+                  Déclamation
                 </p>
               </div>
 
               <button
                 type="button"
-                onClick={() =>
-                  setModalKhassidaDeclamation(
-                    false
-                  )
+                onClick={
+                  fermerModalKhassidaDeclamation
                 }
-                className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500"
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
               >
-                <X size={18} />
+                <X className="h-5 w-5" />
               </button>
-
             </div>
-
 
             <form
               onSubmit={
-                ajouterKhassidaADeclamation
+                ajouterKhassidaDeclamation
               }
               className="space-y-5 p-5"
             >
-
-              {/* KHASSIDA */}
-
               <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Khassida
                 </label>
 
                 <select
-                  required
                   value={
-                    khassidaDeclamationSelectionnee ||
+                    khassidaDeclamationSelectionnee?.id ||
                     ""
                   }
                   onChange={(event) =>
                     selectionnerKhassidaDeclamation(
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-violet-600 focus:bg-white"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3"
+                  required
                 >
                   <option value="">
                     Sélectionner une Khassida
                   </option>
 
-                  {listeKhassidas.map(
+                  {khassidas.map(
                     (khassida) => (
                       <option
-                        key={
-                          khassida.id
-                        }
-                        value={
-                          khassida.id
-                        }
+                        key={khassida.id}
+                        value={khassida.id}
                       >
-                        {khassida.titre}
+                        {khassida.titre ||
+                          khassida.nom}
                       </option>
                     )
                   )}
                 </select>
               </div>
 
-
-              {/* TON */}
-
               <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Ton
                 </label>
 
                 <select
-                  required
-                  disabled={
-                    !khassidaDeclamationSelectionnee ||
-                    tons.length === 0
-                  }
                   value={
-                    tonDeclamationSelectionne ||
-                    ""
+                    tonDeclamationSelectionne
                   }
                   onChange={(event) =>
                     selectionnerTonDeclamation(
-                      event.target.value
+                      event.target
+                        .value
                     )
                   }
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-violet-600 focus:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3"
+                  disabled={
+                    !khassidaDeclamationSelectionnee ||
+                    chargementTons
+                  }
+                  required
                 >
                   <option value="">
-                    {tons.length === 0
-                      ? "Aucun ton disponible"
+                    {chargementTons
+                      ? "Chargement..."
                       : "Sélectionner un ton"}
                   </option>
 
-                  {tons.map(
+                  {tonsDeclamation.map(
                     (ton) => (
                       <option
                         key={ton.id}
@@ -3688,38 +3174,61 @@ export default function ProgrammeReligieux() {
                       >
                         {ton.nom ||
                           ton.titre ||
-                          `Ton ${ton.id}`}
+                          ton.libelle}
                       </option>
                     )
                   )}
                 </select>
               </div>
 
+              {audiosDeclamation.length >
+                0 && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-700">
+                    <Volume2 className="h-4 w-4" />
+                    Audios disponibles
+                  </div>
 
-              {/* AUDIO INFORMATIF */}
+                  <div className="space-y-3">
+                    {audiosDeclamation.map(
+                      (audio) => (
+                        <div
+                          key={
+                            audio.id
+                          }
+                          className="rounded-xl bg-white p-3"
+                        >
+                          <p className="mb-2 text-sm font-medium text-slate-700">
+                            {audio.titre ||
+                              `Audio #${audio.id}`}
+                          </p>
 
-              {audioDeclamationSelectionne && (
-                <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
-                  Audio sélectionné :
-                  {" "}
-                  {
-                    audioDeclamationSelectionne
-                  }
+                          <audio
+                            controls
+                            preload="metadata"
+                            className="w-full"
+                            src={construireUrlAudio(
+                              audio.fichier ||
+                                audio.url
+                            )}
+                          >
+                            Votre navigateur ne supporte pas la lecture audio.
+                          </audio>
+                        </div>
+                      )
+                    )}
+                  </div>
                 </div>
               )}
 
-
-              {/* ORDRE */}
-
               <div>
-                <label className="mb-2 block text-sm font-bold text-slate-700">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Ordre
                 </label>
 
                 <input
                   type="number"
                   min="1"
-                  required
                   value={
                     ordreKhassidaDeclamation
                   }
@@ -3728,187 +3237,32 @@ export default function ProgrammeReligieux() {
                       event.target.value
                     )
                   }
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-violet-600 focus:bg-white"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3"
                 />
               </div>
 
-
-              <div className="flex justify-end gap-3 pt-2">
-
+              <div className="flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() =>
-                    setModalKhassidaDeclamation(
-                      false
-                    )
+                  onClick={
+                    fermerModalKhassidaDeclamation
                   }
-                  className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600"
+                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
                 >
                   Annuler
                 </button>
 
                 <button
                   type="submit"
-                  disabled={
-                    chargementKhassidaDeclamation
-                  }
-                  className="inline-flex items-center gap-2 rounded-xl bg-violet-700 px-5 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700"
                 >
-                  {chargementKhassidaDeclamation ? (
-                    <Loader2
-                      size={16}
-                      className="animate-spin"
-                    />
-                  ) : (
-                    <Check
-                      size={16}
-                    />
-                  )}
-
-                  Enregistrer
+                  <Check className="h-4 w-4" />
+                  Ajouter
                 </button>
-
               </div>
-
             </form>
-
           </div>
         </div>
       )}
-
     </div>
   );
-}
-
-
-/* ============================================================
-   MODAL PROGRAMME — COMPOSANT LOCAL
-============================================================ */
-
-function ModalProgramme({
-  formProgramme,
-  setFormProgramme,
-  onClose,
-  onSubmit,
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-
-      <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
-
-        <div className="flex items-center justify-between border-b border-slate-100 p-5">
-
-          <div>
-            <h2 className="text-lg font-black text-slate-900">
-              Nouveau programme religieux
-            </h2>
-
-            <p className="mt-1 text-xs text-slate-400">
-              Création du programme mensuel
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500"
-          >
-            <X size={18} />
-          </button>
-
-        </div>
-
-
-        <form
-          onSubmit={onSubmit}
-          className="space-y-5 p-5"
-        >
-
-          <div>
-            <label className="mb-2 block text-sm font-bold text-slate-700">
-              Année
-            </label>
-
-            <input
-              type="number"
-              min="2000"
-              max="2100"
-              required
-              value={
-                formProgramme.annee
-              }
-              onChange={(event) =>
-                setFormProgramme(
-                  (ancien) => ({
-                    ...ancien,
-                    annee:
-                      event.target.value,
-                  })
-                )
-              }
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:bg-white"
-            />
-          </div>
-
-
-          <div>
-            <label className="mb-2 block text-sm font-bold text-slate-700">
-              Mois
-            </label>
-
-            <select
-              required
-              value={
-                formProgramme.mois
-              }
-              onChange={(event) =>
-                setFormProgramme(
-                  (ancien) => ({
-                    ...ancien,
-                    mois:
-                      event.target.value,
-                  })
-                )
-              }
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:bg-white"
-            >
-              {MOIS.map(
-                (mois, index) => (
-                  <option
-                    key={mois}
-                    value={index + 1}
-                  >
-                    {mois}
-                  </option>
-                )
-              )}
-            </select>
-          </div>
-
-
-          <div className="flex justify-end gap-3 pt-2">
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl bg-slate-100 px-4 py-3 text-sm font-bold text-slate-600"
-            >
-              Annuler
-            </button>
-
-            <button
-              type="submit"
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-black text-white"
-            >
-              <Check size={16} />
-              Créer
-            </button>
-
-          </div>
-
-        </form>
-
-      </div>
-    </div>
-  );
-}
