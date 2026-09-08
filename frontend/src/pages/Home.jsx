@@ -1,123 +1,261 @@
+
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-
-import guideImage from "../assets/guide.jpg";
-
-import api from "../api/client";
-
 import {
+  ArrowDown,
   ArrowRight,
   CalendarDays,
+  ChevronRight,
   Clock3,
+  Heart,
+  MapPin,
   Menu,
   Moon,
   Play,
-  Quote,
   Sparkles,
-  Sun,
-  Video,
+  Star,
+  Users,
   X,
 } from "lucide-react";
 
-function Home() {
+import guideImage from "../assets/guide.jpg";
+import api from "../api/client";
+
+// ==========================================================
+// CONFIGURATION
+// ==========================================================
+
+const DAKAR_LAT = 14.7167;
+const DAKAR_LON = -17.4677;
+
+const PRIERE_NOMS = {
+  Fajr: "Fajr",
+  Sunrise: "Lever du soleil",
+  Dhuhr: "Dhuhr",
+  Asr: "Asr",
+  Maghrib: "Maghrib",
+  Isha: "Isha",
+};
+
+const RAPPELS = [
+  "La constance dans le bien ouvre les portes.",
+  "Un cœur uni renforce toute une communauté.",
+  "Chaque pas vers le bien compte.",
+  "La fraternité est une force.",
+  "Servir avec sincérité, c'est avancer ensemble.",
+];
+
+const PIONNIERS = [
+  {
+    nom: "Massata DIALLO",
+    fonction: "Pionnier",
+  },
+  {
+    nom: "Diogop MBODJ",
+    fonction: "Pionnière",
+  },
+  {
+    nom: "Ousseynou KAMARA",
+    fonction: "Pionnier",
+  },
+];
+
+// ==========================================================
+// HISTORIQUE DU DAHIRA
+// ==========================================================
+
+const HISTORIQUE = [
+  {
+    periode: "Les débuts",
+    titre: "La naissance du Dahira",
+    texte:
+      "Une communauté fondée autour de la spiritualité, de la fraternité et de la volonté de servir ensemble.",
+  },
+  {
+    periode: "Une communauté grandissante",
+    titre: "Une présence qui s'affirme",
+    texte:
+      "Au fil des années, le Dahira rassemble davantage de membres et développe ses activités religieuses et communautaires.",
+  },
+  {
+    periode: "La transmission",
+    titre: "Préserver et transmettre",
+    texte:
+      "Les enseignements, les valeurs et les pratiques sont transmis aux nouvelles générations dans un esprit de continuité.",
+  },
+  {
+    periode: "Aujourd'hui",
+    titre: "Une communauté tournée vers l'avenir",
+    texte:
+      "Le Dahira poursuit son chemin en renforçant son organisation, sa fraternité et son engagement au service de la communauté.",
+  },
+];
+
+// ==========================================================
+// REVEAL — ANIMATION AU SCROLL
+// ==========================================================
+
+function Reveal({
+  children,
+  className = "",
+  delay = 0,
+}) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <RevealElement
+      visible={visible}
+      setVisible={setVisible}
+      className={className}
+      delay={delay}
+    >
+      {children}
+    </RevealElement>
+  );
+}
+
+function RevealElement({
+  children,
+  visible,
+  setVisible,
+  className,
+  delay,
+}) {
+  const [element, setElement] = useState(null);
+
+  useEffect(() => {
+    if (!element) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      {
+        threshold: 0.12,
+      }
+    );
+
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [element, setVisible]);
+
+  return (
+    <div
+      ref={setElement}
+      className={`
+        transition-all duration-1000 ease-out
+        ${
+          visible
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 translate-y-10"
+        }
+        ${className}
+      `}
+      style={{
+        transitionDelay: `${delay}ms`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ==========================================================
+// HOME
+// ==========================================================
+
+export default function Home() {
   const [menuOuvert, setMenuOuvert] = useState(false);
-  const [horaires, setHoraires] = useState(null);
-  const [chargementHoraires, setChargementHoraires] = useState(true);
-
-  const [rappelIndex, setRappelIndex] = useState(0);
-  const [filtreGalerie, setFiltreGalerie] = useState("tout");
-
-  // ==========================================================
-  // GALERIE DYNAMIQUE
-  // ==========================================================
+  const [scrolled, setScrolled] = useState(false);
 
   const [galerie, setGalerie] = useState([]);
-  const [chargementGalerie, setChargementGalerie] = useState(true);
-  const [erreurGalerie, setErreurGalerie] = useState("");
+  const [horaires, setHoraires] = useState(null);
+  const [erreurHoraires, setErreurHoraires] = useState(false);
 
-  // ==========================================================
+  const [rappelIndex, setRappelIndex] = useState(0);
+  const [heureActuelle, setHeureActuelle] = useState(
+    new Date()
+  );
+
+  // ========================================================
+  // SCROLL NAVBAR
+  // ========================================================
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 40);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+
+    handleScroll();
+
+    return () => {
+      window.removeEventListener(
+        "scroll",
+        handleScroll
+      );
+    };
+  }, []);
+
+  // ========================================================
+  // HORLOGE
+  // ========================================================
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setHeureActuelle(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // ========================================================
   // RAPPELS
-  // ==========================================================
+  // ========================================================
 
-  const rappels = [
-    {
-      texte:
-        "Le cœur qui se tourne vers Allah trouve dans Son rappel une source de paix.",
-      source: "Rappel spirituel",
-    },
-    {
-      texte:
-        "La connaissance, la patience et la persévérance accompagnent le cheminement du croyant.",
-      source: "Rappel spirituel",
-    },
-    {
-      texte:
-        "Que nos paroles, nos actes et nos intentions soient orientés vers le bien.",
-      source: "Rappel spirituel",
-    },
-  ];
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setRappelIndex((ancien) => {
+        return (ancien + 1) % RAPPELS.length;
+      });
+    }, 5000);
 
-  // ==========================================================
-  // PIONNIERS
-  // ==========================================================
-  //
-  // Les photos seront ajoutées ici lorsque tu me donneras
-  // les noms exacts des fichiers des pionniers.
-  //
-  const pionniers = [
-    {
-      nom: "Nom à renseigner",
-      fonction: "Membre fondateur",
-      photo: null,
-    },
-    {
-      nom: "Nom à renseigner",
-      fonction: "Membre fondateur",
-      photo: null,
-    },
-    {
-      nom: "Nom à renseigner",
-      fonction: "Membre pionnier",
-      photo: null,
-    },
-  ];
+    return () => clearInterval(timer);
+  }, []);
 
-  // ==========================================================
-  // CHARGER LA GALERIE
-  // ==========================================================
+  // ========================================================
+  // GALERIE
+  // ========================================================
 
   useEffect(() => {
     let actif = true;
 
     async function chargerGalerie() {
       try {
-        setChargementGalerie(true);
-        setErreurGalerie("");
+        const response = await api.get(
+          "/galerie/public"
+        );
 
-        const response = await api.get("/galerie/public");
+        if (!actif) return;
 
-        if (actif) {
-          setGalerie(
-            Array.isArray(response.data)
-              ? response.data
-              : []
-          );
-        }
+        const donnees = Array.isArray(response.data)
+          ? response.data
+          : response.data?.items || [];
+
+        setGalerie(donnees);
       } catch (error) {
         console.error(
-          "ERREUR GALERIE :",
+          "Erreur chargement galerie :",
           error
         );
 
         if (actif) {
           setGalerie([]);
-          setErreurGalerie(
-            "La galerie est momentanément indisponible."
-          );
-        }
-      } finally {
-        if (actif) {
-          setChargementGalerie(false);
         }
       }
     }
@@ -129,130 +267,59 @@ function Home() {
     };
   }, []);
 
-  // ==========================================================
-  // CONSTRUIRE L'URL D'UN MÉDIA
-  // ==========================================================
-
-  function construireUrlMedia(url) {
-    if (!url) {
-      return "";
-    }
-
-    // Si l'API renvoie déjà une URL complète
-    if (
-      url.startsWith("http://") ||
-      url.startsWith("https://")
-    ) {
-      return url;
-    }
-
-    const baseUrl = (
-      api.defaults.baseURL || ""
-    ).replace(/\/$/, "");
-
-    const chemin = url.startsWith("/")
-      ? url
-      : `/${url}`;
-
-    return `${baseUrl}${chemin}`;
-  }
-
-  // ==========================================================
-  // FILTRE GALERIE
-  // ==========================================================
-
-  const mediasFiltres = useMemo(() => {
-    if (filtreGalerie === "tout") {
-      return galerie;
-    }
-
-    return galerie.filter(
-      (media) =>
-        media.type_media === filtreGalerie
-    );
-  }, [galerie, filtreGalerie]);
-
-  // ==========================================================
-  // ÉVÉNEMENTS
-  // ==========================================================
-
-  const evenements = [
-    {
-      categorie: "Réunion",
-      titre: "Réunion mensuelle",
-      texte:
-        "Retrouvez les membres du Dahira autour des activités et orientations de la communauté.",
-    },
-    {
-      categorie: "Religieux",
-      titre: "Programme religieux",
-      texte:
-        "Un moment consacré au rappel, à la récitation et à la transmission.",
-    },
-    {
-      categorie: "Communauté",
-      titre: "Activité communautaire",
-      texte:
-        "Un rendez-vous pour renforcer les liens fraternels et la solidarité.",
-    },
-  ];
-
-  // ==========================================================
-  // HORAIRES DE PRIÈRE
-  // ==========================================================
+  // ========================================================
+  // HORAIRES DE PRIERE
+  // ========================================================
 
   useEffect(() => {
     let actif = true;
 
     async function chargerHoraires() {
       try {
-        setChargementHoraires(true);
-
-        const maintenant = new Date();
+        const aujourdHui = new Date();
 
         const jour = String(
-          maintenant.getDate()
+          aujourdHui.getDate()
         ).padStart(2, "0");
 
         const mois = String(
-          maintenant.getMonth() + 1
+          aujourdHui.getMonth() + 1
         ).padStart(2, "0");
 
-        const annee = maintenant.getFullYear();
+        const annee = aujourdHui.getFullYear();
 
         const url =
-          `https://api.aladhan.com/v1/timings/${jour}-${mois}-${annee}` +
-          `?latitude=14.7167&longitude=-17.4677&method=3`;
+          `https://api.aladhan.com/v1/timings/` +
+          `${jour}-${mois}-${annee}` +
+          `?latitude=${DAKAR_LAT}` +
+          `&longitude=${DAKAR_LON}` +
+          `&method=3`;
 
         const response = await fetch(url);
 
         if (!response.ok) {
           throw new Error(
-            "Erreur lors de la récupération des horaires."
+            "Impossible de récupérer les horaires."
           );
         }
 
         const data = await response.json();
 
-        if (!data?.data?.timings) {
-          throw new Error(
-            "Horaires indisponibles."
-          );
-        }
+        if (!actif) return;
 
-        if (actif) {
-          setHoraires(
-            data.data.timings
-          );
-        }
+        setHoraires(
+          data?.data?.timings || null
+        );
+
+        setErreurHoraires(false);
       } catch (error) {
         console.error(
-          "ERREUR HORAIRES :",
+          "Erreur horaires de prière :",
           error
         );
-      } finally {
+
         if (actif) {
-          setChargementHoraires(false);
+          setErreurHoraires(true);
         }
       }
     }
@@ -264,205 +331,388 @@ function Home() {
     };
   }, []);
 
-  // ==========================================================
-  // PROCHAINE PRIÈRE
-  // ==========================================================
+  // ========================================================
+  // PROCHAINE PRIERE
+  // ========================================================
 
   const prochainePriere = useMemo(() => {
-    if (!horaires) return null;
+    if (!horaires) {
+      return null;
+    }
 
-    const prieres = [
-      {
-        nom: "Fajr",
-        heure: horaires.Fajr,
-      },
-      {
-        nom: "Dhuhr",
-        heure: horaires.Dhuhr,
-      },
-      {
-        nom: "Asr",
-        heure: horaires.Asr,
-      },
-      {
-        nom: "Maghrib",
-        heure: horaires.Maghrib,
-      },
-      {
-        nom: "Isha",
-        heure: horaires.Isha,
-      },
+    const maintenant =
+      heureActuelle.getHours() * 60 +
+      heureActuelle.getMinutes();
+
+    const ordre = [
+      "Fajr",
+      "Dhuhr",
+      "Asr",
+      "Maghrib",
+      "Isha",
     ];
 
-    const maintenant = new Date();
+    for (const nom of ordre) {
+      const valeur = horaires[nom];
 
-    for (const priere of prieres) {
-      if (!priere.heure) continue;
+      if (!valeur) continue;
 
-      const [heure, minute] =
-        priere.heure
-          .split(":")
-          .map(Number);
+      const [heures, minutes] = valeur
+        .split(":")
+        .map(Number);
 
-      const datePriere = new Date();
+      const total =
+        heures * 60 + minutes;
 
-      datePriere.setHours(
-        heure,
-        minute,
-        0,
-        0
-      );
-
-      if (datePriere > maintenant) {
-        return priere;
+      if (total > maintenant) {
+        return {
+          nom,
+          heure: valeur,
+        };
       }
     }
 
-    return prieres[0];
-  }, [horaires]);
+    return {
+      nom: "Fajr",
+      heure: horaires.Fajr,
+      demain: true,
+    };
+  }, [horaires, heureActuelle]);
 
-  // ==========================================================
-  // ROTATION DES RAPPELS
-  // ==========================================================
+  // ========================================================
+  // GALERIE LIMITEE
+  // ========================================================
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRappelIndex(
-        (ancienIndex) =>
-          (ancienIndex + 1) %
-          rappels.length
-      );
-    }, 12000);
+  const galerieVisible = useMemo(() => {
+    return galerie.slice(0, 6);
+  }, [galerie]);
 
-    return () =>
-      clearInterval(interval);
-  }, [rappels.length]);
-
-  // ==========================================================
+  // ========================================================
   // FERMER MENU
-  // ==========================================================
+  // ========================================================
 
-  function fermerMenu() {
+  const fermerMenu = () => {
     setMenuOuvert(false);
-  }
-
-  // ==========================================================
-  // RENDER
-  // ==========================================================
+  };
 
   return (
-    <div className="min-h-screen bg-[#faf9f5] text-gray-800">
-      {/* =====================================================
+    <div className="min-h-screen bg-[#faf8f1] text-slate-900 overflow-x-hidden">
+
+      {/* ====================================================
+          ANIMATIONS CSS
+      ==================================================== */}
+
+      <style>{`
+        @keyframes floatSlow {
+          0%, 100% {
+            transform: translateY(0) translateX(0);
+          }
+
+          50% {
+            transform: translateY(-18px) translateX(8px);
+          }
+        }
+
+        @keyframes floatReverse {
+          0%, 100% {
+            transform: translateY(0) translateX(0);
+          }
+
+          50% {
+            transform: translateY(16px) translateX(-10px);
+          }
+        }
+
+        @keyframes pulseGlow {
+          0%, 100% {
+            box-shadow:
+              0 0 0 0 rgba(214, 172, 71, 0.18),
+              0 0 40px rgba(214, 172, 71, 0.12);
+          }
+
+          50% {
+            box-shadow:
+              0 0 0 22px rgba(214, 172, 71, 0),
+              0 0 70px rgba(214, 172, 71, 0.28);
+          }
+        }
+
+        @keyframes rotateSlow {
+          from {
+            transform: rotate(0deg);
+          }
+
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        @keyframes scrollDown {
+          0% {
+            transform: translateY(-4px);
+            opacity: 0.4;
+          }
+
+          50% {
+            transform: translateY(5px);
+            opacity: 1;
+          }
+
+          100% {
+            transform: translateY(-4px);
+            opacity: 0.4;
+          }
+        }
+
+        @keyframes softAppear {
+          from {
+            opacity: 0;
+            transform: scale(0.96);
+          }
+
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+
+        .animate-float-slow {
+          animation: floatSlow 7s ease-in-out infinite;
+        }
+
+        .animate-float-reverse {
+          animation: floatReverse 8s ease-in-out infinite;
+        }
+
+        .animate-pulse-glow {
+          animation: pulseGlow 3.5s ease-in-out infinite;
+        }
+
+        .animate-rotate-slow {
+          animation: rotateSlow 22s linear infinite;
+        }
+
+        .animate-scroll-down {
+          animation: scrollDown 1.8s ease-in-out infinite;
+        }
+
+        .animate-soft-appear {
+          animation: softAppear 1s ease-out forwards;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          *,
+          *::before,
+          *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
+        }
+      `}</style>
+
+      {/* ====================================================
           NAVBAR
-      ====================================================== */}
+      ==================================================== */}
 
-      <header className="fixed left-0 right-0 top-0 z-50 border-b border-gray-100 bg-white/95 shadow-sm backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 lg:px-6">
-          <a
-            href="#accueil"
-            onClick={fermerMenu}
-            className="flex items-center gap-3"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-900 text-xl text-amber-300 shadow-md">
-              ☪
-            </div>
+      <header
+        className={`
+          fixed top-0 left-0 right-0 z-50
+          transition-all duration-500
+          ${
+            scrolled
+              ? "bg-white/95 backdrop-blur-xl shadow-lg py-3"
+              : "bg-transparent py-5"
+          }
+        `}
+      >
+        <div className="max-w-7xl mx-auto px-5 lg:px-8">
+          <div className="flex items-center justify-between">
 
-            <div>
-              <h1 className="text-sm font-bold leading-tight text-emerald-950 sm:text-base">
-                Dahira Mawahibou Naafih
-              </h1>
-
-              <p className="text-xs text-gray-500">
-                de Castors
-              </p>
-            </div>
-          </a>
-
-          <nav className="hidden items-center gap-7 lg:flex">
-            <a
-              href="#accueil"
-              className="text-sm font-medium text-gray-700 transition hover:text-emerald-700"
-            >
-              Accueil
-            </a>
-
-            <a
-              href="#dahira"
-              className="text-sm font-medium text-gray-700 transition hover:text-emerald-700"
-            >
-              Le Dahira
-            </a>
-
-            <a
-              href="#guide"
-              className="text-sm font-medium text-gray-700 transition hover:text-emerald-700"
-            >
-              Notre guide
-            </a>
-
-            <a
-              href="#pionniers"
-              className="text-sm font-medium text-gray-700 transition hover:text-emerald-700"
-            >
-              Pionniers
-            </a>
-
-            <a
-              href="#galerie"
-              className="text-sm font-medium text-gray-700 transition hover:text-emerald-700"
-            >
-              Galerie
-            </a>
-
-            <a
-              href="#contact"
-              className="text-sm font-medium text-gray-700 transition hover:text-emerald-700"
-            >
-              Contact
-            </a>
-          </nav>
-
-          <div className="flex items-center gap-3">
             <Link
-              to="/login"
-              className="hidden rounded-full bg-emerald-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-950 sm:inline-flex"
+              to="/"
+              className="flex items-center gap-3"
+              onClick={fermerMenu}
             >
-              Se connecter
+              <div className="relative">
+                <div
+                  className={`
+                    absolute inset-0 rounded-2xl blur-lg
+                    ${
+                      scrolled
+                        ? "bg-emerald-500/10"
+                        : "bg-white/20"
+                    }
+                  `}
+                />
+
+                <img
+                  src="/logo.png"
+                  alt="Dahira Mawahibou Naafih"
+                  className="
+                    relative
+                    w-11 h-11
+                    sm:w-12 sm:h-12
+                    object-contain
+                    rounded-2xl
+                  "
+                />
+              </div>
+
+              <div className="hidden sm:block">
+                <div
+                  className={`
+                    font-black tracking-tight text-sm
+                    ${
+                      scrolled
+                        ? "text-emerald-950"
+                        : "text-white"
+                    }
+                  `}
+                >
+                  MAWAHIBOU NAAFIH
+                </div>
+
+                <div
+                  className={`
+                    text-[10px] uppercase tracking-[0.25em]
+                    ${
+                      scrolled
+                        ? "text-emerald-700"
+                        : "text-white/70"
+                    }
+                  `}
+                >
+                  Castors
+                </div>
+              </div>
             </Link>
 
+            {/* DESKTOP */}
+
+            <nav className="hidden md:flex items-center gap-8">
+              {[
+                ["Accueil", "#accueil"],
+                ["Le Dahira", "#dahira"],
+                ["Galerie", "#galerie"],
+                ["Histoire", "#histoire"],
+                ["Contact", "#contact"],
+              ].map(([label, href]) => (
+                <a
+                  key={href}
+                  href={href}
+                  className={`
+                    text-sm font-semibold
+                    transition-colors
+                    ${
+                      scrolled
+                        ? "text-slate-600 hover:text-emerald-700"
+                        : "text-white/85 hover:text-white"
+                    }
+                  `}
+                >
+                  {label}
+                </a>
+              ))}
+
+              <Link
+                to="/login"
+                className="
+                  group
+                  inline-flex items-center gap-2
+                  rounded-full
+                  bg-[#d6ac47]
+                  px-5 py-2.5
+                  text-sm font-bold
+                  text-emerald-950
+                  shadow-lg shadow-black/10
+                  transition-all duration-300
+                  hover:-translate-y-1
+                  hover:shadow-xl
+                "
+              >
+                Mon espace
+
+                <ArrowRight
+                  size={15}
+                  className="
+                    transition-transform
+                    group-hover:translate-x-1
+                  "
+                />
+              </Link>
+            </nav>
+
+            {/* MOBILE */}
+
             <button
-              type="button"
               onClick={() =>
                 setMenuOuvert(!menuOuvert)
               }
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-emerald-900 lg:hidden"
+              className={`
+                md:hidden
+                p-2 rounded-xl
+                ${
+                  scrolled
+                    ? "text-emerald-900 bg-emerald-50"
+                    : "text-white bg-white/10"
+                }
+              `}
               aria-label="Menu"
             >
               {menuOuvert ? (
-                <X size={21} />
+                <X size={24} />
               ) : (
-                <Menu size={21} />
+                <Menu size={24} />
               )}
             </button>
           </div>
         </div>
 
-        {menuOuvert && (
-          <div className="border-t border-gray-100 bg-white px-5 py-4 shadow-lg lg:hidden">
-            <nav className="flex flex-col gap-1">
+        {/* MENU MOBILE */}
+
+        <div
+          className={`
+            md:hidden overflow-hidden
+            transition-all duration-500
+            ${
+              menuOuvert
+                ? "max-h-[420px] opacity-100"
+                : "max-h-0 opacity-0"
+            }
+          `}
+        >
+          <div className="mx-4 mt-4 mb-2 rounded-3xl bg-white p-5 shadow-2xl border border-slate-100">
+            <nav className="flex flex-col gap-2">
+
               {[
-                ["#accueil", "Accueil"],
-                ["#dahira", "Le Dahira"],
-                ["#guide", "Notre guide"],
-                ["#pionniers", "Pionniers"],
-                ["#galerie", "Galerie"],
-                ["#contact", "Contact"],
-              ].map(([href, label]) => (
+                ["Accueil", "#accueil"],
+                ["Le Dahira", "#dahira"],
+                ["Galerie", "#galerie"],
+                ["Histoire", "#histoire"],
+                ["Contact", "#contact"],
+              ].map(([label, href]) => (
                 <a
                   key={href}
                   href={href}
                   onClick={fermerMenu}
-                  className="rounded-xl px-4 py-3 text-sm font-medium text-gray-700 hover:bg-emerald-50 hover:text-emerald-800"
+                  className="
+                    rounded-2xl px-4 py-3
+                    font-semibold text-slate-700
+                    hover:bg-emerald-50
+                    hover:text-emerald-800
+                    transition
+                  "
                 >
                   {label}
                 </a>
@@ -471,687 +721,1786 @@ function Home() {
               <Link
                 to="/login"
                 onClick={fermerMenu}
-                className="mt-2 rounded-xl bg-emerald-900 px-4 py-3 text-center text-sm font-semibold text-white"
+                className="
+                  mt-2
+                  flex items-center justify-center gap-2
+                  rounded-2xl
+                  bg-emerald-900
+                  px-4 py-3
+                  font-bold text-white
+                "
               >
-                Espace membre
+                Mon espace
+                <ArrowRight size={17} />
               </Link>
             </nav>
           </div>
-        )}
+        </div>
       </header>
 
-      {/* =====================================================
+      {/* ====================================================
           HERO
-      ====================================================== */}
+      ==================================================== */}
 
       <section
         id="accueil"
-        className="relative flex min-h-[88vh] items-center overflow-hidden bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-800 pt-24"
+        className="
+          relative
+          min-h-[100svh]
+          overflow-hidden
+          bg-emerald-950
+        "
       >
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -left-40 top-10 h-[500px] w-[500px] rounded-full border-[70px] border-white/5" />
+        {/* FOND */}
 
-          <div className="absolute -bottom-52 -right-32 h-[650px] w-[650px] rounded-full border-[90px] border-white/5" />
+        <div
+          className="
+            absolute inset-0
+            bg-[radial-gradient(circle_at_50%_20%,rgba(30,130,91,0.7),transparent_42%),linear-gradient(135deg,#022c22,#064e3b_50%,#022c22)]
+          "
+        />
 
-          <div className="absolute right-[25%] top-[25%] h-2 w-2 rounded-full bg-amber-300/70" />
+        {/* HALO GAUCHE */}
 
-          <div className="absolute left-[42%] top-[18%] h-1.5 w-1.5 rounded-full bg-white/40" />
-        </div>
+        <div
+          className="
+            absolute
+            -top-32
+            -left-32
+            w-96 h-96
+            rounded-full
+            bg-emerald-400/15
+            blur-3xl
+            animate-float-slow
+          "
+        />
 
-        <div className="relative mx-auto grid max-w-7xl gap-12 px-6 py-24 lg:grid-cols-2 lg:items-center">
-          <div className="text-white">
-            <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-amber-300 backdrop-blur-sm">
-              <Sparkles size={14} />
-              Bienvenue
+        {/* HALO DROIT */}
+
+        <div
+          className="
+            absolute
+            top-1/3
+            -right-40
+            w-[32rem] h-[32rem]
+            rounded-full
+            bg-[#d6ac47]/10
+            blur-3xl
+            animate-float-reverse
+          "
+        />
+
+        {/* CERCLE EXTERIEUR */}
+
+        <div
+          className="
+            absolute
+            left-1/2
+            top-[44%]
+            -translate-x-1/2
+            -translate-y-1/2
+            w-[440px] h-[440px]
+            sm:w-[620px] sm:h-[620px]
+            rounded-full
+            border border-white/5
+            animate-rotate-slow
+          "
+        />
+
+        {/* CERCLE INTERIEUR */}
+
+        <div
+          className="
+            absolute
+            left-1/2
+            top-[44%]
+            -translate-x-1/2
+            -translate-y-1/2
+            w-[330px] h-[330px]
+            sm:w-[480px] sm:h-[480px]
+            rounded-full
+            border border-[#d6ac47]/10
+            animate-rotate-slow
+          "
+          style={{
+            animationDirection: "reverse",
+          }}
+        />
+
+        {/* PARTICULES */}
+
+        <div
+          className="
+            absolute
+            top-[25%]
+            left-[12%]
+            w-2 h-2
+            rounded-full
+            bg-[#d6ac47]
+            shadow-[0_0_20px_rgba(214,172,71,0.8)]
+            animate-pulse
+          "
+        />
+
+        <div
+          className="
+            absolute
+            top-[34%]
+            right-[16%]
+            w-1.5 h-1.5
+            rounded-full
+            bg-white
+            opacity-70
+            animate-ping
+          "
+        />
+
+        <div
+          className="
+            absolute
+            bottom-[28%]
+            left-[20%]
+            w-1 h-1
+            rounded-full
+            bg-[#d6ac47]
+            animate-pulse
+          "
+        />
+
+        {/* CONTENU */}
+
+        <div
+          className="
+            relative z-10
+            min-h-[100svh]
+            flex items-center justify-center
+            px-5 pt-28 pb-20
+          "
+        >
+          <div className="w-full max-w-5xl text-center">
+
+            {/* BADGE */}
+
+            <div
+              className="
+                inline-flex items-center gap-2
+                rounded-full
+                border border-white/10
+                bg-white/5
+                backdrop-blur-xl
+                px-4 py-2
+                text-[10px] sm:text-xs
+                uppercase tracking-[0.3em]
+                font-semibold text-white/70
+                animate-soft-appear
+              "
+            >
+              <Sparkles
+                size={13}
+                className="text-[#d6ac47]"
+              />
+
+              Dahira Mawahibou Naafih Castors
             </div>
 
-            <h2 className="mt-7 text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
-              Dahira
-              <span className="block text-amber-300">
-                Mawahibou Naafih
+            {/* LOGO */}
+
+            <div
+              className="
+                relative
+                mx-auto
+                mt-8
+                w-36 h-36
+                sm:w-44 sm:h-44
+              "
+            >
+              <div
+                className="
+                  absolute inset-0
+                  rounded-full
+                  bg-[#d6ac47]/20
+                  blur-2xl
+                "
+              />
+
+              <div
+                className="
+                  relative
+                  w-full h-full
+                  rounded-full
+                  border border-white/20
+                  bg-white/10
+                  backdrop-blur-xl
+                  flex items-center justify-center
+                  animate-pulse-glow
+                "
+              >
+                <img
+                  src="/logo.png"
+                  alt="Dahira Mawahibou Naafih"
+                  className="
+                    w-28 h-28
+                    sm:w-36 sm:h-36
+                    object-contain
+                    rounded-full
+                  "
+                />
+              </div>
+            </div>
+
+            {/* TITRE */}
+
+            <h1
+              className="
+                mt-8
+                text-4xl
+                sm:text-6xl
+                lg:text-7xl
+                font-black
+                tracking-tight
+                leading-[0.95]
+                text-white
+              "
+            >
+              Une voie.
+              <br />
+
+              <span className="text-[#d6ac47]">
+                Une communauté.
               </span>
+            </h1>
 
-              <span className="mt-2 block text-2xl font-normal text-white/70 sm:text-3xl">
-                de Castors
-              </span>
-            </h2>
-
-            <div className="mt-7 h-1 w-16 rounded-full bg-amber-400" />
-
-            <p className="mt-6 max-w-xl text-lg leading-8 text-white/70">
-              Un lieu de foi, de fraternité, de transmission et
-              de service, au cœur de Castors.
+            <p
+              className="
+                mx-auto
+                mt-6
+                max-w-xl
+                text-sm
+                sm:text-base
+                leading-relaxed
+                text-white/65
+              "
+            >
+              Le Dahira Mawahibou Naafih de Castors,
+              au service de la fraternité,
+              de la spiritualité et de la communauté.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-4">
-              <a
-                href="#dahira"
-                className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-7 py-3.5 font-semibold text-emerald-950 shadow-lg transition hover:bg-amber-300"
-              >
-                Découvrir
-                <ArrowRight size={18} />
-              </a>
+            {/* BOUTONS */}
 
+            <div
+              className="
+                mt-8
+                flex
+                flex-col
+                sm:flex-row
+                items-center
+                justify-center
+                gap-3
+              "
+            >
               <Link
                 to="/login"
-                className="inline-flex items-center rounded-full border border-white/30 px-7 py-3.5 font-semibold text-white transition hover:bg-white/10"
+                className="
+                  group
+                  flex items-center justify-center gap-2
+                  w-full sm:w-auto
+                  rounded-2xl
+                  bg-[#d6ac47]
+                  px-7 py-4
+                  text-sm font-black
+                  text-emerald-950
+                  shadow-xl shadow-black/20
+                  transition-all duration-300
+                  hover:-translate-y-1
+                  hover:shadow-2xl
+                "
               >
-                Espace membre
+                Accéder à mon espace
+
+                <ArrowRight
+                  size={17}
+                  className="
+                    transition-transform
+                    group-hover:translate-x-1
+                  "
+                />
               </Link>
+
+              <a
+                href="#dahira"
+                className="
+                  flex items-center justify-center gap-2
+                  w-full sm:w-auto
+                  rounded-2xl
+                  border border-white/15
+                  bg-white/5
+                  backdrop-blur
+                  px-7 py-4
+                  text-sm font-bold
+                  text-white
+                  transition-all duration-300
+                  hover:bg-white/10
+                  hover:-translate-y-1
+                "
+              >
+                Découvrir le Dahira
+              </a>
             </div>
-          </div>
 
-          <div className="hidden justify-center lg:flex">
-            <div className="relative flex h-[410px] w-[410px] items-center justify-center rounded-full border border-white/10 bg-white/5 backdrop-blur-sm">
-              <div className="absolute inset-8 rounded-full border border-amber-300/20" />
+            {/* SCROLL */}
 
-              <div className="absolute inset-16 rounded-full border border-white/10" />
+            <a
+              href="#prieres"
+              className="
+                absolute
+                bottom-6
+                left-1/2
+                -translate-x-1/2
+                flex flex-col
+                items-center
+                gap-2
+                text-white/45
+                hover:text-white
+                transition
+              "
+            >
+              <span
+                className="
+                  text-[9px]
+                  uppercase
+                  tracking-[0.3em]
+                "
+              >
+                Explorer
+              </span>
 
-              <div className="relative flex h-64 w-64 flex-col items-center justify-center rounded-full border border-amber-300/30 bg-emerald-950/60 text-center shadow-2xl">
-                <div className="mb-4 text-6xl text-amber-300">
-                  ☪
-                </div>
-
-                <p className="text-xl font-bold text-white">
-                  Mawahibou Naafih
-                </p>
-
-                <p className="mt-2 text-sm text-white/50">
-                  Dahira de Castors
-                </p>
-
-                <div className="mt-5 h-px w-16 bg-amber-300/50" />
-
-                <p className="mt-4 text-xs uppercase tracking-[0.2em] text-white/40">
-                  Foi • Fraternité • Service
-                </p>
-              </div>
-            </div>
+              <ArrowDown
+                size={17}
+                className="animate-scroll-down"
+              />
+            </a>
           </div>
         </div>
       </section>
 
-      {/* =====================================================
-          HORAIRES DE PRIÈRE
-      ====================================================== */}
+      {/* ====================================================
+          HORAIRES DE PRIERE
+      ==================================================== */}
 
-      <section className="relative z-10 -mt-8 px-5 pb-8">
-        <div className="mx-auto max-w-6xl rounded-3xl bg-white p-5 shadow-2xl ring-1 ring-gray-100 sm:p-7">
-          <div className="grid gap-7 lg:grid-cols-[0.65fr_1.35fr] lg:items-center">
-            <div className="rounded-2xl bg-emerald-950 p-6 text-white">
-              <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.15em] text-amber-300">
-                <Clock3 size={17} />
-                Aujourd'hui
-              </div>
+      <section
+        id="prieres"
+        className="
+          relative
+          -mt-8
+          sm:-mt-14
+          z-20
+          px-4
+        "
+      >
+        <div className="max-w-6xl mx-auto">
 
-              <h2 className="mt-4 text-2xl font-bold">
-                Horaires de prière
-              </h2>
+          <div
+            className="
+              rounded-[2rem]
+              bg-white
+              shadow-2xl
+              shadow-emerald-950/10
+              border border-slate-100
+              overflow-hidden
+            "
+          >
+            <div
+              className="
+                grid
+                lg:grid-cols-[1.1fr_2fr]
+              "
+            >
 
-              <p className="mt-2 text-sm text-white/50">
-                Dakar, Sénégal
-              </p>
+              {/* PROCHAINE PRIERE */}
 
-              {chargementHoraires ? (
-                <div className="mt-6 h-16 animate-pulse rounded-xl bg-white/10" />
-              ) : prochainePriere ? (
-                <div className="mt-6 flex items-end justify-between gap-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-wider text-white/40">
-                      Prochaine prière
-                    </p>
+              <div
+                className="
+                  relative
+                  overflow-hidden
+                  bg-emerald-900
+                  p-7
+                  sm:p-9
+                  text-white
+                "
+              >
+                <div
+                  className="
+                    absolute
+                    -right-16
+                    -top-16
+                    w-40 h-40
+                    rounded-full
+                    bg-[#d6ac47]/15
+                    blur-2xl
+                  "
+                />
 
-                    <p className="mt-1 text-2xl font-bold">
-                      {prochainePriere.nom}
-                    </p>
+                <div className="relative z-10">
+
+                  <div
+                    className="
+                      flex items-center gap-2
+                      text-[#d6ac47]
+                      text-xs
+                      font-bold
+                      uppercase
+                      tracking-[0.2em]
+                    "
+                  >
+                    <Clock3 size={15} />
+                    À venir
                   </div>
 
-                  <p className="text-3xl font-bold text-amber-300">
-                    {prochainePriere.heure}
+                  <div
+                    className="
+                      mt-5
+                      text-4xl
+                      sm:text-5xl
+                      font-black
+                    "
+                  >
+                    {prochainePriere?.heure || "--:--"}
+                  </div>
+
+                  <div
+                    className="
+                      mt-1
+                      text-xl
+                      font-bold
+                    "
+                  >
+                    {prochainePriere
+                      ? PRIERE_NOMS[
+                          prochainePriere.nom
+                        ] || prochainePriere.nom
+                      : "Prochaine prière"}
+                  </div>
+
+                  <p
+                    className="
+                      mt-3
+                      text-sm
+                      text-white/60
+                    "
+                  >
+                    {prochainePriere?.demain
+                      ? "Demain à Dakar"
+                      : "Aujourd'hui à Dakar"}
                   </p>
+
+                  <div
+                    className="
+                      mt-6
+                      flex items-center gap-2
+                      text-xs
+                      text-white/50
+                    "
+                  >
+                    <MapPin size={13} />
+                    Dakar
+                  </div>
                 </div>
-              ) : (
-                <p className="mt-6 text-sm text-white/50">
-                  Horaires indisponibles.
-                </p>
-              )}
-            </div>
-
-            <div>
-              <div className="mb-4 flex items-center justify-between">
-                <p className="text-sm font-semibold text-emerald-950">
-                  Horaires du jour
-                </p>
-
-                <p className="text-xs text-gray-400">
-                  Dakar
-                </p>
               </div>
 
-              {chargementHoraires ? (
-                <div className="grid gap-3 sm:grid-cols-5">
-                  {[1, 2, 3, 4, 5].map((item) => (
-                    <div
-                      key={item}
-                      className="h-24 animate-pulse rounded-2xl bg-gray-100"
-                    />
-                  ))}
+              {/* LISTE */}
+
+              <div className="p-5 sm:p-7">
+
+                <div
+                  className="
+                    flex
+                    items-center
+                    justify-between
+                    mb-5
+                  "
+                >
+                  <div>
+                    <p
+                      className="
+                        text-xs
+                        uppercase
+                        tracking-[0.2em]
+                        font-bold
+                        text-emerald-700
+                      "
+                    >
+                      Aujourd'hui
+                    </p>
+
+                    <h2
+                      className="
+                        mt-1
+                        text-xl
+                        font-black
+                        text-slate-900
+                      "
+                    >
+                      Horaires de prière
+                    </h2>
+                  </div>
+
+                  <Moon
+                    size={23}
+                    className="text-[#d6ac47]"
+                  />
                 </div>
-              ) : horaires ? (
-                <div className="grid gap-3 sm:grid-cols-5">
-                  <PrayerMini
-                    icon={Moon}
-                    nom="Fajr"
-                    heure={horaires.Fajr}
-                  />
 
-                  <PrayerMini
-                    icon={Sun}
-                    nom="Dhuhr"
-                    heure={horaires.Dhuhr}
-                  />
+                {erreurHoraires ? (
+                  <div
+                    className="
+                      rounded-2xl
+                      bg-red-50
+                      p-4
+                      text-sm
+                      text-red-700
+                    "
+                  >
+                    Impossible de charger les horaires.
+                  </div>
+                ) : (
+                  <div
+                    className="
+                      grid
+                      grid-cols-2
+                      sm:grid-cols-5
+                      gap-2
+                    "
+                  >
+                    {[
+                      "Fajr",
+                      "Dhuhr",
+                      "Asr",
+                      "Maghrib",
+                      "Isha",
+                    ].map((nom) => (
+                      <div
+                        key={nom}
+                        className="
+                          group
+                          rounded-2xl
+                          bg-slate-50
+                          p-4
+                          transition-all duration-300
+                          hover:bg-emerald-50
+                          hover:-translate-y-1
+                        "
+                      >
+                        <div
+                          className="
+                            text-[11px]
+                            font-bold
+                            text-slate-400
+                            uppercase
+                          "
+                        >
+                          {PRIERE_NOMS[nom]}
+                        </div>
 
-                  <PrayerMini
-                    icon={Sun}
-                    nom="Asr"
-                    heure={horaires.Asr}
-                  />
-
-                  <PrayerMini
-                    icon={Moon}
-                    nom="Maghrib"
-                    heure={horaires.Maghrib}
-                  />
-
-                  <PrayerMini
-                    icon={Moon}
-                    nom="Isha"
-                    heure={horaires.Isha}
-                  />
-                </div>
-              ) : (
-                <div className="rounded-2xl bg-gray-50 p-6 text-center text-sm text-gray-500">
-                  Les horaires sont momentanément indisponibles.
-                </div>
-              )}
+                        <div
+                          className="
+                            mt-2
+                            text-xl
+                            font-black
+                            text-emerald-950
+                            group-hover:text-emerald-700
+                          "
+                        >
+                          {horaires?.[nom] || "--:--"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* =====================================================
-          RAPPEL
-      ====================================================== */}
+      {/* ====================================================
+          DAHIRA
+      ==================================================== */}
 
-      <section className="px-6 py-16 lg:py-20">
-        <div className="mx-auto max-w-5xl">
-          <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-emerald-950 to-emerald-900 p-8 text-center text-white shadow-xl sm:p-12">
-            <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full border-[30px] border-white/5" />
+      <section
+        id="dahira"
+        className="
+          py-24
+          sm:py-32
+          px-5
+        "
+      >
+        <div className="max-w-6xl mx-auto">
 
-            <div className="relative">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-400 text-emerald-950">
-                <Quote size={22} />
+          <Reveal>
+            <div className="max-w-2xl">
+
+              <div
+                className="
+                  flex items-center gap-2
+                  text-emerald-700
+                  text-xs
+                  font-black
+                  uppercase
+                  tracking-[0.25em]
+                "
+              >
+                <span
+                  className="
+                    w-8 h-px
+                    bg-[#d6ac47]
+                  "
+                />
+
+                Notre identité
               </div>
 
-              <p className="mt-6 text-xs font-semibold uppercase tracking-[0.25em] text-amber-300">
-                Rappel du jour
+              <h2
+                className="
+                  mt-5
+                  text-4xl
+                  sm:text-5xl
+                  font-black
+                  tracking-tight
+                  text-emerald-950
+                "
+              >
+                Plus qu'un Dahira.
+                <br />
+
+                <span className="text-[#b88b28]">
+                  Une famille.
+                </span>
+              </h2>
+
+              <p
+                className="
+                  mt-5
+                  text-slate-500
+                  leading-relaxed
+                  max-w-xl
+                "
+              >
+                Un espace de spiritualité,
+                de fraternité et de partage
+                où chacun contribue à faire grandir
+                la communauté.
               </p>
+            </div>
+          </Reveal>
 
-              <blockquote className="mx-auto mt-5 max-w-3xl text-2xl font-medium leading-10 sm:text-3xl">
-                « {rappels[rappelIndex].texte} »
-              </blockquote>
+          <div
+            className="
+              mt-14
+              grid
+              sm:grid-cols-2
+              lg:grid-cols-4
+              gap-4
+            "
+          >
+            {[
+              {
+                icon: Heart,
+                titre: "Spiritualité",
+                texte:
+                  "Cultiver la foi et la constance.",
+              },
+              {
+                icon: Users,
+                titre: "Fraternité",
+                texte:
+                  "Avancer ensemble dans l'unité.",
+              },
+              {
+                icon: Star,
+                titre: "Engagement",
+                texte:
+                  "Servir avec sincérité.",
+              },
+              {
+                icon: Sparkles,
+                titre: "Transmission",
+                texte:
+                  "Préserver et transmettre.",
+              },
+            ].map((item, index) => {
+              const Icon = item.icon;
 
-              <p className="mt-5 text-sm text-white/40">
-                — {rappels[rappelIndex].source}
-              </p>
+              return (
+                <Reveal
+                  key={item.titre}
+                  delay={index * 100}
+                >
+                  <div
+                    className="
+                      group
+                      h-full
+                      rounded-[1.75rem]
+                      bg-white
+                      border border-slate-100
+                      p-6
+                      shadow-sm
+                      transition-all duration-500
+                      hover:-translate-y-2
+                      hover:shadow-xl
+                    "
+                  >
+                    <div
+                      className="
+                        w-12 h-12
+                        rounded-2xl
+                        bg-emerald-50
+                        flex items-center justify-center
+                        text-emerald-800
+                        transition-all duration-300
+                        group-hover:bg-emerald-900
+                        group-hover:text-[#d6ac47]
+                      "
+                    >
+                      <Icon size={21} />
+                    </div>
 
-              <div className="mt-7 flex justify-center gap-2">
-                {rappels.map((_, index) => (
-                  <button
+                    <h3
+                      className="
+                        mt-5
+                        font-black
+                        text-lg
+                        text-emerald-950
+                      "
+                    >
+                      {item.titre}
+                    </h3>
+
+                    <p
+                      className="
+                        mt-2
+                        text-sm
+                        leading-relaxed
+                        text-slate-500
+                      "
+                    >
+                      {item.texte}
+                    </p>
+                  </div>
+                </Reveal>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ====================================================
+          RAPPEL
+      ==================================================== */}
+
+      <section
+        className="
+          px-5
+          pb-24
+          sm:pb-32
+        "
+      >
+        <Reveal>
+          <div
+            className="
+              max-w-6xl
+              mx-auto
+              relative
+              overflow-hidden
+              rounded-[2.5rem]
+              bg-emerald-950
+              px-7
+              py-14
+              sm:px-14
+              sm:py-20
+              text-center
+            "
+          >
+            <div
+              className="
+                absolute
+                -top-32
+                left-1/2
+                -translate-x-1/2
+                w-80 h-80
+                rounded-full
+                bg-[#d6ac47]/10
+                blur-3xl
+              "
+            />
+
+            <div
+              className="
+                absolute
+                top-10
+                left-10
+                w-2 h-2
+                rounded-full
+                bg-[#d6ac47]
+                animate-pulse
+              "
+            />
+
+            <div
+              className="
+                absolute
+                bottom-10
+                right-12
+                w-1.5 h-1.5
+                rounded-full
+                bg-white
+                animate-ping
+              "
+            />
+
+            <div className="relative z-10">
+
+              <Sparkles
+                size={28}
+                className="
+                  mx-auto
+                  text-[#d6ac47]
+                "
+              />
+
+              <div
+                key={rappelIndex}
+                className="animate-soft-appear"
+              >
+                <p
+                  className="
+                    mt-7
+                    text-2xl
+                    sm:text-4xl
+                    lg:text-5xl
+                    font-black
+                    leading-tight
+                    text-white
+                  "
+                >
+                  « {RAPPELS[rappelIndex]} »
+                </p>
+              </div>
+
+              <div
+                className="
+                  mt-7
+                  flex
+                  justify-center
+                  gap-1.5
+                "
+              >
+                {RAPPELS.map((_, index) => (
+                  <span
                     key={index}
-                    type="button"
-                    onClick={() =>
-                      setRappelIndex(index)
-                    }
-                    className={`h-2 rounded-full transition-all ${
-                      index === rappelIndex
-                        ? "w-7 bg-amber-300"
-                        : "w-2 bg-white/20"
-                    }`}
-                    aria-label={`Rappel ${index + 1}`}
+                    className={`
+                      h-1.5
+                      rounded-full
+                      transition-all duration-500
+                      ${
+                        index === rappelIndex
+                          ? "w-7 bg-[#d6ac47]"
+                          : "w-1.5 bg-white/20"
+                      }
+                    `}
                   />
                 ))}
               </div>
             </div>
           </div>
-        </div>
+        </Reveal>
       </section>
 
-      {/* =====================================================
-          LE DAHIRA
-      ====================================================== */}
+    {/* =====================================================
+    GUIDE
+====================================================== */}
+{/* =====================================================
+    GUIDE
+====================================================== */}
+<section
+  id="guide"
+  className="bg-emerald-950 px-6 py-20 text-white lg:py-24"
+>
+  <div className="mx-auto max-w-6xl">
+    <div className="grid gap-10 lg:grid-cols-[280px_1fr] lg:items-center lg:gap-16">
 
-      <section
-        id="dahira"
-        className="bg-[#f1f5f0] px-6 py-20 lg:py-24"
-      >
-        <div className="mx-auto max-w-7xl">
-          <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
-            <div>
-              <p className="font-semibold uppercase tracking-[0.2em] text-emerald-700">
-                Le Dahira
-              </p>
+      {/* PHOTO DU GUIDE */}
+      <div className="flex justify-center lg:justify-start">
+        <div className="relative">
+          <div className="absolute -inset-3 rounded-[2rem] border border-amber-300/20" />
 
-              <h2 className="mt-3 text-4xl font-bold leading-tight text-emerald-950 sm:text-5xl">
-                Une communauté réunie autour de la foi
-              </h2>
-
-              <div className="mt-6 h-1 w-16 rounded-full bg-amber-400" />
-            </div>
-
-            <div className="space-y-5 text-gray-600">
-              <p className="text-lg leading-8">
-                Le Dahira Mawahibou Naafih de Castors est une
-                communauté fondée sur la foi, la fraternité, la
-                transmission et le service.
-              </p>
-
-              <p className="leading-8">
-                À travers les rencontres, les programmes religieux,
-                les Khassidas et les différentes activités
-                communautaires, le Dahira rassemble ses membres
-                autour d'un même esprit de solidarité et
-                d'engagement.
-              </p>
-            </div>
+          <div className="relative h-[390px] w-[280px] overflow-hidden rounded-[1.75rem] shadow-2xl">
+            <img
+              src={guideImage}
+              alt="Serigne Moustapha Abdou Khadr Mbacké"
+              className="h-full w-full object-cover"
+            />
           </div>
         </div>
-      </section>
+      </div>
 
-      {/* =====================================================
-          GUIDE
-      ====================================================== */}
+      {/* TEXTE DU GUIDE */}
+      <div>
+        <p className="font-semibold uppercase tracking-[0.2em] text-amber-300">
+          Notre guide
+        </p>
 
-      <section
-        id="guide"
-        className="bg-emerald-950 px-6 py-20 text-white lg:py-24"
-      >
-        <div className="mx-auto max-w-6xl">
-          <div className="grid gap-12 lg:grid-cols-[0.65fr_1.35fr] lg:items-center">
-            <div className="flex justify-center">
-              <div className="relative">
-                <div className="absolute -inset-3 rounded-[2rem] border border-amber-300/20" />
+        <h2 className="mt-4 text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
+          Serigne Moustapha
+          <span className="block text-amber-300">
+            Abdou Khadr Mbacké
+          </span>
+        </h2>
 
-                <div className="relative h-[390px] w-[280px] overflow-hidden rounded-[1.75rem] shadow-2xl">
-                  <img
-                    src={guideImage}
-                    alt="Serigne Moustapha Abdou Khadr Mbacké"
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              </div>
-            </div>
+        <div className="mt-6 h-1 w-16 rounded-full bg-amber-400" />
 
-            <div>
-              <p className="font-semibold uppercase tracking-[0.2em] text-amber-300">
-                Notre guide
-              </p>
+        <p className="mt-7 max-w-2xl text-lg leading-8 text-white/70">
+          Le Dahira bénéficie de l'accompagnement et des enseignements
+          de son guide, dont l'orientation contribue à la transmission
+          des valeurs spirituelles et à l'unité de ses membres.
+        </p>
 
-              <h2 className="mt-4 text-4xl font-bold leading-tight sm:text-5xl">
-                Serigne Moustapha
-                <span className="block text-amber-300">
-                  Abdou Khadr Mbacké
-                </span>
-              </h2>
+        <p className="mt-5 max-w-2xl leading-8 text-white/55">
+          Fils de Serigne Abdou Khadr Mbacké, quatrième Khalife Général
+          des Mourides, il s'inscrit dans une lignée spirituelle consacrée
+          à la transmission des enseignements de Cheikh Ahmadou Bamba
+          Khadimou Rassoul.
+        </p>
+      </div>
 
-              <div className="mt-6 h-1 w-16 rounded-full bg-amber-400" />
+    </div>
+  </div>
+</section>
 
-              <p className="mt-7 text-lg leading-8 text-white/70">
-                Le Dahira bénéficie de l'accompagnement et des
-                enseignements de son guide, dont l'orientation
-                contribue à la transmission des valeurs
-                spirituelles et à l'unité de ses membres.
-              </p>
-
-              <p className="mt-5 leading-8 text-white/55">
-                Fils de Serigne Abdou Khadr Mbacké, quatrième
-                Khalife Général des Mourides, il s'inscrit dans
-                une lignée spirituelle consacrée à la transmission
-                des enseignements de Cheikh Ahmadou Bamba
-                Khadimou Rassoul.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* =====================================================
+      {/* ====================================================
           PIONNIERS
-      ====================================================== */}
+      ==================================================== */}
 
       <section
-        id="pionniers"
-        className="bg-white px-6 py-20 lg:py-24"
+        className="
+          px-5
+          py-24
+          sm:py-32
+        "
       >
-        <div className="mx-auto max-w-7xl">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="font-semibold uppercase tracking-[0.2em] text-emerald-700">
-              Notre histoire
-            </p>
+        <div className="max-w-6xl mx-auto">
 
-            <h2 className="mt-3 text-4xl font-bold text-emerald-950 sm:text-5xl">
-              Nos pionniers
-            </h2>
-
-            <p className="mt-5 leading-7 text-gray-500">
-              Ceux qui ont participé aux premières étapes de la
-              construction du Dahira occupent une place
-              particulière dans notre mémoire.
-            </p>
-          </div>
-
-          <div className="mx-auto mt-12 grid max-w-5xl gap-6 sm:grid-cols-3">
-            {pionniers.map((pionnier, index) => (
-              <PionnierCard
-                key={`${pionnier.nom}-${index}`}
-                pionnier={pionnier}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* =====================================================
-          GALERIE MULTIMÉDIA
-      ====================================================== */}
-
-      <section
-        id="galerie"
-        className="bg-[#f1f5f0] px-6 py-20 lg:py-24"
-      >
-        <div className="mx-auto max-w-7xl">
-          <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-            <div>
-              <p className="font-semibold uppercase tracking-[0.2em] text-emerald-700">
-                Souvenirs
-              </p>
-
-              <h2 className="mt-3 text-4xl font-bold text-emerald-950 sm:text-5xl">
-                Notre galerie
-              </h2>
-
-              <p className="mt-4 max-w-xl leading-7 text-gray-500">
-                Retrouvez quelques moments de la vie du Dahira,
-                en photos et en vidéos.
-              </p>
-            </div>
-
-            {/* FILTRES */}
-
-            <div className="flex flex-wrap gap-2">
-              <GalleryFilter
-                actif={filtreGalerie === "tout"}
-                onClick={() =>
-                  setFiltreGalerie("tout")
-                }
-                icon={Sparkles}
-              >
-                Tout
-              </GalleryFilter>
-
-              <GalleryFilter
-                actif={filtreGalerie === "image"}
-                onClick={() =>
-                  setFiltreGalerie("image")
-                }
-                icon={Sun}
-              >
-                Photos
-              </GalleryFilter>
-
-              <GalleryFilter
-                actif={filtreGalerie === "video"}
-                onClick={() =>
-                  setFiltreGalerie("video")
-                }
-                icon={Video}
-              >
-                Vidéos
-              </GalleryFilter>
-            </div>
-          </div>
-
-          {/* ==================================================
-              CHARGEMENT
-          ================================================== */}
-
-          {chargementGalerie ? (
-            <div className="mt-10 grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {[1, 2, 3, 4, 5, 6].map(
-                (item) => (
-                  <div
-                    key={item}
-                    className={`animate-pulse rounded-3xl bg-gray-200 ${
-                      item === 1
-                        ? "col-span-2 h-64 lg:col-span-2 lg:h-80"
-                        : "h-64 lg:h-80"
-                    }`}
-                  />
-                )
-              )}
-            </div>
-          ) : erreurGalerie ? (
-            <div className="mt-10 rounded-3xl border border-dashed border-gray-200 bg-white p-12 text-center">
-              <p className="text-gray-500">
-                {erreurGalerie}
-              </p>
-            </div>
-          ) : mediasFiltres.length > 0 ? (
-            /* ==================================================
-                GRILLE
-            ================================================== */
-
-            <div className="mt-10 grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {mediasFiltres.map(
-                (media, index) => (
-                  <MediaCard
-                    key={media.id}
-                    media={{
-                      ...media,
-                      src: construireUrlMedia(
-                        media.url
-                      ),
-                      type:
-                        media.type_media,
-                    }}
-                    grande={index === 0}
-                  />
-                )
-              )}
-            </div>
-          ) : (
-            <div className="mt-10 rounded-3xl border border-dashed border-gray-200 bg-white p-12 text-center">
-              <p className="text-gray-500">
-                Aucun média disponible dans cette catégorie.
-              </p>
-            </div>
-          )}
-
-          <div className="mt-8 text-center">
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-6 py-3 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50"
+          <Reveal>
+            <div
+              className="
+                flex
+                flex-col
+                sm:flex-row
+                sm:items-end
+                sm:justify-between
+                gap-5
+              "
             >
-              Voir toute la galerie
-              <ArrowRight size={17} />
-            </button>
-          </div>
-        </div>
-      </section>
+              <div>
 
-      {/* =====================================================
-          À VENIR
-      ====================================================== */}
-
-      <section className="bg-white px-6 py-20 lg:py-24">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-800">
-              <CalendarDays size={24} />
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
-                Agenda
-              </p>
-
-              <h2 className="mt-1 text-3xl font-bold text-emerald-950">
-                À venir
-              </h2>
-            </div>
-          </div>
-
-          <div className="mt-10 grid gap-5 md:grid-cols-3">
-            {evenements.map(
-              (evenement, index) => (
                 <div
-                  key={`${evenement.titre}-${index}`}
-                  className="rounded-3xl border border-gray-100 bg-[#faf9f5] p-6 transition hover:-translate-y-1 hover:shadow-lg"
+                  className="
+                    flex items-center gap-2
+                    text-emerald-700
+                    text-xs
+                    font-black
+                    uppercase
+                    tracking-[0.25em]
+                  "
                 >
-                  <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-800">
-                    {evenement.categorie}
-                  </span>
-
-                  <h3 className="mt-5 text-xl font-bold text-emerald-950">
-                    {evenement.titre}
-                  </h3>
-
-                  <p className="mt-3 text-sm leading-7 text-gray-500">
-                    {evenement.texte}
-                  </p>
+                  <Users size={14} />
+                  Mémoire
                 </div>
+
+                <h2
+                  className="
+                    mt-4
+                    text-3xl
+                    sm:text-4xl
+                    font-black
+                    text-emerald-950
+                  "
+                >
+                  Ceux qui ont ouvert
+
+                  <span className="text-[#b88b28]">
+                    {" "}la voie.
+                  </span>
+                </h2>
+              </div>
+
+              <p
+                className="
+                  max-w-md
+                  text-sm
+                  text-slate-500
+                "
+              >
+                Honorer celles et ceux qui
+                ont contribué à l'histoire
+                de notre communauté.
+              </p>
+            </div>
+          </Reveal>
+
+          <div
+            className="
+              mt-12
+              grid
+              sm:grid-cols-3
+              gap-4
+            "
+          >
+            {PIONNIERS.map(
+              (pionnier, index) => (
+                <Reveal
+                  key={`${pionnier.nom}-${index}`}
+                  delay={index * 120}
+                >
+                  <div
+                    className="
+                      group
+                      relative
+                      overflow-hidden
+                      rounded-[2rem]
+                      bg-white
+                      border border-slate-100
+                      p-7
+                      shadow-sm
+                      transition-all duration-500
+                      hover:-translate-y-2
+                      hover:shadow-xl
+                    "
+                  >
+                    <div
+                      className="
+                        absolute
+                        -right-8
+                        -top-8
+                        w-24 h-24
+                        rounded-full
+                        bg-[#d6ac47]/10
+                      "
+                    />
+
+                    <div
+                      className="
+                        relative
+                        w-14 h-14
+                        rounded-2xl
+                        bg-emerald-900
+                        flex items-center justify-center
+                        text-[#d6ac47]
+                        font-black
+                      "
+                    >
+                      {index + 1}
+                    </div>
+
+                    <h3
+                      className="
+                        mt-6
+                        text-xl
+                        font-black
+                        text-emerald-950
+                      "
+                    >
+                      {pionnier.nom}
+                    </h3>
+
+                    <p
+                      className="
+                        mt-1
+                        text-sm
+                        text-slate-400
+                      "
+                    >
+                      {pionnier.fonction}
+                    </p>
+                  </div>
+                </Reveal>
               )
             )}
           </div>
         </div>
       </section>
 
-      {/* =====================================================
-          CONTACT
-      ====================================================== */}
+      {/* ====================================================
+          HISTORIQUE DU DAHIRA
+          REMPLACE AGENDA + ACTIVITES
+      ==================================================== */}
+
+      <section
+        id="histoire"
+        className="
+          px-5
+          py-24
+          sm:py-32
+          bg-white
+        "
+      >
+        <div className="max-w-6xl mx-auto">
+
+          <Reveal>
+            <div className="text-center max-w-3xl mx-auto">
+
+              <div
+                className="
+                  inline-flex
+                  items-center gap-2
+                  text-emerald-700
+                  text-xs
+                  font-black
+                  uppercase
+                  tracking-[0.25em]
+                "
+              >
+                <CalendarDays size={14} />
+                Notre histoire
+              </div>
+
+              <h2
+                className="
+                  mt-4
+                  text-4xl
+                  sm:text-5xl
+                  font-black
+                  tracking-tight
+                  text-emerald-950
+                "
+              >
+                Une histoire.
+                <br />
+
+                <span className="text-[#b88b28]">
+                  Une mémoire. Un avenir.
+                </span>
+              </h2>
+
+              <p
+                className="
+                  mt-5
+                  text-slate-500
+                  leading-relaxed
+                "
+              >
+                Découvrez les grandes étapes
+                de l'histoire du Dahira Mawahibou
+                Naafih et la construction progressive
+                de notre communauté.
+              </p>
+            </div>
+          </Reveal>
+
+          {/* TIMELINE */}
+
+          <div className="relative mt-16">
+
+            {/* LIGNE CENTRALE DESKTOP */}
+
+            <div
+              className="
+                hidden md:block
+                absolute
+                left-1/2
+                top-0
+                bottom-0
+                w-px
+                bg-gradient-to-b
+                from-transparent
+                via-[#d6ac47]/50
+                to-transparent
+              "
+            />
+
+            <div className="space-y-8 md:space-y-12">
+
+              {HISTORIQUE.map(
+                (etape, index) => {
+                  const gauche =
+                    index % 2 === 0;
+
+                  return (
+                    <Reveal
+                      key={etape.titre}
+                      delay={index * 120}
+                    >
+                      <div
+                        className="
+                          relative
+                          grid
+                          md:grid-cols-2
+                          gap-6
+                          md:gap-12
+                          items-center
+                        "
+                      >
+
+                        {/* CONTENU GAUCHE */}
+
+                        <div
+                          className={
+                            gauche
+                              ? "md:text-right"
+                              : "md:col-start-2"
+                          }
+                        >
+                          <div
+                            className="
+                              rounded-[2rem]
+                              border
+                              border-slate-100
+                              bg-[#faf8f1]
+                              p-7
+                              shadow-sm
+                              transition-all duration-500
+                              hover:-translate-y-1
+                              hover:shadow-xl
+                            "
+                          >
+                            <div
+                              className="
+                                inline-flex
+                                items-center
+                                rounded-full
+                                bg-emerald-50
+                                px-3 py-1.5
+                                text-[10px]
+                                uppercase
+                                tracking-[0.15em]
+                                font-black
+                                text-emerald-700
+                              "
+                            >
+                              {etape.periode}
+                            </div>
+
+                            <h3
+                              className="
+                                mt-4
+                                text-2xl
+                                font-black
+                                text-emerald-950
+                              "
+                            >
+                              {etape.titre}
+                            </h3>
+
+                            <p
+                              className="
+                                mt-3
+                                text-sm
+                                leading-relaxed
+                                text-slate-500
+                              "
+                            >
+                              {etape.texte}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* POINT CENTRAL */}
+
+                        <div
+                          className="
+                            hidden md:flex
+                            absolute
+                            left-1/2
+                            -translate-x-1/2
+                            w-11 h-11
+                            rounded-full
+                            bg-emerald-950
+                            border-4
+                            border-white
+                            shadow-lg
+                            items-center
+                            justify-center
+                            text-[#d6ac47]
+                          "
+                        >
+                          <span
+                            className="
+                              text-xs
+                              font-black
+                            "
+                          >
+                            {index + 1}
+                          </span>
+                        </div>
+
+                        {/* ESPACE OPPOSE */}
+
+                        <div
+                          className={
+                            gauche
+                              ? "hidden md:block"
+                              : "hidden"
+                          }
+                        />
+                      </div>
+                    </Reveal>
+                  );
+                }
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ====================================================
+          GALERIE
+      ==================================================== */}
+
+      <section
+        id="galerie"
+        className="
+          px-5
+          py-24
+          sm:py-32
+          bg-white
+        "
+      >
+        <div className="max-w-6xl mx-auto">
+
+          <Reveal>
+            <div
+              className="
+                flex
+                flex-col
+                sm:flex-row
+                sm:items-end
+                sm:justify-between
+                gap-5
+              "
+            >
+              <div>
+
+                <div
+                  className="
+                    flex items-center gap-2
+                    text-emerald-700
+                    text-xs
+                    font-black
+                    uppercase
+                    tracking-[0.25em]
+                  "
+                >
+                  <Star size={14} />
+                  Moments
+                </div>
+
+                <h2
+                  className="
+                    mt-4
+                    text-4xl
+                    sm:text-5xl
+                    font-black
+                    tracking-tight
+                    text-emerald-950
+                  "
+                >
+                  Notre galerie.
+                </h2>
+              </div>
+
+              <p
+                className="
+                  max-w-sm
+                  text-sm
+                  leading-relaxed
+                  text-slate-500
+                "
+              >
+                Quelques instants de vie
+                partagés par notre communauté.
+              </p>
+            </div>
+          </Reveal>
+
+          {galerieVisible.length > 0 ? (
+            <div
+              className="
+                mt-12
+                grid
+                grid-cols-2
+                lg:grid-cols-3
+                gap-3
+                sm:gap-5
+              "
+            >
+              {galerieVisible.map(
+                (element, index) => {
+                  const imageUrl =
+                    element.url ||
+                    element.image_url ||
+                    element.media_url ||
+                    element.fichier_url;
+
+                  return (
+                    <Reveal
+                      key={
+                        element.id ||
+                        `${imageUrl}-${index}`
+                      }
+                      delay={index * 80}
+                    >
+                      <div
+                        className={`
+                          group
+                          relative
+                          overflow-hidden
+                          rounded-3xl
+                          bg-slate-100
+                          ${
+                            index === 0
+                              ? "lg:row-span-2 lg:h-full"
+                              : ""
+                          }
+                        `}
+                      >
+                        {imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            alt={
+                              element.titre ||
+                              "Galerie du Dahira"
+                            }
+                            className="
+                              w-full
+                              aspect-square
+                              lg:aspect-[4/3]
+                              object-cover
+                              transition-transform
+                              duration-700
+                              group-hover:scale-110
+                            "
+                          />
+                        ) : (
+                          <div
+                            className="
+                              aspect-square
+                              flex items-center
+                              justify-center
+                              text-slate-400
+                            "
+                          >
+                            Image indisponible
+                          </div>
+                        )}
+
+                        <div
+                          className="
+                            absolute inset-0
+                            bg-gradient-to-t
+                            from-black/60
+                            via-transparent
+                            to-transparent
+                            opacity-0
+                            group-hover:opacity-100
+                            transition-opacity
+                            duration-500
+                          "
+                        />
+
+                        <div
+                          className="
+                            absolute
+                            left-4
+                            right-4
+                            bottom-4
+                            translate-y-4
+                            opacity-0
+                            group-hover:translate-y-0
+                            group-hover:opacity-100
+                            transition-all duration-500
+                          "
+                        >
+                          <div
+                            className="
+                              text-white
+                              text-sm
+                              font-bold
+                            "
+                          >
+                            {element.titre ||
+                              "Moment partagé"}
+                          </div>
+                        </div>
+                      </div>
+                    </Reveal>
+                  );
+                }
+              )}
+            </div>
+          ) : (
+            <div
+              className="
+                mt-12
+                rounded-[2rem]
+                border border-dashed
+                border-slate-200
+                p-12
+                text-center
+              "
+            >
+              <Star
+                size={30}
+                className="
+                  mx-auto
+                  text-[#d6ac47]
+                "
+              />
+
+              <p
+                className="
+                  mt-4
+                  font-bold
+                  text-slate-600
+                "
+              >
+                Les prochains moments
+                apparaîtront ici.
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ====================================================
+          CONTACT / CTA
+      ==================================================== */}
 
       <section
         id="contact"
-        className="bg-emerald-950 px-6 py-20 text-white"
+        className="
+          px-5
+          pb-24
+          sm:pb-32
+        "
       >
-        <div className="mx-auto max-w-6xl text-center">
-          <p className="font-semibold uppercase tracking-[0.2em] text-amber-300">
-            Nous trouver
-          </p>
+        <Reveal>
+          <div
+            className="
+              max-w-6xl
+              mx-auto
+              relative
+              overflow-hidden
+              rounded-[2.5rem]
+              bg-[#d6ac47]
+              px-7
+              py-14
+              sm:px-14
+              sm:py-16
+            "
+          >
 
-          <h2 className="mt-3 text-4xl font-bold">
-            Dahira Mawahibou Naafih
-          </h2>
+            <div
+              className="
+                absolute
+                -right-24
+                -top-24
+                w-72 h-72
+                rounded-full
+                bg-white/20
+                blur-2xl
+              "
+            />
 
-          <p className="mt-2 text-xl text-white/50">
-            de Castors
-          </p>
+            <div
+              className="
+                absolute
+                -left-20
+                -bottom-20
+                w-60 h-60
+                rounded-full
+                bg-emerald-900/10
+                blur-2xl
+              "
+            />
 
-          <div className="mt-8 flex justify-center">
-            <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-6 py-4 text-white/70">
-              📍
-              <span>
-                Castors, Dakar, Sénégal
-              </span>
+            <div
+              className="
+                relative z-10
+                grid
+                lg:grid-cols-[1fr_auto]
+                items-center
+                gap-10
+              "
+            >
+
+              <div>
+
+                <div
+                  className="
+                    flex items-center gap-2
+                    text-emerald-950/60
+                    text-xs
+                    font-black
+                    uppercase
+                    tracking-[0.25em]
+                  "
+                >
+                  <MapPin size={14} />
+                  Castors — Dakar
+                </div>
+
+                <h2
+                  className="
+                    mt-4
+                    text-4xl
+                    sm:text-5xl
+                    font-black
+                    tracking-tight
+                    text-emerald-950
+                  "
+                >
+                  Restons connectés.
+                </h2>
+
+                <p
+                  className="
+                    mt-4
+                    max-w-lg
+                    text-sm
+                    sm:text-base
+                    leading-relaxed
+                    text-emerald-950/65
+                  "
+                >
+                  Une question, une suggestion
+                  ou simplement envie d'échanger ?
+                  La communauté est là.
+                </p>
+              </div>
+
+              <Link
+                to="/login"
+                className="
+                  group
+                  inline-flex
+                  items-center
+                  justify-center
+                  gap-3
+                  rounded-2xl
+                  bg-emerald-950
+                  px-7 py-4
+                  font-black
+                  text-white
+                  shadow-xl
+                  transition-all duration-300
+                  hover:-translate-y-1
+                  hover:shadow-2xl
+                "
+              >
+                Rejoindre mon espace
+
+                <ArrowRight
+                  size={18}
+                  className="
+                    transition-transform
+                    group-hover:translate-x-1
+                  "
+                />
+              </Link>
             </div>
           </div>
-        </div>
+        </Reveal>
       </section>
 
-      {/* =====================================================
-          CTA
-      ====================================================== */}
+      {/* ====================================================
+          FOOTER
+      ==================================================== */}
 
-      <section className="bg-amber-400 px-6 py-14">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 text-center md:flex-row md:text-left">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-950/55">
-              Membres du Dahira
+      <footer
+        className="
+          bg-emerald-950
+          px-5
+          py-12
+          text-white
+        "
+      >
+        <div
+          className="
+            max-w-6xl
+            mx-auto
+            flex
+            flex-col
+            sm:flex-row
+            items-center
+            justify-between
+            gap-7
+          "
+        >
+
+          <div
+            className="
+              flex items-center gap-3
+            "
+          >
+            <img
+              src="/logo.png"
+              alt="Dahira Mawahibou Naafih"
+              className="
+                w-12 h-12
+                object-contain
+                rounded-xl
+              "
+            />
+
+            <div>
+              <div
+                className="
+                  font-black
+                  text-sm
+                "
+              >
+                MAWAHIBOU NAAFIH
+              </div>
+
+              <div
+                className="
+                  text-[10px]
+                  uppercase
+                  tracking-[0.25em]
+                  text-white/40
+                "
+              >
+                Castors
+              </div>
+            </div>
+          </div>
+
+          <div
+            className="
+              text-center
+              sm:text-right
+            "
+          >
+            <p
+              className="
+                text-xs
+                text-white/40
+              "
+            >
+              © {new Date().getFullYear()}
+              {" "}
+              Dahira Mawahibou Naafih
             </p>
 
-            <h2 className="mt-2 text-3xl font-bold text-emerald-950">
-              Accédez à votre espace personnel
-            </h2>
-          </div>
-
-          <Link
-            to="/login"
-            className="inline-flex items-center gap-2 rounded-full bg-emerald-950 px-7 py-3.5 font-semibold text-white transition hover:bg-emerald-900"
-          >
-            Se connecter
-            <ArrowRight size={18} />
-          </Link>
-        </div>
-      </section>
-
-      {/* =====================================================
-          FOOTER
-      ====================================================== */}
-
-      <footer className="bg-emerald-950 px-6 py-10 text-white">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
-            <div>
-              <h3 className="font-bold">
-                Dahira Mawahibou Naafih
-              </h3>
-
-              <p className="mt-1 text-sm text-white/40">
-                de Castors
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-5 text-sm text-white/45">
-              <a
-                href="#dahira"
-                className="transition hover:text-amber-300"
-              >
-                Le Dahira
-              </a>
-
-              <a
-                href="#guide"
-                className="transition hover:text-amber-300"
-              >
-                Notre guide
-              </a>
-
-              <a
-                href="#pionniers"
-                className="transition hover:text-amber-300"
-              >
-                Pionniers
-              </a>
-
-              <a
-                href="#galerie"
-                className="transition hover:text-amber-300"
-              >
-                Galerie
-              </a>
-
-              <a
-                href="#contact"
-                className="transition hover:text-amber-300"
-              >
-                Contact
-              </a>
-            </div>
-          </div>
-
-          <div className="mt-8 border-t border-white/10 pt-6 text-center text-xs text-white/25">
-            © {new Date().getFullYear()} Dahira Mawahibou Naafih de
-            Castors. Tous droits réservés.
+            <p
+              className="
+                mt-1
+                text-[10px]
+                text-white/25
+              "
+            >
+              Fraternité • Spiritualité • Engagement
+            </p>
           </div>
         </div>
       </footer>
@@ -1159,153 +2508,3 @@ function Home() {
   );
 }
 
-// ============================================================
-// MINI CARTE PRIÈRE
-// ============================================================
-
-function PrayerMini({
-  icon: Icon,
-  nom,
-  heure,
-}) {
-  return (
-    <div className="rounded-2xl border border-gray-100 bg-[#faf9f5] p-4 text-center">
-      <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-800">
-        <Icon size={17} />
-      </div>
-
-      <p className="mt-3 text-xs font-semibold text-gray-500">
-        {nom}
-      </p>
-
-      <p className="mt-1 text-lg font-bold text-emerald-950">
-        {heure || "--:--"}
-      </p>
-    </div>
-  );
-}
-
-// ============================================================
-// CARTE PIONNIER
-// ============================================================
-
-function PionnierCard({
-  pionnier,
-}) {
-  return (
-    <div className="overflow-hidden rounded-3xl border border-gray-100 bg-[#faf9f5] shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-      <div className="flex h-56 items-center justify-center bg-emerald-950">
-        {pionnier.photo ? (
-          <img
-            src={pionnier.photo}
-            alt={pionnier.nom}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-white/5 text-3xl">
-            👤
-          </div>
-        )}
-      </div>
-
-      <div className="p-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-amber-600">
-          {pionnier.fonction}
-        </p>
-
-        <h3 className="mt-2 text-xl font-bold text-emerald-950">
-          {pionnier.nom}
-        </h3>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// CARTE MÉDIA
-// ============================================================
-
-function MediaCard({
-  media,
-  grande = false,
-}) {
-  return (
-    <div
-      className={`group relative overflow-hidden rounded-3xl bg-emerald-950 ${
-        grande
-          ? "col-span-2 h-64 lg:col-span-2 lg:h-80"
-          : "h-64 lg:h-80"
-      }`}
-    >
-      {media.type === "image" ? (
-        <img
-          src={media.src}
-          alt={media.titre}
-          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-        />
-      ) : (
-        <video
-          src={media.src}
-          controls
-          preload="metadata"
-          playsInline
-          className="h-full w-full object-cover"
-        />
-      )}
-
-      {/* BADGE VIDÉO */}
-
-      {media.type === "video" && (
-        <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full bg-black/60 px-3 py-2 text-xs font-semibold text-white backdrop-blur-sm">
-          <Play
-            size={13}
-            fill="currentColor"
-          />
-          Vidéo
-        </div>
-      )}
-
-      {/* TITRE */}
-
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-5 pt-12">
-        <p className="text-sm font-semibold text-white">
-          {media.titre}
-        </p>
-
-        {media.description && (
-          <p className="mt-1 line-clamp-2 text-xs text-white/70">
-            {media.description}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// FILTRE GALERIE
-// ============================================================
-
-function GalleryFilter({
-  actif,
-  onClick,
-  icon: Icon,
-  children,
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`inline-flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold transition ${
-        actif
-          ? "bg-emerald-900 text-white shadow-sm"
-          : "border border-gray-200 bg-white text-gray-600 hover:border-emerald-200 hover:text-emerald-800"
-      }`}
-    >
-      <Icon size={15} />
-      {children}
-    </button>
-  );
-}
-
-export default Home;
