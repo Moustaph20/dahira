@@ -13,55 +13,63 @@ function Login() {
   const [erreur, setErreur] = useState("");
   const [chargement, setChargement] = useState(false);
 
-
   async function handleSubmit(event) {
-  event.preventDefault();
+    event.preventDefault();
 
-  setErreur("");
-  setChargement(true);
+    setErreur("");
+    setChargement(true);
 
-  try {
-    await connexion(
-  identifiant,
-  motDePasse
-);
-
-navigate("/mon-espace", {
-  replace: true,
-});
-
-  } catch (error) {
-    console.error("ERREUR CONNEXION :", error);
-
-    if (error.response?.status === 401) {
-      setErreur(
-        "Identifiant ou mot de passe incorrect."
+    try {
+      await connexion(
+        identifiant,
+        motDePasse
       );
-    } else {
-      setErreur(
-        error.response?.data?.detail ||
-        error.message ||
-        "Une erreur est survenue. Veuillez réessayer."
-      );
+
+      navigate("/mon-espace", {
+        replace: true,
+      });
+    } catch (error) {
+      console.error("ERREUR CONNEXION :", error);
+
+      if (error.response?.status === 401) {
+        setErreur(
+          "Identifiant ou mot de passe incorrect."
+        );
+      } else {
+        setErreur(
+          error.response?.data?.detail ||
+            error.message ||
+            "Une erreur est survenue. Veuillez réessayer."
+        );
+      }
+    } finally {
+      setChargement(false);
     }
-
-  } finally {
-    setChargement(false);
   }
-}
 
   return (
     <div className="min-h-screen bg-[#f7f7f3]">
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-          <Link to="/" className="group">
-            <h1 className="text-lg font-bold text-emerald-950">
-              Dahira Mawahibou Naafih
-            </h1>
+          <Link
+            to="/"
+            className="group flex items-center gap-3"
+          >
+            <img
+              src="/logo.png"
+              alt="Logo Dahira Mawahibou Naafih de Castors"
+              className="h-12 w-12 object-contain"
+            />
 
-            <p className="text-xs text-gray-500">
-              de Castors
-            </p>
+            <div>
+              <h1 className="text-lg font-bold text-emerald-950">
+                Dahira Mawahibou Naafih
+              </h1>
+
+              <p className="text-xs text-gray-500">
+                de Castors
+              </p>
+            </div>
           </Link>
 
           <Link
@@ -82,8 +90,12 @@ navigate("/mon-espace", {
             <div className="absolute -bottom-32 -left-32 h-80 w-80 rounded-full border-[55px] border-white/5" />
 
             <div className="relative">
-              <div className="mb-8 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-400 text-3xl text-emerald-950">
-                ✦
+              <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl bg-white p-2 shadow-lg">
+                <img
+                  src="/logo.png"
+                  alt="Logo Dahira"
+                  className="h-full w-full object-contain"
+                />
               </div>
 
               <p className="text-sm font-semibold uppercase tracking-[0.25em] text-amber-300">
@@ -116,6 +128,14 @@ navigate("/mon-espace", {
             <div className="mx-auto max-w-md">
 
               <div className="mb-10">
+                <div className="mb-6 flex justify-center md:hidden">
+                  <img
+                    src="/logo.png"
+                    alt="Logo Dahira Mawahibou Naafih"
+                    className="h-24 w-24 object-contain"
+                  />
+                </div>
+
                 <p className="text-sm font-semibold uppercase tracking-widest text-emerald-700">
                   Connexion
                 </p>
@@ -129,8 +149,10 @@ navigate("/mon-espace", {
                 </p>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-
+              <form
+                onSubmit={handleSubmit}
+                className="space-y-6"
+              >
                 <div>
                   <label
                     htmlFor="identifiant"
@@ -195,7 +217,6 @@ navigate("/mon-espace", {
                     "Se connecter"
                   )}
                 </button>
-
               </form>
 
               <div className="mt-8 text-center">
@@ -216,5 +237,4 @@ navigate("/mon-espace", {
   );
 }
 
-export default Login;
-
+export default Login

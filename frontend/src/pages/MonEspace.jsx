@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 
@@ -1180,9 +1181,11 @@ function Espace() {
               className="flex items-center gap-3"
             >
 
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-sm">
-                <Heart size={19} />
-              </div>
+              <img
+                src="/logo.png"
+                alt="Dahira Mawahibou Naafih"
+                className="w-10 h-10 object-contain rounded-xl"
+              />
 
               <div className="hidden sm:block text-left">
                 <p className="font-bold text-gray-900">
@@ -2714,3 +2717,4 @@ function Espace() {
 }
 
 export default Espace;
+
