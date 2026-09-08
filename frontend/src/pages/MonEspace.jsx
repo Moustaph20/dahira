@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 
@@ -9,6 +8,7 @@ import {
   BookOpen,
   Calendar,
   CalendarDays,
+  ChevronDown,
   ChevronRight,
   Clock3,
   Compass,
@@ -33,11 +33,7 @@ import {
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
-
-import {
-  getCommunications,
-} from "../services/communications";
-
+import { getCommunications } from "../services/communications";
 import api from "../api/client";
 import { demanderTokenNotification } from "../firebase-messaging";
 
@@ -63,16 +59,12 @@ const DUAS = [
     traduction:
       "Ô Allah, aide-moi à T'évoquer, à Te remercier et à T'adorer de la meilleure manière.",
   },
-
   {
-    arabe:
-      "رَبِّ زِدْنِي عِلْمًا",
-    transliteration:
-      "Rabbi zidni 'ilma.",
+    arabe: "رَبِّ زِدْنِي عِلْمًا",
+    transliteration: "Rabbi zidni 'ilma.",
     traduction:
       "Seigneur, augmente-moi en connaissance.",
   },
-
   {
     arabe:
       "رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ",
@@ -81,7 +73,6 @@ const DUAS = [
     traduction:
       "Seigneur, accorde-nous une belle part ici-bas et une belle part dans l'au-delà, et protège-nous du châtiment du Feu.",
   },
-
   {
     arabe:
       "اللَّهُمَّ اغْفِرْ لِي وَارْحَمْنِي وَاهْدِنِي وَعَافِنِي وَارْزُقْنِي",
@@ -90,7 +81,6 @@ const DUAS = [
     traduction:
       "Ô Allah, pardonne-moi, fais-moi miséricorde, guide-moi, accorde-moi la santé et pourvois à mes besoins.",
   },
-
   {
     arabe:
       "حَسْبِيَ اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ ۖ عَلَيْهِ تَوَكَّلْتُ",
@@ -99,7 +89,6 @@ const DUAS = [
     traduction:
       "Allah me suffit. Il n'y a de divinité que Lui. En Lui je place ma confiance.",
   },
-
   {
     arabe:
       "اللَّهُمَّ صَلِّ وَسَلِّمْ وَبَارِكْ عَلَى سَيِّدِنَا مُحَمَّدٍ",
@@ -108,7 +97,6 @@ const DUAS = [
     traduction:
       "Ô Allah, prie sur notre maître Muhammad, accorde-lui le salut et bénis-le.",
   },
-
   {
     arabe:
       "يَا مُقَلِّبَ الْقُلُوبِ ثَبِّتْ قَلْبِي عَلَى دِينِكَ",
@@ -130,31 +118,26 @@ const RAPPELS = [
     texte:
       "Multiplions le dhikr et les prières sur le Prophète ﷺ tout au long de la journée.",
   },
-
   {
     titre: "Une journée bien commencée",
     texte:
       "Commencer sa journée par la prière, le rappel et une bonne intention donne un sens nouveau à chaque action.",
   },
-
   {
     titre: "La constance",
     texte:
       "Les petites œuvres accomplies avec constance sont précieuses. Avançons chaque jour avec sincérité.",
   },
-
   {
     titre: "La gratitude",
     texte:
       "Prenons quelques instants pour remercier Allah pour les bienfaits visibles et ceux que nous ne remarquons pas.",
   },
-
   {
     titre: "La fraternité",
     texte:
       "Un bon comportement, une parole douce et un geste de solidarité peuvent illuminer la journée d'un frère.",
   },
-
   {
     titre: "Le temps",
     texte:
@@ -173,19 +156,16 @@ const KHASSIDAS_DU_JOUR = [
     description:
       "Consacrez quelques instants à la lecture ou à l'écoute d'une Khassida.",
   },
-
   {
     titre: "Lecture spirituelle",
     description:
       "Prenez un moment de calme pour méditer et approfondir votre lecture.",
   },
-
   {
     titre: "Salatoul Fatihi",
     description:
       "Un moment privilégié pour multiplier les prières sur le Prophète ﷺ.",
   },
-
   {
     titre: "Dhikr et méditation",
     description:
@@ -206,9 +186,7 @@ const RUBRIQUES = [
     route: "/dashboard",
     permission: "DASHBOARD_CONSULTER",
     icon: Landmark,
-    couleur: "blue",
   },
-
   {
     id: "membres",
     nom: "Membres",
@@ -216,9 +194,7 @@ const RUBRIQUES = [
     route: "/membres",
     permission: "MEMBRE_CONSULTER",
     icon: Users,
-    couleur: "indigo",
   },
-
   {
     id: "cotisations",
     nom: "Cotisations",
@@ -226,29 +202,16 @@ const RUBRIQUES = [
     route: "/cotisations",
     permission: "COTISATION_CONSULTER",
     icon: Wallet,
-    couleur: "emerald",
   },
-
-  {
-    id: "paiements",
-    nom: "Paiements",
-    description: "Suivi des paiements",
-    route: "/paiements",
-    permission: "PAIEMENT_CONSULTER",
-    icon: HandCoins,
-    couleur: "green",
-  },
-
+  
   {
     id: "finances",
     nom: "Finances",
-    description: "Gestion financière du Dahira",
+    description: "Gestion financière",
     route: "/finances",
     permission: "FINANCE_CONSULTER",
     icon: Landmark,
-    couleur: "amber",
   },
-
   {
     id: "reunions",
     nom: "Réunions",
@@ -256,19 +219,15 @@ const RUBRIQUES = [
     route: "/reunions",
     permission: "REUNION_CONSULTER",
     icon: Calendar,
-    couleur: "violet",
   },
-
   {
     id: "programme-religieux",
     nom: "Programme religieux",
-    description: "Programmes religieux du Dahira",
+    description: "Programmes religieux",
     route: "/programme-religieux",
     permission: "KOUREL_CONSULTER",
     icon: CalendarDays,
-    couleur: "cyan",
   },
-
   {
     id: "communications",
     nom: "Communications",
@@ -276,17 +235,6 @@ const RUBRIQUES = [
     route: "/communications",
     permission: "COMMUNICATION_CONSULTER",
     icon: Megaphone,
-    couleur: "blue",
-  },
-
-  {
-    id: "kourel",
-    nom: "Kourel",
-    description: "Gestion du Kourel",
-    route: "/kourels",
-    permission: "KOUREL_CONSULTER",
-    icon: BookOpen,
-    couleur: "emerald",
   },
 
   {
@@ -296,9 +244,7 @@ const RUBRIQUES = [
     route: "/khassidas",
     permission: "KOUREL_CONSULTER",
     icon: BookOpen,
-    couleur: "green",
   },
-
   {
     id: "notifications",
     nom: "Notifications",
@@ -306,28 +252,9 @@ const RUBRIQUES = [
     route: "/notifications",
     permission: "NOTIFICATION_CONSULTER",
     icon: Bell,
-    couleur: "orange",
   },
+  
 
-  {
-    id: "fonctions",
-    nom: "Fonctions",
-    description: "Gestion des fonctions",
-    route: "/fonctions",
-    permission: "FONCTION_CONSULTER",
-    icon: Settings,
-    couleur: "slate",
-  },
-
-  {
-    id: "utilisateurs",
-    nom: "Utilisateurs",
-    description: "Gestion des utilisateurs",
-    route: "/utilisateurs",
-    permission: "UTILISATEUR_CONSULTER",
-    icon: Users,
-    couleur: "indigo",
-  },
 ];
 
 
@@ -417,11 +344,6 @@ const formaterDateCourte = (date) => {
 };
 
 
-const obtenirSalutation = () => {
-  return "As Salam 'Aleykum";
-};
-
-
 const obtenirPrenom = (utilisateur) => {
   return (
     utilisateur?.membre?.prenom ||
@@ -459,90 +381,10 @@ const obtenirMessageErreur = (erreur) => {
 
 
 // ============================================================
-// COULEURS RUBRIQUES
+// COMPOSANT
 // ============================================================
 
-const obtenirClassesRubrique = (couleur) => {
-  const classes = {
-    blue: {
-      fond: "bg-blue-50",
-      icone: "text-blue-600",
-      hover: "hover:border-blue-300",
-    },
-
-    indigo: {
-      fond: "bg-indigo-50",
-      icone: "text-indigo-600",
-      hover: "hover:border-indigo-300",
-    },
-
-    emerald: {
-      fond: "bg-emerald-50",
-      icone: "text-emerald-600",
-      hover: "hover:border-emerald-300",
-    },
-
-    green: {
-      fond: "bg-green-50",
-      icone: "text-green-600",
-      hover: "hover:border-green-300",
-    },
-
-    amber: {
-      fond: "bg-amber-50",
-      icone: "text-amber-600",
-      hover: "hover:border-amber-300",
-    },
-
-    red: {
-      fond: "bg-red-50",
-      icone: "text-red-600",
-      hover: "hover:border-red-300",
-    },
-
-    orange: {
-      fond: "bg-orange-50",
-      icone: "text-orange-600",
-      hover: "hover:border-orange-300",
-    },
-
-    violet: {
-      fond: "bg-violet-50",
-      icone: "text-violet-600",
-      hover: "hover:border-violet-300",
-    },
-
-    cyan: {
-      fond: "bg-cyan-50",
-      icone: "text-cyan-600",
-      hover: "hover:border-cyan-300",
-    },
-
-    pink: {
-      fond: "bg-pink-50",
-      icone: "text-pink-600",
-      hover: "hover:border-pink-300",
-    },
-
-    slate: {
-      fond: "bg-slate-100",
-      icone: "text-slate-600",
-      hover: "hover:border-slate-300",
-    },
-  };
-
-  return (
-    classes[couleur] ||
-    classes.blue
-  );
-};
-
-
-// ============================================================
-// COMPOSANT PRINCIPAL
-// ============================================================
-
-function Espace() {
+function MonEspace() {
   const navigate = useNavigate();
 
   const {
@@ -551,62 +393,39 @@ function Espace() {
     aPermission,
   } = useAuth();
 
+
   // ==========================================================
   // ETATS
   // ==========================================================
 
-  const [
-    maintenant,
-    setMaintenant,
-  ] = useState(new Date());
+  const [maintenant, setMaintenant] =
+    useState(new Date());
 
-  const [
-    horaires,
-    setHoraires,
-  ] = useState(null);
+  const [horaires, setHoraires] =
+    useState(null);
 
-  const [
-    chargementHoraires,
-    setChargementHoraires,
-  ] = useState(true);
+  const [chargementHoraires, setChargementHoraires] =
+    useState(true);
 
-  const [
-    erreurHoraires,
-    setErreurHoraires,
-  ] = useState("");
+  const [erreurHoraires, setErreurHoraires] =
+    useState("");
 
-  const [
-    communications,
-    setCommunications,
-  ] = useState([]);
+  const [communications, setCommunications] =
+    useState([]);
 
-  const [
-    chargementCommunications,
-    setChargementCommunications,
-  ] = useState(false);
+  const [chargementCommunications, setChargementCommunications] =
+    useState(false);
 
-  const [
-    erreurCommunications,
-    setErreurCommunications,
-  ] = useState("");
+  const [erreurCommunications, setErreurCommunications] =
+    useState("");
 
-  const [
-    duaIndex,
-    setDuaIndex,
-  ] = useState(
-    obtenirIndexDuJour(
-      DUAS.length
-    )
-  );
+  const [duaIndex, setDuaIndex] =
+    useState(
+      obtenirIndexDuJour(DUAS.length)
+    );
 
-  const [
-    menuOuvert,
-    setMenuOuvert,
-  ] = useState(false);
-
-  // ==========================================================
-  // ETATS NOTIFICATIONS PUSH
-  // ==========================================================
+  const [menuOuvert, setMenuOuvert] =
+    useState(false);
 
   const [
     activationNotifications,
@@ -625,7 +444,7 @@ function Espace() {
 
 
   // ==========================================================
-  // MENU DYNAMIQUE SELON LES DROITS
+  // MENU SELON LES PERMISSIONS
   // ==========================================================
 
   const rubriquesAutorisees = useMemo(() => {
@@ -633,11 +452,8 @@ function Espace() {
       return [];
     }
 
-    return RUBRIQUES.filter(
-      (rubrique) =>
-        aPermission(
-          rubrique.permission
-        )
+    return RUBRIQUES.filter((rubrique) =>
+      aPermission(rubrique.permission)
     );
   }, [
     utilisateur,
@@ -650,15 +466,11 @@ function Espace() {
   // ==========================================================
 
   useEffect(() => {
-    const interval =
-      setInterval(() => {
-        setMaintenant(
-          new Date()
-        );
-      }, 1000);
+    const interval = setInterval(() => {
+      setMaintenant(new Date());
+    }, 1000);
 
-    return () =>
-      clearInterval(interval);
+    return () => clearInterval(interval);
   }, []);
 
 
@@ -668,9 +480,8 @@ function Espace() {
 
   useEffect(() => {
     const index =
-      Math.floor(
-        obtenirCleJour() / 7
-      ) % DUAS.length;
+      Math.floor(obtenirCleJour() / 7) %
+      DUAS.length;
 
     setDuaIndex(index);
   }, []);
@@ -685,21 +496,17 @@ function Espace() {
     setErreurHoraires("");
 
     try {
-      const date =
-        new Date();
+      const date = new Date();
 
-      const jour =
-        String(
-          date.getDate()
-        ).padStart(2, "0");
+      const jour = String(
+        date.getDate()
+      ).padStart(2, "0");
 
-      const mois =
-        String(
-          date.getMonth() + 1
-        ).padStart(2, "0");
+      const mois = String(
+        date.getMonth() + 1
+      ).padStart(2, "0");
 
-      const annee =
-        date.getFullYear();
+      const annee = date.getFullYear();
 
       const params =
         new URLSearchParams({
@@ -711,18 +518,7 @@ function Espace() {
       const url =
         `https://api.aladhan.com/v1/timingsByCity/${jour}-${mois}-${annee}?${params.toString()}`;
 
-      console.log(
-        "📿 URL horaires :",
-        url
-      );
-
-      const response =
-        await fetch(url);
-
-      console.log(
-        "📿 Statut API horaires :",
-        response.status
-      );
+      const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error(
@@ -733,11 +529,6 @@ function Espace() {
       const donnees =
         await response.json();
 
-      console.log(
-        "📿 Réponse API horaires :",
-        donnees
-      );
-
       if (
         donnees?.code !== 200 ||
         !donnees?.data?.timings
@@ -747,13 +538,10 @@ function Espace() {
         );
       }
 
-      setHoraires(
-        donnees.data
-      );
-
+      setHoraires(donnees.data);
     } catch (err) {
       console.error(
-        "❌ Erreur horaires de prière :",
+        "Erreur horaires de prière :",
         err
       );
 
@@ -763,11 +551,8 @@ function Espace() {
         err?.message ||
           "Impossible de charger les horaires."
       );
-
     } finally {
-      setChargementHoraires(
-        false
-      );
+      setChargementHoraires(false);
     }
   };
 
@@ -791,13 +576,8 @@ function Espace() {
         return;
       }
 
-      setChargementCommunications(
-        true
-      );
-
-      setErreurCommunications(
-        ""
-      );
+      setChargementCommunications(true);
+      setErreurCommunications("");
 
       try {
         const donnees =
@@ -820,9 +600,7 @@ function Espace() {
           obtenirMessageErreur(err)
         );
       } finally {
-        setChargementCommunications(
-          false
-        );
+        setChargementCommunications(false);
       }
     };
 
@@ -835,7 +613,7 @@ function Espace() {
 
 
   // ==========================================================
-  // ACTIVATION DES NOTIFICATIONS PUSH
+  // NOTIFICATIONS PUSH
   // ==========================================================
 
   const activerNotifications = async () => {
@@ -864,17 +642,14 @@ function Espace() {
         );
 
       console.log(
-        "📲 APPAREIL FCM ENREGISTRÉ :",
+        "APPAREIL FCM ENREGISTRÉ :",
         response.data
       );
 
-      setNotificationsActivees(
-        true
-      );
-
+      setNotificationsActivees(true);
     } catch (error) {
       console.error(
-        "❌ Erreur activation notifications :",
+        "Erreur activation notifications :",
         error
       );
 
@@ -886,22 +661,18 @@ function Espace() {
           ? detail
           : "Impossible d'activer les notifications."
       );
-
     } finally {
-      setActivationNotifications(
-        false
-      );
+      setActivationNotifications(false);
     }
   };
 
 
   // ==========================================================
-  // PRIÈRES
+  // PRIERES
   // ==========================================================
 
   const prieres = useMemo(() => {
-    const timings =
-      horaires?.timings;
+    const timings = horaires?.timings;
 
     if (!timings) {
       return [];
@@ -910,41 +681,27 @@ function Espace() {
     return [
       {
         nom: "Fajr",
-        heure: formaterHeure(
-          timings.Fajr
-        ),
+        heure: formaterHeure(timings.Fajr),
         icone: Sunrise,
       },
-
       {
         nom: "Dhuhr",
-        heure: formaterHeure(
-          timings.Dhuhr
-        ),
+        heure: formaterHeure(timings.Dhuhr),
         icone: Sun,
       },
-
       {
         nom: "Asr",
-        heure: formaterHeure(
-          timings.Asr
-        ),
+        heure: formaterHeure(timings.Asr),
         icone: Sun,
       },
-
       {
         nom: "Maghrib",
-        heure: formaterHeure(
-          timings.Maghrib
-        ),
+        heure: formaterHeure(timings.Maghrib),
         icone: Sunset,
       },
-
       {
         nom: "Isha",
-        heure: formaterHeure(
-          timings.Isha
-        ),
+        heure: formaterHeure(timings.Isha),
         icone: Moon,
       },
     ];
@@ -986,31 +743,24 @@ function Espace() {
     ]);
 
 
-  // ==========================================================
-  // PRIERE DU LENDEMAIN
-  // ==========================================================
-
   const prochainePriereFinale =
     prochainePriere ||
     (prieres.length
       ? {
           ...prieres[0],
-          date:
-            (() => {
-              const demain =
-                new Date(
-                  maintenant
-                );
+          date: (() => {
+            const demain =
+              new Date(maintenant);
 
-              demain.setDate(
-                demain.getDate() + 1
-              );
+            demain.setDate(
+              demain.getDate() + 1
+            );
 
-              return convertirHeureEnDate(
-                prieres[0].heure,
-                demain
-              );
-            })(),
+            return convertirHeureEnDate(
+              prieres[0].heure,
+              demain
+            );
+          })(),
         }
       : null);
 
@@ -1047,26 +797,16 @@ function Espace() {
 
       const minutes =
         Math.floor(
-          (totalSecondes % 3600) /
-            60
+          (totalSecondes % 3600) / 60
         );
 
       const secondes =
         totalSecondes % 60;
 
       return [
-        String(heures).padStart(
-          2,
-          "0"
-        ),
-        String(minutes).padStart(
-          2,
-          "0"
-        ),
-        String(secondes).padStart(
-          2,
-          "0"
-        ),
+        String(heures).padStart(2, "0"),
+        String(minutes).padStart(2, "0"),
+        String(secondes).padStart(2, "0"),
       ].join(":");
     }, [
       prochainePriereFinale,
@@ -1075,7 +815,7 @@ function Espace() {
 
 
   // ==========================================================
-  // INDEX
+  // DONNEES DU JOUR
   // ==========================================================
 
   const khassidaDuJour =
@@ -1092,13 +832,8 @@ function Espace() {
       )
     ];
 
-  const dua =
-    DUAS[duaIndex];
+  const dua = DUAS[duaIndex];
 
-
-  // ==========================================================
-  // HORAIRE SUIVANT
-  // ==========================================================
 
   const indexProchainePriere =
     prieres.findIndex(
@@ -1108,14 +843,8 @@ function Espace() {
     );
 
 
-  // ==========================================================
-  // PRENOM
-  // ==========================================================
-
   const prenom =
-    obtenirPrenom(
-      utilisateur
-    );
+    obtenirPrenom(utilisateur);
 
 
   // ==========================================================
@@ -1124,15 +853,15 @@ function Espace() {
 
   if (chargement) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-[#f8f7f2]">
         <div className="text-center">
           <RefreshCw
             size={32}
-            className="mx-auto text-blue-600 animate-spin"
+            className="mx-auto text-emerald-700 animate-spin"
           />
 
-          <p className="mt-3 text-gray-500">
-            Chargement...
+          <p className="mt-3 text-slate-500">
+            Chargement de votre espace...
           </p>
         </div>
       </div>
@@ -1141,7 +870,7 @@ function Espace() {
 
 
   // ==========================================================
-  // UTILISATEUR NON CONNECTE
+  // NON CONNECTE
   // ==========================================================
 
   if (!utilisateur) {
@@ -1159,42 +888,49 @@ function Espace() {
   // ==========================================================
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#f8f7f2] text-slate-900">
+
 
       {/* ======================================================
-          MENU PRINCIPAL
+          NAVBAR
       ====================================================== */}
 
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-200">
+      <header className="sticky top-0 z-50 border-b border-emerald-900/10 bg-white/95 backdrop-blur-xl">
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-5">
 
-          <div className="h-16 flex items-center justify-between">
+          <div className="flex h-[76px] items-center justify-between">
+
 
             {/* LOGO */}
 
             <button
               type="button"
-              onClick={() =>
-                navigate("/")
-              }
+              onClick={() => navigate("/")}
               className="flex items-center gap-3"
             >
 
-              <img
-                src="/logo.png"
-                alt="Dahira Mawahibou Naafih"
-                className="w-10 h-10 object-contain rounded-xl"
-              />
+              <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-emerald-950 shadow-sm">
 
-              <div className="hidden sm:block text-left">
-                <p className="font-bold text-gray-900">
-                  Dahira
+                <img
+                  src="/logo.png"
+                  alt="Dahira Mawahibou Naafih"
+                  className="h-full w-full object-contain"
+                />
+
+              </div>
+
+
+              <div className="hidden text-left sm:block">
+
+                <p className="text-[15px] font-black tracking-tight text-emerald-950">
+                  Dahira Mawahibou Naafih
                 </p>
 
-                <p className="text-xs text-gray-500">
+                <p className="mt-0.5 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
                   Espace membre
                 </p>
+
               </div>
 
             </button>
@@ -1202,10 +938,10 @@ function Espace() {
 
             {/* MENU DESKTOP */}
 
-            <nav className="hidden lg:flex items-center gap-1">
+            <nav className="hidden items-center gap-1 lg:flex">
 
               {rubriquesAutorisees
-                .slice(0, 8)
+                .slice(0, 6)
                 .map((rubrique) => {
 
                   const Icon =
@@ -1220,17 +956,23 @@ function Espace() {
                           rubrique.route
                         )
                       }
-                      className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition"
+                      className="group inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-emerald-50 hover:text-emerald-800"
                     >
-                      <Icon size={16} />
+
+                      <Icon
+                        size={16}
+                        className="transition group-hover:text-[#b88b28]"
+                      />
 
                       {rubrique.nom}
+
                     </button>
                   );
                 })}
 
+
               {rubriquesAutorisees.length >
-                8 && (
+                6 && (
                 <button
                   type="button"
                   onClick={() =>
@@ -1238,11 +980,26 @@ function Espace() {
                       !menuOuvert
                     )
                   }
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                  className={`inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                    menuOuvert
+                      ? "bg-emerald-950 text-white"
+                      : "text-slate-500 hover:bg-emerald-50 hover:text-emerald-800"
+                  }`}
                 >
+
                   <Menu size={17} />
 
-                  Plus
+                  Menu
+
+                  <ChevronDown
+                    size={14}
+                    className={
+                      menuOuvert
+                        ? "rotate-180 transition"
+                        : "transition"
+                    }
+                  />
+
                 </button>
               )}
 
@@ -1253,25 +1010,35 @@ function Espace() {
 
             <div className="flex items-center gap-2">
 
+
               <button
                 type="button"
                 onClick={() =>
-                  navigate(
-                    "/mon-espace"
-                  )
+                  navigate("/mon-espace")
                 }
-                className="hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-100 transition"
+                className="hidden items-center gap-3 rounded-2xl px-3 py-2 transition hover:bg-emerald-50 sm:flex"
               >
 
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-semibold text-sm">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-950 text-sm font-black text-[#d6ac47]">
+
                   {prenom
                     ?.charAt(0)
                     ?.toUpperCase()}
+
                 </div>
 
-                <span className="text-sm font-medium text-gray-700">
-                  {prenom}
-                </span>
+
+                <div className="text-left">
+
+                  <p className="text-sm font-bold text-emerald-950">
+                    {prenom}
+                  </p>
+
+                  <p className="text-[11px] text-slate-400">
+                    Mon espace
+                  </p>
+
+                </div>
 
               </button>
 
@@ -1283,13 +1050,16 @@ function Espace() {
                     !menuOuvert
                   )
                 }
-                className="lg:hidden w-10 h-10 rounded-xl flex items-center justify-center text-gray-600 hover:bg-gray-100"
+                className="flex h-11 w-11 items-center justify-center rounded-2xl text-emerald-950 transition hover:bg-emerald-50 lg:hidden"
+                aria-label="Ouvrir le menu"
               >
+
                 {menuOuvert ? (
-                  <X size={21} />
+                  <X size={22} />
                 ) : (
-                  <Menu size={21} />
+                  <Menu size={22} />
                 )}
+
               </button>
 
             </div>
@@ -1297,12 +1067,39 @@ function Espace() {
           </div>
 
 
-          {/* MENU MOBILE / PLUS */}
+          {/* ==================================================
+              MENU MOBILE
+          ================================================== */}
 
           {menuOuvert && (
-            <div className="border-t border-gray-100 py-3">
+            <div className="border-t border-slate-100 py-4 lg:hidden">
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+              <div className="mb-4 flex items-center gap-3 rounded-2xl bg-emerald-950 p-4 text-white">
+
+                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 font-black text-[#d6ac47]">
+
+                  {prenom
+                    ?.charAt(0)
+                    ?.toUpperCase()}
+
+                </div>
+
+                <div>
+
+                  <p className="font-bold">
+                    As Salam 'Aleykum {prenom}
+                  </p>
+
+                  <p className="text-xs text-white/60">
+                    Votre espace membre
+                  </p>
+
+                </div>
+
+              </div>
+
+
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
 
                 {rubriquesAutorisees.map(
                   (rubrique) => {
@@ -1310,53 +1107,42 @@ function Espace() {
                     const Icon =
                       rubrique.icon;
 
-                    const classes =
-                      obtenirClassesRubrique(
-                        rubrique.couleur
-                      );
-
                     return (
                       <button
-                        key={
-                          rubrique.id
-                        }
+                        key={rubrique.id}
                         type="button"
                         onClick={() => {
                           navigate(
                             rubrique.route
                           );
 
-                          setMenuOuvert(
-                            false
-                          );
+                          setMenuOuvert(false);
                         }}
-                        className={`flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-white ${classes.hover} transition text-left`}
+                        className="group flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3.5 text-left shadow-sm transition hover:border-emerald-200 hover:shadow-md"
                       >
 
-                        <div
-                          className={`w-9 h-9 rounded-lg ${classes.fond} flex items-center justify-center`}
-                        >
-                          <Icon
-                            size={17}
-                            className={
-                              classes.icone
-                            }
-                          />
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-950 group-hover:text-[#d6ac47]">
+
+                          <Icon size={18} />
+
                         </div>
 
-                        <div>
-                          <p className="text-sm font-semibold text-gray-800">
-                            {
-                              rubrique.nom
-                            }
+                        <div className="min-w-0">
+
+                          <p className="text-sm font-bold text-emerald-950">
+                            {rubrique.nom}
                           </p>
 
-                          <p className="text-xs text-gray-500">
-                            {
-                              rubrique.description
-                            }
+                          <p className="mt-0.5 truncate text-xs text-slate-400">
+                            {rubrique.description}
                           </p>
+
                         </div>
+
+                        <ChevronRight
+                          size={16}
+                          className="ml-auto shrink-0 text-slate-300"
+                        />
 
                       </button>
                     );
@@ -1370,170 +1156,186 @@ function Espace() {
 
         </div>
 
-      </header>
+
+        {/* ==================================================
+            MENU COMPLET DESKTOP
+        ================================================== */}
+
+        {menuOuvert &&
+          rubriquesAutorisees.length > 6 && (
+            <div className="hidden border-t border-emerald-900/10 bg-[#fafaf7] lg:block">
+
+              <div className="mx-auto max-w-7xl px-5 py-6">
+
+                <div className="mb-5 flex items-end justify-between">
+
+                  <div>
+
+                    <p className="text-xs font-black uppercase tracking-[0.22em] text-[#b88b28]">
+                      Navigation
+                    </p>
+
+                    <h2 className="mt-2 text-2xl font-black text-emerald-950">
+                      Toutes les rubriques
+                    </h2>
+
+                  </div>
+
+                  <p className="max-w-sm text-right text-sm text-slate-400">
+                    Accédez aux fonctionnalités disponibles
+                    selon vos droits.
+                  </p>
+
+                </div>
 
 
-      {/* ======================================================
-          MENU COMPLET SUR DESKTOP
-      ====================================================== */}
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
 
-      {menuOuvert &&
-        rubriquesAutorisees.length >
-          8 && (
-          <div className="hidden lg:block border-b border-gray-200 bg-white">
+                  {rubriquesAutorisees.map(
+                    (rubrique) => {
 
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+                      const Icon =
+                        rubrique.icon;
 
-              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+                      return (
+                        <button
+                          key={rubrique.id}
+                          type="button"
+                          onClick={() => {
+                            navigate(
+                              rubrique.route
+                            );
 
-                {rubriquesAutorisees.map(
-                  (rubrique) => {
-
-                    const Icon =
-                      rubrique.icon;
-
-                    const classes =
-                      obtenirClassesRubrique(
-                        rubrique.couleur
-                      );
-
-                    return (
-                      <button
-                        key={
-                          rubrique.id
-                        }
-                        type="button"
-                        onClick={() => {
-                          navigate(
-                            rubrique.route
-                          );
-
-                          setMenuOuvert(
-                            false
-                          );
-                        }}
-                        className={`flex items-center gap-3 p-4 rounded-2xl border border-gray-200 bg-white ${classes.hover} hover:shadow-sm transition text-left`}
-                      >
-
-                        <div
-                          className={`w-11 h-11 rounded-xl ${classes.fond} flex items-center justify-center shrink-0`}
+                            setMenuOuvert(false);
+                          }}
+                          className="group rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg"
                         >
-                          <Icon
-                            size={20}
-                            className={
-                              classes.icone
-                            }
-                          />
-                        </div>
 
-                        <div>
-                          <p className="font-semibold text-gray-900">
-                            {
-                              rubrique.nom
-                            }
+                          <div className="flex items-start justify-between">
+
+                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-950 group-hover:text-[#d6ac47]">
+
+                              <Icon size={20} />
+
+                            </div>
+
+                            <ArrowRight
+                              size={16}
+                              className="text-slate-200 transition group-hover:text-[#b88b28]"
+                            />
+
+                          </div>
+
+
+                          <p className="mt-4 font-bold text-emerald-950">
+                            {rubrique.nom}
                           </p>
 
-                          <p className="mt-1 text-xs text-gray-500">
-                            {
-                              rubrique.description
-                            }
+                          <p className="mt-1 text-xs leading-5 text-slate-400">
+                            {rubrique.description}
                           </p>
-                        </div>
 
-                      </button>
-                    );
-                  }
-                )}
+                        </button>
+                      );
+                    }
+                  )}
+
+                </div>
 
               </div>
 
             </div>
+          )}
 
-          </div>
-        )}
+      </header>
 
 
       {/* ======================================================
           HERO
       ====================================================== */}
 
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 text-white">
+      <section className="relative overflow-hidden bg-emerald-950 text-white">
 
-        <div className="absolute inset-0 opacity-10">
+        <div className="absolute inset-0 opacity-20">
 
-          <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full border border-white/40" />
+          <div className="absolute -right-20 -top-24 h-80 w-80 rounded-full border border-[#d6ac47]/30" />
 
-          <div className="absolute top-20 right-20 w-96 h-96 rounded-full border border-white/20" />
+          <div className="absolute right-20 top-20 h-96 w-96 rounded-full border border-white/10" />
 
-          <div className="absolute -bottom-32 -left-20 w-96 h-96 rounded-full border border-white/20" />
+          <div className="absolute -bottom-40 -left-20 h-96 w-96 rounded-full border border-[#d6ac47]/20" />
 
         </div>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
 
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
+        <div className="relative mx-auto max-w-7xl px-5 py-14 sm:py-16 lg:py-20">
 
-            <div className="max-w-2xl">
+          <div className="grid gap-10 lg:grid-cols-[1fr_330px] lg:items-center">
 
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-sm text-blue-100 mb-5">
 
-                <Sparkles
-                  size={15}
-                />
+            {/* TEXTE */}
 
-                Espace spirituel
+            <div className="max-w-3xl">
+
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-[#e7c96b]">
+
+                <Sparkles size={14} />
+
+                Espace membre
 
               </div>
 
 
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight">
+              <h1 className="mt-6 text-4xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl">
 
-                {obtenirSalutation()},{" "}
+                As Salam
+                <span className="text-[#d6ac47]">
+                  {" "}‘Aleykum
+                </span>
 
-                {prenom} 👋
+                <span className="block">
+                  {prenom}
+                </span>
 
               </h1>
 
 
-              <p className="mt-4 text-blue-100 text-base md:text-lg leading-relaxed">
+              <p className="mt-5 max-w-2xl text-base leading-8 text-white/65 sm:text-lg">
 
-                Bienvenue dans votre espace.
-                Retrouvez ici les informations
-                essentielles de votre journée,
-                les prières, les rappels et les
-                communications du Dahira.
+                Bienvenue dans votre espace personnel.
+                Retrouvez les informations essentielles
+                du Dahira, les horaires de prière,
+                les rappels et les communications
+                de notre communauté.
 
               </p>
 
 
-              <div className="mt-6 flex flex-wrap items-center gap-3 text-sm text-blue-100">
+              <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3 text-sm text-white/60">
 
                 <span className="inline-flex items-center gap-2">
-
                   <CalendarDays
                     size={16}
+                    className="text-[#d6ac47]"
                   />
 
                   {formaterDateComplete(
                     maintenant
                   )}
-
                 </span>
 
 
-                <span className="hidden sm:block text-white/30">
+                <span className="hidden text-white/20 sm:block">
                   •
                 </span>
 
 
                 <span className="inline-flex items-center gap-2">
-
                   <MapPin
                     size={16}
+                    className="text-[#d6ac47]"
                   />
 
-                  {VILLE}
-
+                  Dakar, Sénégal
                 </span>
 
               </div>
@@ -1543,22 +1345,20 @@ function Espace() {
 
             {/* HORLOGE */}
 
-            <div className="lg:min-w-[280px]">
+            <div>
 
-              <div className="rounded-3xl bg-white/10 backdrop-blur border border-white/10 p-6">
+              <div className="rounded-[2rem] border border-white/10 bg-white/10 p-6 backdrop-blur">
 
-                <div className="flex items-center gap-2 text-blue-200 text-sm">
+                <div className="flex items-center gap-2 text-sm font-medium text-[#e7c96b]">
 
-                  <Clock3
-                    size={17}
-                  />
+                  <Clock3 size={17} />
 
                   Heure locale
 
                 </div>
 
 
-                <div className="mt-2 text-4xl md:text-5xl font-bold tracking-tight">
+                <p className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">
 
                   {maintenant.toLocaleTimeString(
                     "fr-FR",
@@ -1569,14 +1369,27 @@ function Espace() {
                     }
                   )}
 
-                </div>
+                </p>
 
 
-                <div className="mt-2 text-sm text-blue-200">
-
+                <p className="mt-2 text-sm text-white/50">
                   {formaterDateCourte(
                     maintenant
                   )}
+                </p>
+
+
+                <div className="mt-5 h-px bg-white/10" />
+
+
+                <div className="mt-4 flex items-center gap-2 text-xs text-white/50">
+
+                  <Compass
+                    size={14}
+                    className="text-[#d6ac47]"
+                  />
+
+                  Horaires calculés pour Dakar
 
                 </div>
 
@@ -1595,46 +1408,46 @@ function Espace() {
           CONTENU
       ====================================================== */}
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="mx-auto max-w-7xl px-5 py-12 sm:py-14">
 
 
         {/* ====================================================
-            NOTIFICATIONS PUSH
+            NOTIFICATIONS
         ==================================================== */}
 
-        <section className="mb-8">
+        <section className="mb-7">
 
-          <div className="rounded-3xl bg-white border border-gray-200 shadow-sm p-5 md:p-6">
+          <div className="rounded-[2rem] border border-emerald-900/10 bg-white p-5 shadow-sm md:p-6">
 
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
 
               <div className="flex items-start gap-4">
 
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
 
-                  <Bell
-                    size={22}
-                    className="text-blue-600"
-                  />
+                  <Bell size={21} />
 
                 </div>
 
 
                 <div>
 
-                  <h2 className="text-lg font-bold text-gray-900">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-[#b88b28]">
+                    Rester informé
+                  </p>
+
+                  <h2 className="mt-1 text-lg font-black text-emerald-950">
                     Notifications du Dahira
                   </h2>
 
-
-                  <p className="mt-1 text-sm text-gray-500 leading-relaxed">
-                    Recevez les nouvelles communications directement
-                    sur votre appareil.
+                  <p className="mt-1 text-sm leading-6 text-slate-500">
+                    Recevez les nouvelles communications
+                    directement sur votre appareil.
                   </p>
 
 
                   {notificationsActivees && (
-                    <p className="mt-2 text-sm font-medium text-emerald-600">
+                    <p className="mt-2 text-sm font-semibold text-emerald-600">
                       ✓ Notifications activées
                     </p>
                   )}
@@ -1660,7 +1473,7 @@ function Espace() {
                   disabled={
                     activationNotifications
                   }
-                  className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
                 >
 
                   {activationNotifications ? (
@@ -1696,52 +1509,51 @@ function Espace() {
 
         <section className="mb-8">
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <div className="grid gap-5 lg:grid-cols-3">
 
-            <div className="lg:col-span-2 relative overflow-hidden rounded-3xl bg-white border border-gray-200 shadow-sm">
 
-              <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-blue-50 -translate-y-1/2 translate-x-1/2" />
+            {/* PRIERE */}
+
+            <div className="relative overflow-hidden rounded-[2rem] bg-white shadow-sm ring-1 ring-emerald-900/10 lg:col-span-2">
+
+              <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-emerald-50" />
 
               <div className="relative p-6 md:p-8">
 
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                <div className="flex flex-col justify-between gap-7 md:flex-row md:items-center">
 
                   <div>
 
-                    <div className="flex items-center gap-2 text-blue-600 font-medium text-sm">
+                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-[#b88b28]">
 
-                      <Compass
-                        size={18}
-                      />
+                      <Compass size={17} />
 
-                      PROCHAINE PRIÈRE
+                      Prochaine prière
 
                     </div>
 
 
                     {chargementHoraires ? (
-                      <div className="mt-4">
+                      <div className="mt-5">
 
                         <RefreshCw
                           size={30}
-                          className="text-blue-600 animate-spin"
+                          className="text-emerald-700 animate-spin"
                         />
 
-                        <p className="mt-3 text-gray-500">
+                        <p className="mt-3 text-sm text-slate-500">
                           Chargement des horaires...
                         </p>
 
                       </div>
                     ) : erreurHoraires ? (
-                      <div className="mt-4">
+                      <div className="mt-5">
 
                         <div className="flex items-start gap-2 text-red-600">
 
-                          <AlertCircle
-                            size={20}
-                          />
+                          <AlertCircle size={19} />
 
-                          <span>
+                          <span className="text-sm">
                             {erreurHoraires}
                           </span>
 
@@ -1753,12 +1565,10 @@ function Espace() {
                           onClick={
                             chargerHoraires
                           }
-                          className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700"
+                          className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-900"
                         >
 
-                          <RefreshCw
-                            size={16}
-                          />
+                          <RefreshCw size={15} />
 
                           Réessayer
 
@@ -1768,7 +1578,7 @@ function Espace() {
                     ) : prochainePriereFinale ? (
                       <>
 
-                        <h2 className="mt-3 text-3xl md:text-4xl font-bold text-gray-900">
+                        <h2 className="mt-3 text-3xl font-black text-emerald-950 md:text-4xl">
 
                           {
                             prochainePriereFinale.nom
@@ -1779,7 +1589,7 @@ function Espace() {
 
                         <div className="mt-2 flex items-baseline gap-3">
 
-                          <span className="text-5xl md:text-6xl font-bold text-blue-600">
+                          <span className="text-5xl font-black tracking-tight text-emerald-800 md:text-6xl">
 
                             {
                               prochainePriereFinale.heure
@@ -1787,7 +1597,7 @@ function Espace() {
 
                           </span>
 
-                          <span className="text-gray-500">
+                          <span className="text-sm text-slate-400">
                             à Dakar
                           </span>
 
@@ -1795,7 +1605,7 @@ function Espace() {
 
                       </>
                     ) : (
-                      <p className="mt-4 text-gray-500">
+                      <p className="mt-4 text-sm text-slate-500">
                         Horaires indisponibles.
                       </p>
                     )}
@@ -1805,21 +1615,15 @@ function Espace() {
 
                   {prochainePriereFinale &&
                     !erreurHoraires && (
-                      <div className="shrink-0">
+                      <div className="shrink-0 rounded-2xl border border-emerald-900/10 bg-emerald-950 px-6 py-5 text-center text-white">
 
-                        <div className="rounded-2xl bg-blue-50 border border-blue-100 px-6 py-5 text-center">
+                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#d6ac47]">
+                          Dans
+                        </p>
 
-                          <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">
-                            Dans
-                          </p>
-
-                          <p className="mt-1 text-2xl md:text-3xl font-bold text-blue-700 font-mono">
-                            {
-                              compteARebours
-                            }
-                          </p>
-
-                        </div>
+                        <p className="mt-1 font-mono text-2xl font-black md:text-3xl">
+                          {compteARebours}
+                        </p>
 
                       </div>
                     )}
@@ -1831,40 +1635,26 @@ function Espace() {
             </div>
 
 
-            {/* CALENDRIER */}
+            {/* LOCALISATION */}
 
-            <div className="rounded-3xl bg-white border border-gray-200 shadow-sm p-6">
+            <div className="rounded-[2rem] bg-emerald-950 p-6 text-white shadow-sm">
 
               <div className="flex items-center gap-3">
 
-                <div className="w-11 h-11 rounded-xl bg-indigo-100 flex items-center justify-center">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-[#d6ac47]">
 
-                  <CalendarDays
-                    size={21}
-                    className="text-indigo-600"
-                  />
+                  <MapPin size={20} />
 
                 </div>
 
-
                 <div>
 
-                  <p className="text-sm text-gray-500">
-                    Aujourd'hui
+                  <p className="text-xs uppercase tracking-[0.16em] text-white/40">
+                    Localisation
                   </p>
 
-                  <p className="font-semibold text-gray-800">
-
-                    {new Intl.DateTimeFormat(
-                      "fr-FR",
-                      {
-                        day: "numeric",
-                        month: "long",
-                      }
-                    ).format(
-                      maintenant
-                    )}
-
+                  <p className="mt-1 font-bold">
+                    Dakar, Sénégal
                   </p>
 
                 </div>
@@ -1872,30 +1662,25 @@ function Espace() {
               </div>
 
 
-              <div className="mt-6 rounded-2xl bg-slate-50 p-5">
+              <div className="mt-7 border-t border-white/10 pt-6">
 
-                <p className="text-xs text-gray-500 uppercase tracking-wide">
-                  Localisation
+                <p className="text-xs uppercase tracking-[0.16em] text-[#d6ac47]">
+                  Aujourd'hui
                 </p>
 
+                <p className="mt-2 text-xl font-black">
+                  {new Intl.DateTimeFormat(
+                    "fr-FR",
+                    {
+                      day: "numeric",
+                      month: "long",
+                    }
+                  ).format(maintenant)}
+                </p>
 
-                <div className="mt-2 flex items-center gap-2 text-gray-800 font-medium">
-
-                  <MapPin
-                    size={17}
-                    className="text-blue-600"
-                  />
-
-                  Dakar, Sénégal
-
-                </div>
-
-
-                <p className="mt-3 text-sm text-gray-500 leading-relaxed">
-
-                  Les horaires affichés sont
-                  calculés pour Dakar.
-
+                <p className="mt-3 text-sm leading-6 text-white/50">
+                  Les horaires de prière sont
+                  calculés pour la ville de Dakar.
                 </p>
 
               </div>
@@ -1913,15 +1698,19 @@ function Espace() {
 
         <section className="mb-8">
 
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-4 flex items-end justify-between gap-4">
 
             <div>
 
-              <h2 className="text-xl font-bold text-gray-900">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b88b28]">
+                Spiritualité
+              </p>
+
+              <h2 className="mt-2 text-2xl font-black text-emerald-950">
                 Horaires des prières
               </h2>
 
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="mt-1 text-sm text-slate-400">
                 Les cinq prières quotidiennes
               </p>
 
@@ -1930,17 +1719,13 @@ function Espace() {
 
             <button
               type="button"
-              onClick={
-                chargerHoraires
-              }
-              disabled={
-                chargementHoraires
-              }
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-gray-600 text-sm hover:bg-gray-50 disabled:opacity-50"
+              onClick={chargerHoraires}
+              disabled={chargementHoraires}
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-900/10 bg-white px-3 py-2 text-sm font-semibold text-slate-500 transition hover:border-emerald-200 hover:text-emerald-800 disabled:opacity-50"
             >
 
               <RefreshCw
-                size={16}
+                size={15}
                 className={
                   chargementHoraires
                     ? "animate-spin"
@@ -1957,7 +1742,7 @@ function Espace() {
           </div>
 
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
 
             {prieres.map(
               (priere, index) => {
@@ -1971,37 +1756,32 @@ function Espace() {
 
                 return (
                   <div
-                    key={
-                      priere.nom
-                    }
+                    key={priere.nom}
                     className={`rounded-2xl border p-4 transition ${
                       estProchaine
-                        ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100"
-                        : "bg-white border-gray-200 text-gray-800"
+                        ? "border-emerald-950 bg-emerald-950 text-white shadow-lg shadow-emerald-900/10"
+                        : "border-slate-100 bg-white text-slate-900 shadow-sm hover:-translate-y-1 hover:border-emerald-200 hover:shadow-md"
                     }`}
                   >
 
                     <div className="flex items-center justify-between">
 
                       <span
-                        className={`text-sm font-medium ${
+                        className={`text-xs font-bold ${
                           estProchaine
-                            ? "text-blue-100"
-                            : "text-gray-500"
+                            ? "text-white/50"
+                            : "text-slate-400"
                         }`}
                       >
-                        {
-                          priere.nom
-                        }
+                        {priere.nom}
                       </span>
 
-
                       <Icon
-                        size={18}
+                        size={17}
                         className={
                           estProchaine
-                            ? "text-blue-100"
-                            : "text-blue-600"
+                            ? "text-[#d6ac47]"
+                            : "text-emerald-700"
                         }
                       />
 
@@ -2009,20 +1789,18 @@ function Espace() {
 
 
                     <p
-                      className={`mt-3 text-2xl font-bold ${
+                      className={`mt-3 text-2xl font-black ${
                         estProchaine
                           ? "text-white"
-                          : "text-gray-900"
+                          : "text-emerald-950"
                       }`}
                     >
-                      {
-                        priere.heure
-                      }
+                      {priere.heure}
                     </p>
 
 
                     {estProchaine && (
-                      <p className="mt-1 text-xs text-blue-100">
+                      <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-[#d6ac47]">
                         Prochaine
                       </p>
                     )}
@@ -2035,7 +1813,7 @@ function Espace() {
 
             {!prieres.length &&
               !chargementHoraires && (
-                <div className="col-span-full bg-white border border-gray-200 rounded-2xl p-6 text-center text-gray-500">
+                <div className="col-span-full rounded-2xl border border-slate-100 bg-white p-6 text-center text-sm text-slate-400">
                   Aucun horaire disponible.
                 </div>
               )}
@@ -2049,33 +1827,30 @@ function Espace() {
             DU'A + RAPPEL
         ==================================================== */}
 
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
+        <section className="mb-8 grid gap-5 lg:grid-cols-2">
 
 
           {/* DU'A */}
 
-          <div className="rounded-3xl bg-white border border-gray-200 shadow-sm overflow-hidden">
+          <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm ring-1 ring-emerald-900/10">
 
-            <div className="bg-gradient-to-r from-indigo-950 to-blue-900 text-white p-6">
+            <div className="bg-emerald-950 p-6 text-white">
 
               <div className="flex items-center gap-3">
 
-                <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-[#d6ac47]">
 
-                  <Heart
-                    size={21}
-                  />
+                  <Heart size={20} />
 
                 </div>
 
-
                 <div>
 
-                  <p className="text-blue-200 text-xs uppercase tracking-wide font-medium">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#d6ac47]">
                     Invocation
                   </p>
 
-                  <h2 className="text-xl font-bold">
+                  <h2 className="mt-1 text-xl font-black">
                     Du'a de la semaine
                   </h2>
 
@@ -2088,11 +1863,11 @@ function Espace() {
 
             <div className="p-6">
 
-              <div className="rounded-2xl bg-slate-50 p-5">
+              <div className="rounded-2xl bg-[#f8f7f2] p-5">
 
                 <p
                   dir="rtl"
-                  className="text-2xl md:text-3xl leading-loose text-gray-900 text-right font-serif"
+                  className="text-right font-serif text-2xl leading-loose text-emerald-950 md:text-3xl"
                 >
                   {dua.arabe}
                 </p>
@@ -2100,14 +1875,14 @@ function Espace() {
               </div>
 
 
-              <p className="mt-5 text-sm italic text-gray-600 leading-relaxed">
+              <p className="mt-5 text-sm italic leading-relaxed text-slate-500">
                 {dua.transliteration}
               </p>
 
 
-              <div className="mt-4 border-l-4 border-blue-500 pl-4">
+              <div className="mt-4 border-l-4 border-[#b88b28] pl-4">
 
-                <p className="text-gray-700 leading-relaxed">
+                <p className="leading-relaxed text-slate-600">
                   {dua.traduction}
                 </p>
 
@@ -2120,20 +1895,16 @@ function Espace() {
                   type="button"
                   onClick={() =>
                     setDuaIndex(
-                      (
-                        duaIndex + 1
-                      ) %
+                      (duaIndex + 1) %
                         DUAS.length
                     )
                   }
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-900"
                 >
 
                   Nouvelle invocation
 
-                  <ChevronRight
-                    size={16}
-                  />
+                  <ChevronRight size={16} />
 
                 </button>
 
@@ -2146,52 +1917,49 @@ function Espace() {
 
           {/* RAPPEL */}
 
-          <div className="rounded-3xl bg-gradient-to-br from-amber-50 to-orange-50 border border-orange-100 shadow-sm p-6">
+          <div className="relative overflow-hidden rounded-[2rem] border border-[#d6ac47]/20 bg-[#f7f1df] p-6">
 
-            <div className="flex items-center gap-3">
+            <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full border border-[#b88b28]/20" />
 
-              <div className="w-11 h-11 rounded-xl bg-orange-100 flex items-center justify-center">
 
-                <Sparkles
-                  size={21}
-                  className="text-orange-600"
-                />
+            <div className="relative">
+
+              <div className="flex items-center gap-3">
+
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-950 text-[#d6ac47]">
+
+                  <Sparkles size={20} />
+
+                </div>
+
+                <div>
+
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#a77919]">
+                    Méditation
+                  </p>
+
+                  <h2 className="mt-1 text-xl font-black text-emerald-950">
+                    {rappelDuJour.titre}
+                  </h2>
+
+                </div>
 
               </div>
 
 
-              <div>
+              <p className="mt-7 text-base leading-8 text-slate-600">
+                {rappelDuJour.texte}
+              </p>
 
-                <p className="text-xs uppercase tracking-wide text-orange-600 font-medium">
-                  Méditation
-                </p>
 
-                <h2 className="text-xl font-bold text-gray-900">
-                  {
-                    rappelDuJour.titre
-                  }
-                </h2>
+              <div className="mt-8 flex items-center gap-2 text-sm font-semibold text-emerald-800">
+
+                <Heart size={16} />
+
+                Qu'Allah nous accorde
+                la constance et la sincérité.
 
               </div>
-
-            </div>
-
-
-            <p className="mt-6 text-gray-700 leading-relaxed text-base">
-              {
-                rappelDuJour.texte
-              }
-            </p>
-
-
-            <div className="mt-8 flex items-center gap-2 text-sm text-orange-700">
-
-              <Heart
-                size={16}
-              />
-
-              Qu'Allah nous accorde
-              la constance et la sincérité.
 
             </div>
 
@@ -2206,87 +1974,68 @@ function Espace() {
 
         <section className="mb-8">
 
-          <div className="rounded-3xl overflow-hidden bg-white border border-gray-200 shadow-sm">
+          <div className="rounded-[2rem] bg-emerald-950 p-6 text-white shadow-sm md:p-7">
 
-            <div className="p-6 md:p-7">
+            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
 
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+              <div className="flex items-start gap-4">
 
-                <div className="flex items-start gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-[#d6ac47]">
 
-                  <div className="w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center shrink-0">
-
-                    <BookOpen
-                      size={26}
-                      className="text-emerald-600"
-                    />
-
-                  </div>
-
-
-                  <div>
-
-                    <p className="text-xs uppercase tracking-wide text-emerald-600 font-semibold">
-                      Lecture spirituelle
-                    </p>
-
-                    <h2 className="mt-1 text-xl md:text-2xl font-bold text-gray-900">
-                      {
-                        khassidaDuJour.titre
-                      }
-                    </h2>
-
-                    <p className="mt-2 text-gray-500 leading-relaxed">
-                      {
-                        khassidaDuJour.description
-                      }
-                    </p>
-
-                  </div>
+                  <BookOpen size={25} />
 
                 </div>
 
 
-                <div className="flex flex-wrap gap-2">
+                <div>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      navigate(
-                        "/khassidas"
-                      )
-                    }
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition"
-                  >
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#d6ac47]">
+                    Lecture spirituelle
+                  </p>
 
-                    <BookOpen
-                      size={17}
-                    />
+                  <h2 className="mt-1 text-xl font-black md:text-2xl">
+                    {khassidaDuJour.titre}
+                  </h2>
 
-                    Consulter
-
-                  </button>
-
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      navigate(
-                        "/khassidas"
-                      )
-                    }
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-medium hover:bg-emerald-700 transition"
-                  >
-
-                    <Volume2
-                      size={17}
-                    />
-
-                    Écouter
-
-                  </button>
+                  <p className="mt-2 max-w-2xl leading-7 text-white/55">
+                    {khassidaDuJour.description}
+                  </p>
 
                 </div>
+
+              </div>
+
+
+              <div className="flex flex-wrap gap-2">
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate("/khassidas")
+                  }
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/10"
+                >
+
+                  <BookOpen size={16} />
+
+                  Consulter
+
+                </button>
+
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate("/khassidas")
+                  }
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#d6ac47] px-4 py-2.5 text-sm font-black text-emerald-950 transition hover:bg-[#e3c15f]"
+                >
+
+                  <Volume2 size={16} />
+
+                  Écouter
+
+                </button>
 
               </div>
 
@@ -2306,15 +2055,19 @@ function Espace() {
         ) && (
           <section className="mb-8">
 
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-5 flex items-end justify-between gap-4">
 
               <div>
 
-                <h2 className="text-xl font-bold text-gray-900">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b88b28]">
+                  Vie du Dahira
+                </p>
+
+                <h2 className="mt-2 text-2xl font-black text-emerald-950">
                   Communications
                 </h2>
 
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="mt-1 text-sm text-slate-400">
                   Les dernières informations du Dahira
                 </p>
 
@@ -2328,14 +2081,12 @@ function Espace() {
                     "/communications"
                   )
                 }
-                className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
+                className="inline-flex items-center gap-1 text-sm font-bold text-emerald-800 transition hover:text-[#a77919]"
               >
 
                 Tout voir
 
-                <ArrowRight
-                  size={16}
-                />
+                <ArrowRight size={16} />
 
               </button>
 
@@ -2343,107 +2094,91 @@ function Espace() {
 
 
             {chargementCommunications ? (
-              <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center">
+              <div className="rounded-2xl border border-slate-100 bg-white p-8 text-center">
 
                 <RefreshCw
                   size={25}
-                  className="mx-auto text-blue-600 animate-spin"
+                  className="mx-auto animate-spin text-emerald-700"
                 />
 
-                <p className="mt-3 text-sm text-gray-500">
+                <p className="mt-3 text-sm text-slate-400">
                   Chargement des communications...
                 </p>
 
               </div>
             ) : erreurCommunications ? (
-              <div className="bg-white border border-red-200 rounded-2xl p-5">
+              <div className="rounded-2xl border border-red-100 bg-white p-5">
 
                 <div className="flex items-start gap-3 text-red-600">
 
-                  <AlertCircle
-                    size={19}
-                  />
+                  <AlertCircle size={19} />
 
                   <p className="text-sm">
-                    {
-                      erreurCommunications
-                    }
+                    {erreurCommunications}
                   </p>
 
                 </div>
 
               </div>
-            ) : communications.length ===
-              0 ? (
-              <div className="bg-white border border-gray-200 rounded-2xl p-7 text-center">
+            ) : communications.length === 0 ? (
+              <div className="rounded-2xl border border-slate-100 bg-white p-7 text-center">
 
                 <Megaphone
                   size={30}
-                  className="mx-auto text-gray-300"
+                  className="mx-auto text-slate-200"
                 />
 
-                <p className="mt-3 text-sm text-gray-500">
+                <p className="mt-3 text-sm text-slate-400">
                   Aucune communication récente.
                 </p>
 
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid gap-4 md:grid-cols-3">
 
                 {communications.map(
                   (communication) => (
                     <button
                       type="button"
-                      key={
-                        communication.id
-                      }
+                      key={communication.id}
                       onClick={() =>
                         navigate(
                           `/communications/${communication.id}`
                         )
                       }
-                      className="text-left bg-white border border-gray-200 rounded-2xl p-5 hover:border-blue-300 hover:shadow-md transition group"
+                      className="group rounded-[1.75rem] border border-slate-100 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg"
                     >
 
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center justify-between">
 
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
 
-                          <Megaphone
-                            size={18}
-                            className="text-blue-600"
-                          />
+                          <Megaphone size={18} />
 
                         </div>
 
 
                         <ArrowRight
                           size={17}
-                          className="text-gray-300 group-hover:text-blue-600 transition"
+                          className="text-slate-200 transition group-hover:text-[#b88b28]"
                         />
 
                       </div>
 
 
-                      <h3 className="mt-4 font-semibold text-gray-900 line-clamp-2">
-                        {
-                          communication.titre
-                        }
+                      <h3 className="mt-4 line-clamp-2 font-bold text-emerald-950">
+                        {communication.titre}
                       </h3>
 
 
-                      <p className="mt-2 text-sm text-gray-500 line-clamp-3 leading-relaxed">
-                        {
-                          communication.contenu
-                        }
+                      <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">
+                        {communication.contenu}
                       </p>
 
 
-                      <div className="mt-4 flex items-center gap-2 text-xs text-gray-400">
+                      <div className="mt-4 flex items-center gap-2 text-xs text-slate-300">
 
-                        <Calendar
-                          size={13}
-                        />
+                        <Calendar size={13} />
 
                         {communication.date_publication
                           ? new Intl.DateTimeFormat(
@@ -2474,39 +2209,29 @@ function Espace() {
 
 
         {/* ====================================================
-            MON ESPACE
+            ACCES RAPIDES
         ==================================================== */}
 
         <section className="mb-8">
 
-          <div className="flex items-center gap-3 mb-4">
+          <div className="mb-5">
 
-            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b88b28]">
+              Mon espace
+            </p>
 
-              <Info
-                size={19}
-                className="text-blue-600"
-              />
+            <h2 className="mt-2 text-2xl font-black text-emerald-950">
+              Accès rapides
+            </h2>
 
-            </div>
-
-
-            <div>
-
-              <h2 className="text-xl font-bold text-gray-900">
-                Mon espace
-              </h2>
-
-              <p className="text-sm text-gray-500">
-                Accédez rapidement à vos informations
-              </p>
-
-            </div>
+            <p className="mt-1 text-sm text-slate-400">
+              Retrouvez rapidement les services qui vous sont accessibles.
+            </p>
 
           </div>
 
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 
             {aPermission(
               "REUNION_CONSULTER"
@@ -2514,39 +2239,32 @@ function Espace() {
               <button
                 type="button"
                 onClick={() =>
-                  navigate(
-                    "/reunions"
-                  )
+                  navigate("/reunions")
                 }
-                className="bg-white border border-gray-200 rounded-2xl p-5 text-left hover:border-indigo-300 hover:shadow-md transition group"
+                className="group rounded-[1.75rem] border border-slate-100 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg"
               >
 
                 <div className="flex items-center justify-between">
 
-                  <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
 
-                    <Calendar
-                      size={19}
-                      className="text-indigo-600"
-                    />
+                    <Calendar size={19} />
 
                   </div>
 
-
                   <ArrowRight
                     size={17}
-                    className="text-gray-300 group-hover:text-indigo-600"
+                    className="text-slate-200 transition group-hover:text-[#b88b28]"
                   />
 
                 </div>
 
 
-                <h3 className="mt-4 font-semibold text-gray-900">
+                <h3 className="mt-5 font-black text-emerald-950">
                   Réunions
                 </h3>
 
-
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm leading-6 text-slate-400">
                   Consultez les prochaines réunions.
                 </p>
 
@@ -2564,35 +2282,30 @@ function Espace() {
                     "/communications"
                   )
                 }
-                className="bg-white border border-gray-200 rounded-2xl p-5 text-left hover:border-emerald-300 hover:shadow-md transition group"
+                className="group rounded-[1.75rem] border border-slate-100 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg"
               >
 
                 <div className="flex items-center justify-between">
 
-                  <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
 
-                    <Megaphone
-                      size={19}
-                      className="text-emerald-600"
-                    />
+                    <Megaphone size={19} />
 
                   </div>
 
-
                   <ArrowRight
                     size={17}
-                    className="text-gray-300 group-hover:text-emerald-600"
+                    className="text-slate-200 transition group-hover:text-[#b88b28]"
                   />
 
                 </div>
 
 
-                <h3 className="mt-4 font-semibold text-gray-900">
+                <h3 className="mt-5 font-black text-emerald-950">
                   Communications
                 </h3>
 
-
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm leading-6 text-slate-400">
                   Consultez les annonces du Dahira.
                 </p>
 
@@ -2606,40 +2319,74 @@ function Espace() {
               <button
                 type="button"
                 onClick={() =>
-                  navigate(
-                    "/khassidas"
-                  )
+                  navigate("/khassidas")
                 }
-                className="bg-white border border-gray-200 rounded-2xl p-5 text-left hover:border-orange-300 hover:shadow-md transition group"
+                className="group rounded-[1.75rem] border border-slate-100 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg"
               >
 
                 <div className="flex items-center justify-between">
 
-                  <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
 
-                    <BookOpen
-                      size={19}
-                      className="text-orange-600"
-                    />
+                    <BookOpen size={19} />
 
                   </div>
 
-
                   <ArrowRight
                     size={17}
-                    className="text-gray-300 group-hover:text-orange-600"
+                    className="text-slate-200 transition group-hover:text-[#b88b28]"
                   />
 
                 </div>
 
 
-                <h3 className="mt-4 font-semibold text-gray-900">
+                <h3 className="mt-5 font-black text-emerald-950">
                   Khassidas
                 </h3>
 
-
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm leading-6 text-slate-400">
                   Consultez les Khassidas disponibles.
+                </p>
+
+              </button>
+            )}
+
+
+            {aPermission(
+              "NOTIFICATION_CONSULTER"
+            ) && (
+              <button
+                type="button"
+                onClick={() =>
+                  navigate(
+                    "/notifications"
+                  )
+                }
+                className="group rounded-[1.75rem] border border-slate-100 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg"
+              >
+
+                <div className="flex items-center justify-between">
+
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+
+                    <Bell size={19} />
+
+                  </div>
+
+                  <ArrowRight
+                    size={17}
+                    className="text-slate-200 transition group-hover:text-[#b88b28]"
+                  />
+
+                </div>
+
+
+                <h3 className="mt-5 font-black text-emerald-950">
+                  Notifications
+                </h3>
+
+                <p className="mt-1 text-sm leading-6 text-slate-400">
+                  Consultez vos notifications.
                 </p>
 
               </button>
@@ -2654,53 +2401,50 @@ function Espace() {
             FOOTER SPIRITUEL
         ==================================================== */}
 
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 to-blue-950 text-white p-7 md:p-9">
+        <section className="relative overflow-hidden rounded-[2rem] bg-emerald-950 p-7 text-white md:p-9">
 
-          <div className="absolute -right-16 -top-16 w-48 h-48 rounded-full border border-white/10" />
+          <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full border border-[#d6ac47]/20" />
 
-          <div className="absolute -left-10 -bottom-20 w-56 h-56 rounded-full border border-white/10" />
+          <div className="absolute -bottom-20 -left-10 h-56 w-56 rounded-full border border-white/10" />
 
 
-          <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
 
             <div>
 
-              <div className="flex items-center gap-2 text-blue-300 text-sm font-medium">
+              <div className="flex items-center gap-2 text-sm font-bold text-[#d6ac47]">
 
-                <Heart
-                  size={16}
-                />
+                <Heart size={16} />
 
                 Rappel
 
               </div>
 
 
-              <h2 className="mt-2 text-xl md:text-2xl font-bold">
+              <h2 className="mt-2 text-xl font-black md:text-2xl">
                 Qu'Allah bénisse votre journée.
               </h2>
 
 
-              <p className="mt-2 text-blue-200 max-w-2xl leading-relaxed">
+              <p className="mt-2 max-w-2xl leading-7 text-white/50">
 
-                Que chaque prière, chaque
-                invocation et chaque bonne action
-                soit une source de lumière,
-                de paix et de bénédiction.
+                Que chaque prière, chaque invocation
+                et chaque bonne action soit une source
+                de lumière, de paix et de bénédiction.
 
               </p>
 
             </div>
 
 
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex shrink-0 items-center gap-3">
 
               <Volume2
-                size={24}
-                className="text-blue-300"
+                size={23}
+                className="text-[#d6ac47]"
               />
 
-              <span className="text-sm text-blue-200">
+              <span className="text-sm text-white/50">
                 Dhikr • Prière • Fraternité
               </span>
 
@@ -2712,9 +2456,29 @@ function Espace() {
 
       </main>
 
+
+      {/* ======================================================
+          PETIT PIED DE PAGE
+      ====================================================== */}
+
+      <footer className="border-t border-emerald-900/10 bg-white">
+
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-6 text-center text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:text-left">
+
+          <p>
+            © {new Date().getFullYear()} Dahira Mawahibou Naafih
+          </p>
+
+          <p>
+            Spiritualité • Fraternité • Solidarité
+          </p>
+
+        </div>
+
+      </footer>
+
     </div>
   );
 }
 
-export default Espace;
-
+export default MonEspace;
