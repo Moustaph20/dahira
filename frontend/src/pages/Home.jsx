@@ -5,7 +5,6 @@ import {
   ArrowDown,
   ArrowRight,
   CalendarDays,
-  ChevronRight,
   Clock3,
   Heart,
   MapPin,
@@ -21,16 +20,15 @@ import {
 import guideImage from "../assets/guide.jpg";
 import api from "../api/client";
 
-// ==========================================================
+// ============================================================
 // CONFIGURATION
-// ==========================================================
+// ============================================================
 
 const DAKAR_LAT = 14.7167;
 const DAKAR_LON = -17.4677;
 
 const PRIERE_NOMS = {
   Fajr: "Fajr",
-  Sunrise: "Lever du soleil",
   Dhuhr: "Dhuhr",
   Asr: "Asr",
   Maghrib: "Maghrib",
@@ -39,7 +37,7 @@ const PRIERE_NOMS = {
 
 const RAPPELS = [
   "La constance dans le bien ouvre les portes.",
-  "Un cœur uni renforce toute une communauté.",
+  "Un cœur uni renforce la communauté.",
   "Chaque pas vers le bien compte.",
   "La fraternité est une force.",
   "Servir avec sincérité, c'est avancer ensemble.",
@@ -60,67 +58,39 @@ const PIONNIERS = [
   },
 ];
 
-// ==========================================================
-// HISTORIQUE DU DAHIRA
-// ==========================================================
-
 const HISTORIQUE = [
   {
     periode: "Les débuts",
     titre: "La naissance du Dahira",
     texte:
-      "Une communauté fondée autour de la spiritualité, de la fraternité et de la volonté de servir ensemble.",
+      "Une communauté réunie autour de la foi et de la fraternité.",
   },
   {
-    periode: "Une communauté grandissante",
-    titre: "Une présence qui s'affirme",
+    periode: "La croissance",
+    titre: "Une communauté grandissante",
     texte:
-      "Au fil des années, le Dahira rassemble davantage de membres et développe ses activités religieuses et communautaires.",
+      "Le Dahira rassemble progressivement ses membres autour de ses activités.",
   },
   {
     periode: "La transmission",
-    titre: "Préserver et transmettre",
+    titre: "Préserver les valeurs",
     texte:
-      "Les enseignements, les valeurs et les pratiques sont transmis aux nouvelles générations dans un esprit de continuité.",
+      "Les enseignements et les valeurs sont transmis aux générations suivantes.",
   },
   {
     periode: "Aujourd'hui",
-    titre: "Une communauté tournée vers l'avenir",
+    titre: "Regarder vers l'avenir",
     texte:
-      "Le Dahira poursuit son chemin en renforçant son organisation, sa fraternité et son engagement au service de la communauté.",
+      "Une communauté organisée, engagée et tournée vers demain.",
   },
 ];
 
-// ==========================================================
-// REVEAL — ANIMATION AU SCROLL
-// ==========================================================
+// ============================================================
+// REVEAL
+// ============================================================
 
-function Reveal({
-  children,
-  className = "",
-  delay = 0,
-}) {
+function Reveal({ children, className = "", delay = 0 }) {
   const [visible, setVisible] = useState(false);
-
-  return (
-    <RevealElement
-      visible={visible}
-      setVisible={setVisible}
-      className={className}
-      delay={delay}
-    >
-      {children}
-    </RevealElement>
-  );
-}
-
-function RevealElement({
-  children,
-  visible,
-  setVisible,
-  className,
-  delay,
-}) {
   const [element, setElement] = useState(null);
 
   useEffect(() => {
@@ -141,7 +111,7 @@ function RevealElement({
     observer.observe(element);
 
     return () => observer.disconnect();
-  }, [element, setVisible]);
+  }, [element]);
 
   return (
     <div
@@ -150,8 +120,8 @@ function RevealElement({
         transition-all duration-1000 ease-out
         ${
           visible
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 translate-y-10"
+            ? "translate-y-0 opacity-100"
+            : "translate-y-10 opacity-0"
         }
         ${className}
       `}
@@ -164,9 +134,9 @@ function RevealElement({
   );
 }
 
-// ==========================================================
+// ============================================================
 // HOME
-// ==========================================================
+// ============================================================
 
 export default function Home() {
   const [menuOuvert, setMenuOuvert] = useState(false);
@@ -181,30 +151,27 @@ export default function Home() {
     new Date()
   );
 
-  // ========================================================
-  // SCROLL NAVBAR
-  // ========================================================
+  // ==========================================================
+  // NAVBAR
+  // ==========================================================
 
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 40);
     };
 
-    window.addEventListener("scroll", handleScroll);
-
     handleScroll();
 
+    window.addEventListener("scroll", handleScroll);
+
     return () => {
-      window.removeEventListener(
-        "scroll",
-        handleScroll
-      );
+      window.removeEventListener("scroll", handleScroll);
     };
   }, []);
 
-  // ========================================================
+  // ==========================================================
   // HORLOGE
-  // ========================================================
+  // ==========================================================
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -214,23 +181,23 @@ export default function Home() {
     return () => clearInterval(timer);
   }, []);
 
-  // ========================================================
+  // ==========================================================
   // RAPPELS
-  // ========================================================
+  // ==========================================================
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setRappelIndex((ancien) => {
-        return (ancien + 1) % RAPPELS.length;
-      });
+      setRappelIndex(
+        (ancien) => (ancien + 1) % RAPPELS.length
+      );
     }, 5000);
 
     return () => clearInterval(timer);
   }, []);
 
-  // ========================================================
+  // ==========================================================
   // GALERIE
-  // ========================================================
+  // ==========================================================
 
   useEffect(() => {
     let actif = true;
@@ -267,9 +234,9 @@ export default function Home() {
     };
   }, []);
 
-  // ========================================================
-  // HORAIRES DE PRIERE
-  // ========================================================
+  // ==========================================================
+  // HORAIRES DE PRIÈRE
+  // ==========================================================
 
   useEffect(() => {
     let actif = true;
@@ -286,7 +253,8 @@ export default function Home() {
           aujourdHui.getMonth() + 1
         ).padStart(2, "0");
 
-        const annee = aujourdHui.getFullYear();
+        const annee =
+          aujourdHui.getFullYear();
 
         const url =
           `https://api.aladhan.com/v1/timings/` +
@@ -331,9 +299,9 @@ export default function Home() {
     };
   }, []);
 
-  // ========================================================
-  // PROCHAINE PRIERE
-  // ========================================================
+  // ==========================================================
+  // PROCHAINE PRIÈRE
+  // ==========================================================
 
   const prochainePriere = useMemo(() => {
     if (!horaires) {
@@ -368,6 +336,7 @@ export default function Home() {
         return {
           nom,
           heure: valeur,
+          demain: false,
         };
       }
     }
@@ -379,28 +348,59 @@ export default function Home() {
     };
   }, [horaires, heureActuelle]);
 
-  // ========================================================
-  // GALERIE LIMITEE
-  // ========================================================
+  // ==========================================================
+  // GALERIE
+  // ==========================================================
 
   const galerieVisible = useMemo(() => {
     return galerie.slice(0, 6);
   }, [galerie]);
 
-  // ========================================================
-  // FERMER MENU
-  // ========================================================
+  // ==========================================================
+  // URL MEDIA
+  // ==========================================================
 
-  const fermerMenu = () => {
+  function construireUrlMedia(url) {
+    if (!url) {
+      return "";
+    }
+
+    if (
+      url.startsWith("http://") ||
+      url.startsWith("https://")
+    ) {
+      return url;
+    }
+
+    const baseUrl = (
+      api.defaults.baseURL || ""
+    ).replace(/\/$/, "");
+
+    const chemin = url.startsWith("/")
+      ? url
+      : `/${url}`;
+
+    return `${baseUrl}${chemin}`;
+  }
+
+  // ==========================================================
+  // FERMER MENU
+  // ==========================================================
+
+  function fermerMenu() {
     setMenuOuvert(false);
-  };
+  }
+
+  // ==========================================================
+  // RENDER
+  // ==========================================================
 
   return (
-    <div className="min-h-screen bg-[#faf8f1] text-slate-900 overflow-x-hidden">
+    <div className="min-h-screen overflow-x-hidden bg-[#faf8f1] text-slate-900">
 
-      {/* ====================================================
-          ANIMATIONS CSS
-      ==================================================== */}
+      {/* ======================================================
+          ANIMATIONS
+      ====================================================== */}
 
       <style>{`
         @keyframes floatSlow {
@@ -419,36 +419,46 @@ export default function Home() {
           }
 
           50% {
-            transform: translateY(16px) translateX(-10px);
+            transform: translateY(18px) translateX(-10px);
           }
         }
 
         @keyframes pulseGlow {
           0%, 100% {
             box-shadow:
-              0 0 0 0 rgba(214, 172, 71, 0.18),
-              0 0 40px rgba(214, 172, 71, 0.12);
+              0 0 0 0 rgba(214, 172, 71, 0.15),
+              0 0 35px rgba(214, 172, 71, 0.10);
           }
 
           50% {
             box-shadow:
-              0 0 0 22px rgba(214, 172, 71, 0),
-              0 0 70px rgba(214, 172, 71, 0.28);
+              0 0 0 20px rgba(214, 172, 71, 0),
+              0 0 70px rgba(214, 172, 71, 0.25);
           }
         }
 
         @keyframes rotateSlow {
           from {
-            transform: rotate(0deg);
+            transform: translate(-50%, -50%) rotate(0deg);
           }
 
           to {
-            transform: rotate(360deg);
+            transform: translate(-50%, -50%) rotate(360deg);
+          }
+        }
+
+        @keyframes rotateReverse {
+          from {
+            transform: translate(-50%, -50%) rotate(360deg);
+          }
+
+          to {
+            transform: translate(-50%, -50%) rotate(0deg);
           }
         }
 
         @keyframes scrollDown {
-          0% {
+          0%, 100% {
             transform: translateY(-4px);
             opacity: 0.4;
           }
@@ -457,22 +467,27 @@ export default function Home() {
             transform: translateY(5px);
             opacity: 1;
           }
-
-          100% {
-            transform: translateY(-4px);
-            opacity: 0.4;
-          }
         }
 
         @keyframes softAppear {
           from {
             opacity: 0;
-            transform: scale(0.96);
+            transform: scale(0.94);
           }
 
           to {
             opacity: 1;
             transform: scale(1);
+          }
+        }
+
+        @keyframes shimmer {
+          0% {
+            transform: translateX(-100%);
+          }
+
+          100% {
+            transform: translateX(100%);
           }
         }
 
@@ -489,7 +504,11 @@ export default function Home() {
         }
 
         .animate-rotate-slow {
-          animation: rotateSlow 22s linear infinite;
+          animation: rotateSlow 24s linear infinite;
+        }
+
+        .animate-rotate-reverse {
+          animation: rotateReverse 30s linear infinite;
         }
 
         .animate-scroll-down {
@@ -497,16 +516,11 @@ export default function Home() {
         }
 
         .animate-soft-appear {
-          animation: softAppear 1s ease-out forwards;
+          animation: softAppear 0.9s ease-out forwards;
         }
 
-        .hide-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-
-        .hide-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
+        .animate-shimmer {
+          animation: shimmer 3s ease-in-out infinite;
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -521,30 +535,34 @@ export default function Home() {
         }
       `}</style>
 
-      {/* ====================================================
+      {/* ======================================================
           NAVBAR
-      ==================================================== */}
+      ====================================================== */}
 
       <header
         className={`
-          fixed top-0 left-0 right-0 z-50
+          fixed left-0 right-0 top-0 z-50
           transition-all duration-500
           ${
             scrolled
-              ? "bg-white/95 backdrop-blur-xl shadow-lg py-3"
+              ? "bg-white/95 py-3 shadow-lg backdrop-blur-xl"
               : "bg-transparent py-5"
           }
         `}
       >
-        <div className="max-w-7xl mx-auto px-5 lg:px-8">
+        <div className="mx-auto max-w-7xl px-5 lg:px-8">
+
           <div className="flex items-center justify-between">
+
+            {/* LOGO */}
 
             <Link
               to="/"
-              className="flex items-center gap-3"
               onClick={fermerMenu}
+              className="flex items-center gap-3"
             >
               <div className="relative">
+
                 <div
                   className={`
                     absolute inset-0 rounded-2xl blur-lg
@@ -560,19 +578,19 @@ export default function Home() {
                   src="/logo.png"
                   alt="Dahira Mawahibou Naafih"
                   className="
-                    relative
-                    w-11 h-11
-                    sm:w-12 sm:h-12
-                    object-contain
+                    relative h-11 w-11
                     rounded-2xl
+                    object-contain
+                    sm:h-12 sm:w-12
                   "
                 />
               </div>
 
               <div className="hidden sm:block">
+
                 <div
                   className={`
-                    font-black tracking-tight text-sm
+                    text-sm font-black tracking-tight
                     ${
                       scrolled
                         ? "text-emerald-950"
@@ -595,12 +613,14 @@ export default function Home() {
                 >
                   Castors
                 </div>
+
               </div>
             </Link>
 
             {/* DESKTOP */}
 
-            <nav className="hidden md:flex items-center gap-8">
+            <nav className="hidden items-center gap-8 md:flex">
+
               {[
                 ["Accueil", "#accueil"],
                 ["Le Dahira", "#dahira"],
@@ -612,8 +632,7 @@ export default function Home() {
                   key={href}
                   href={href}
                   className={`
-                    text-sm font-semibold
-                    transition-colors
+                    text-sm font-semibold transition-colors
                     ${
                       scrolled
                         ? "text-slate-600 hover:text-emerald-700"
@@ -628,8 +647,7 @@ export default function Home() {
               <Link
                 to="/login"
                 className="
-                  group
-                  inline-flex items-center gap-2
+                  group inline-flex items-center gap-2
                   rounded-full
                   bg-[#d6ac47]
                   px-5 py-2.5
@@ -651,21 +669,22 @@ export default function Home() {
                   "
                 />
               </Link>
+
             </nav>
 
             {/* MOBILE */}
 
             <button
+              type="button"
               onClick={() =>
-                setMenuOuvert(!menuOuvert)
+                setMenuOuvert((ancien) => !ancien)
               }
               className={`
-                md:hidden
-                p-2 rounded-xl
+                rounded-xl p-2 md:hidden
                 ${
                   scrolled
-                    ? "text-emerald-900 bg-emerald-50"
-                    : "text-white bg-white/10"
+                    ? "bg-emerald-50 text-emerald-900"
+                    : "bg-white/10 text-white"
                 }
               `}
               aria-label="Menu"
@@ -676,6 +695,7 @@ export default function Home() {
                 <Menu size={24} />
               )}
             </button>
+
           </div>
         </div>
 
@@ -683,7 +703,7 @@ export default function Home() {
 
         <div
           className={`
-            md:hidden overflow-hidden
+            overflow-hidden md:hidden
             transition-all duration-500
             ${
               menuOuvert
@@ -692,8 +712,9 @@ export default function Home() {
             }
           `}
         >
-          <div className="mx-4 mt-4 mb-2 rounded-3xl bg-white p-5 shadow-2xl border border-slate-100">
-            <nav className="flex flex-col gap-2">
+          <div className="mx-4 mb-2 mt-4 rounded-3xl border border-slate-100 bg-white p-5 shadow-2xl">
+
+            <nav className="flex flex-col gap-1">
 
               {[
                 ["Accueil", "#accueil"],
@@ -709,9 +730,9 @@ export default function Home() {
                   className="
                     rounded-2xl px-4 py-3
                     font-semibold text-slate-700
+                    transition
                     hover:bg-emerald-50
                     hover:text-emerald-800
-                    transition
                   "
                 >
                   {label}
@@ -722,8 +743,8 @@ export default function Home() {
                 to="/login"
                 onClick={fermerMenu}
                 className="
-                  mt-2
-                  flex items-center justify-center gap-2
+                  mt-2 flex items-center
+                  justify-center gap-2
                   rounded-2xl
                   bg-emerald-900
                   px-4 py-3
@@ -733,24 +754,25 @@ export default function Home() {
                 Mon espace
                 <ArrowRight size={17} />
               </Link>
+
             </nav>
           </div>
         </div>
       </header>
 
-      {/* ====================================================
+      {/* ======================================================
           HERO
-      ==================================================== */}
+      ====================================================== */}
 
       <section
         id="accueil"
         className="
-          relative
-          min-h-[100svh]
+          relative min-h-[100svh]
           overflow-hidden
           bg-emerald-950
         "
       >
+
         {/* FOND */}
 
         <div
@@ -764,10 +786,8 @@ export default function Home() {
 
         <div
           className="
-            absolute
-            -top-32
-            -left-32
-            w-96 h-96
+            absolute -left-32 -top-32
+            h-96 w-96
             rounded-full
             bg-emerald-400/15
             blur-3xl
@@ -779,10 +799,8 @@ export default function Home() {
 
         <div
           className="
-            absolute
-            top-1/3
-            -right-40
-            w-[32rem] h-[32rem]
+            absolute -right-40 top-1/3
+            h-[32rem] w-[32rem]
             rounded-full
             bg-[#d6ac47]/10
             blur-3xl
@@ -790,52 +808,36 @@ export default function Home() {
           "
         />
 
-        {/* CERCLE EXTERIEUR */}
+        {/* CERCLES */}
 
         <div
           className="
-            absolute
-            left-1/2
-            top-[44%]
-            -translate-x-1/2
-            -translate-y-1/2
-            w-[440px] h-[440px]
-            sm:w-[620px] sm:h-[620px]
+            absolute left-1/2 top-[44%]
+            h-[440px] w-[440px]
             rounded-full
             border border-white/5
+            sm:h-[620px] sm:w-[620px]
             animate-rotate-slow
           "
         />
 
-        {/* CERCLE INTERIEUR */}
-
         <div
           className="
-            absolute
-            left-1/2
-            top-[44%]
-            -translate-x-1/2
-            -translate-y-1/2
-            w-[330px] h-[330px]
-            sm:w-[480px] sm:h-[480px]
+            absolute left-1/2 top-[44%]
+            h-[330px] w-[330px]
             rounded-full
             border border-[#d6ac47]/10
-            animate-rotate-slow
+            sm:h-[480px] sm:w-[480px]
+            animate-rotate-reverse
           "
-          style={{
-            animationDirection: "reverse",
-          }}
         />
 
         {/* PARTICULES */}
 
         <div
           className="
-            absolute
-            top-[25%]
-            left-[12%]
-            w-2 h-2
-            rounded-full
+            absolute left-[12%] top-[25%]
+            h-2 w-2 rounded-full
             bg-[#d6ac47]
             shadow-[0_0_20px_rgba(214,172,71,0.8)]
             animate-pulse
@@ -844,25 +846,27 @@ export default function Home() {
 
         <div
           className="
-            absolute
-            top-[34%]
-            right-[16%]
-            w-1.5 h-1.5
-            rounded-full
-            bg-white
-            opacity-70
-            animate-ping
+            absolute right-[16%] top-[34%]
+            h-1.5 w-1.5
+            rounded-full bg-white
+            opacity-70 animate-ping
           "
         />
 
         <div
           className="
-            absolute
-            bottom-[28%]
-            left-[20%]
-            w-1 h-1
-            rounded-full
+            absolute bottom-[28%] left-[20%]
+            h-1 w-1 rounded-full
             bg-[#d6ac47]
+            animate-pulse
+          "
+        />
+
+        <div
+          className="
+            absolute bottom-[24%] right-[25%]
+            h-1 w-1 rounded-full
+            bg-white/60
             animate-pulse
           "
         />
@@ -872,9 +876,9 @@ export default function Home() {
         <div
           className="
             relative z-10
-            min-h-[100svh]
-            flex items-center justify-center
-            px-5 pt-28 pb-20
+            flex min-h-[100svh]
+            items-center justify-center
+            px-5 pb-20 pt-28
           "
         >
           <div className="w-full max-w-5xl text-center">
@@ -887,11 +891,11 @@ export default function Home() {
                 rounded-full
                 border border-white/10
                 bg-white/5
-                backdrop-blur-xl
                 px-4 py-2
-                text-[10px] sm:text-xs
+                text-[10px] font-semibold
                 uppercase tracking-[0.3em]
-                font-semibold text-white/70
+                text-white/70
+                backdrop-blur-xl
                 animate-soft-appear
               "
             >
@@ -900,20 +904,19 @@ export default function Home() {
                 className="text-[#d6ac47]"
               />
 
-              Dahira Mawahibou Naafih Castors
+              Dahira Mawahibou Naafih
             </div>
 
             {/* LOGO */}
 
             <div
               className="
-                relative
-                mx-auto
-                mt-8
-                w-36 h-36
-                sm:w-44 sm:h-44
+                relative mx-auto mt-8
+                h-36 w-36
+                sm:h-44 sm:w-44
               "
             >
+
               <div
                 className="
                   absolute inset-0
@@ -925,13 +928,12 @@ export default function Home() {
 
               <div
                 className="
-                  relative
-                  w-full h-full
+                  relative flex h-full w-full
+                  items-center justify-center
                   rounded-full
                   border border-white/20
                   bg-white/10
                   backdrop-blur-xl
-                  flex items-center justify-center
                   animate-pulse-glow
                 "
               >
@@ -939,10 +941,10 @@ export default function Home() {
                   src="/logo.png"
                   alt="Dahira Mawahibou Naafih"
                   className="
-                    w-28 h-28
-                    sm:w-36 sm:h-36
-                    object-contain
+                    h-28 w-28
                     rounded-full
+                    object-contain
+                    sm:h-36 sm:w-36
                   "
                 />
               </div>
@@ -953,13 +955,11 @@ export default function Home() {
             <h1
               className="
                 mt-8
-                text-4xl
+                text-4xl font-black
+                leading-[0.95]
+                tracking-tight text-white
                 sm:text-6xl
                 lg:text-7xl
-                font-black
-                tracking-tight
-                leading-[0.95]
-                text-white
               "
             >
               Une voie.
@@ -970,41 +970,34 @@ export default function Home() {
               </span>
             </h1>
 
+            {/* SOUS-TITRE */}
+
             <p
               className="
-                mx-auto
-                mt-6
-                max-w-xl
-                text-sm
-                sm:text-base
-                leading-relaxed
+                mx-auto mt-6 max-w-xl
+                text-sm leading-relaxed
                 text-white/65
+                sm:text-base
               "
             >
-              Le Dahira Mawahibou Naafih de Castors,
-              au service de la fraternité,
-              de la spiritualité et de la communauté.
+              Foi. Fraternité. Engagement.
             </p>
 
             {/* BOUTONS */}
 
             <div
               className="
-                mt-8
-                flex
-                flex-col
+                mt-8 flex
+                flex-col items-center
+                justify-center gap-3
                 sm:flex-row
-                items-center
-                justify-center
-                gap-3
               "
             >
               <Link
                 to="/login"
                 className="
-                  group
-                  flex items-center justify-center gap-2
-                  w-full sm:w-auto
+                  group flex w-full
+                  items-center justify-center gap-2
                   rounded-2xl
                   bg-[#d6ac47]
                   px-7 py-4
@@ -1014,6 +1007,7 @@ export default function Home() {
                   transition-all duration-300
                   hover:-translate-y-1
                   hover:shadow-2xl
+                  sm:w-auto
                 "
               >
                 Accéder à mon espace
@@ -1030,21 +1024,22 @@ export default function Home() {
               <a
                 href="#dahira"
                 className="
-                  flex items-center justify-center gap-2
-                  w-full sm:w-auto
+                  flex w-full
+                  items-center justify-center
                   rounded-2xl
                   border border-white/15
                   bg-white/5
-                  backdrop-blur
                   px-7 py-4
                   text-sm font-bold
                   text-white
+                  backdrop-blur
                   transition-all duration-300
-                  hover:bg-white/10
                   hover:-translate-y-1
+                  hover:bg-white/10
+                  sm:w-auto
                 "
               >
-                Découvrir le Dahira
+                Découvrir
               </a>
             </div>
 
@@ -1053,23 +1048,18 @@ export default function Home() {
             <a
               href="#prieres"
               className="
-                absolute
-                bottom-6
-                left-1/2
-                -translate-x-1/2
-                flex flex-col
-                items-center
-                gap-2
+                absolute bottom-6 left-1/2
+                flex -translate-x-1/2
+                flex-col items-center gap-2
                 text-white/45
-                hover:text-white
                 transition
+                hover:text-white
               "
             >
               <span
                 className="
                   text-[9px]
-                  uppercase
-                  tracking-[0.3em]
+                  uppercase tracking-[0.3em]
                 "
               >
                 Explorer
@@ -1080,61 +1070,53 @@ export default function Home() {
                 className="animate-scroll-down"
               />
             </a>
+
           </div>
         </div>
       </section>
 
-      {/* ====================================================
-          HORAIRES DE PRIERE
-      ==================================================== */}
+      {/* ======================================================
+          HORAIRES DE PRIÈRE
+      ====================================================== */}
 
       <section
         id="prieres"
         className="
-          relative
-          -mt-8
+          relative z-20
+          -mt-8 px-4
           sm:-mt-14
-          z-20
-          px-4
         "
       >
-        <div className="max-w-6xl mx-auto">
+        <div className="mx-auto max-w-6xl">
 
           <div
             className="
+              overflow-hidden
               rounded-[2rem]
+              border border-slate-100
               bg-white
               shadow-2xl
               shadow-emerald-950/10
-              border border-slate-100
-              overflow-hidden
             "
           >
-            <div
-              className="
-                grid
-                lg:grid-cols-[1.1fr_2fr]
-              "
-            >
 
-              {/* PROCHAINE PRIERE */}
+            <div className="grid lg:grid-cols-[1.1fr_2fr]">
+
+              {/* PROCHAINE PRIÈRE */}
 
               <div
                 className="
-                  relative
-                  overflow-hidden
+                  relative overflow-hidden
                   bg-emerald-900
-                  p-7
+                  p-7 text-white
                   sm:p-9
-                  text-white
                 "
               >
+
                 <div
                   className="
-                    absolute
-                    -right-16
-                    -top-16
-                    w-40 h-40
+                    absolute -right-16 -top-16
+                    h-40 w-40
                     rounded-full
                     bg-[#d6ac47]/15
                     blur-2xl
@@ -1146,11 +1128,9 @@ export default function Home() {
                   <div
                     className="
                       flex items-center gap-2
+                      text-xs font-bold
+                      uppercase tracking-[0.2em]
                       text-[#d6ac47]
-                      text-xs
-                      font-bold
-                      uppercase
-                      tracking-[0.2em]
                     "
                   >
                     <Clock3 size={15} />
@@ -1159,33 +1139,32 @@ export default function Home() {
 
                   <div
                     className="
-                      mt-5
-                      text-4xl
-                      sm:text-5xl
+                      mt-5 text-4xl
                       font-black
+                      sm:text-5xl
                     "
                   >
-                    {prochainePriere?.heure || "--:--"}
+                    {prochainePriere?.heure ||
+                      "--:--"}
                   </div>
 
                   <div
                     className="
-                      mt-1
-                      text-xl
+                      mt-1 text-xl
                       font-bold
                     "
                   >
                     {prochainePriere
                       ? PRIERE_NOMS[
                           prochainePriere.nom
-                        ] || prochainePriere.nom
+                        ] ||
+                        prochainePriere.nom
                       : "Prochaine prière"}
                   </div>
 
                   <p
                     className="
-                      mt-3
-                      text-sm
+                      mt-3 text-sm
                       text-white/60
                     "
                   >
@@ -1196,15 +1175,14 @@ export default function Home() {
 
                   <div
                     className="
-                      mt-6
-                      flex items-center gap-2
-                      text-xs
-                      text-white/50
+                      mt-6 flex items-center gap-2
+                      text-xs text-white/50
                     "
                   >
                     <MapPin size={13} />
                     Dakar
                   </div>
+
                 </div>
               </div>
 
@@ -1214,19 +1192,17 @@ export default function Home() {
 
                 <div
                   className="
-                    flex
-                    items-center
-                    justify-between
-                    mb-5
+                    mb-5 flex
+                    items-center justify-between
                   "
                 >
                   <div>
+
                     <p
                       className="
-                        text-xs
+                        text-xs font-bold
                         uppercase
                         tracking-[0.2em]
-                        font-bold
                         text-emerald-700
                       "
                     >
@@ -1235,14 +1211,13 @@ export default function Home() {
 
                     <h2
                       className="
-                        mt-1
-                        text-xl
-                        font-black
-                        text-slate-900
+                        mt-1 text-xl
+                        font-black text-slate-900
                       "
                     >
                       Horaires de prière
                     </h2>
+
                   </div>
 
                   <Moon
@@ -1255,10 +1230,8 @@ export default function Home() {
                   <div
                     className="
                       rounded-2xl
-                      bg-red-50
-                      p-4
-                      text-sm
-                      text-red-700
+                      bg-red-50 p-4
+                      text-sm text-red-700
                     "
                   >
                     Impossible de charger les horaires.
@@ -1266,10 +1239,9 @@ export default function Home() {
                 ) : (
                   <div
                     className="
-                      grid
-                      grid-cols-2
-                      sm:grid-cols-5
+                      grid grid-cols-2
                       gap-2
+                      sm:grid-cols-5
                     "
                   >
                     {[
@@ -1282,21 +1254,18 @@ export default function Home() {
                       <div
                         key={nom}
                         className="
-                          group
-                          rounded-2xl
-                          bg-slate-50
-                          p-4
+                          group rounded-2xl
+                          bg-slate-50 p-4
                           transition-all duration-300
-                          hover:bg-emerald-50
                           hover:-translate-y-1
+                          hover:bg-emerald-50
                         "
                       >
                         <div
                           className="
                             text-[11px]
-                            font-bold
+                            font-bold uppercase
                             text-slate-400
-                            uppercase
                           "
                         >
                           {PRIERE_NOMS[nom]}
@@ -1304,55 +1273,51 @@ export default function Home() {
 
                         <div
                           className="
-                            mt-2
-                            text-xl
+                            mt-2 text-xl
                             font-black
                             text-emerald-950
                             group-hover:text-emerald-700
                           "
                         >
-                          {horaires?.[nom] || "--:--"}
+                          {horaires?.[nom] ||
+                            "--:--"}
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
+
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ====================================================
+      {/* ======================================================
           DAHIRA
-      ==================================================== */}
+      ====================================================== */}
 
       <section
         id="dahira"
-        className="
-          py-24
-          sm:py-32
-          px-5
-        "
+        className="px-5 py-24 sm:py-32"
       >
-        <div className="max-w-6xl mx-auto">
+        <div className="mx-auto max-w-6xl">
 
           <Reveal>
+
             <div className="max-w-2xl">
 
               <div
                 className="
                   flex items-center gap-2
+                  text-xs font-black
+                  uppercase tracking-[0.25em]
                   text-emerald-700
-                  text-xs
-                  font-black
-                  uppercase
-                  tracking-[0.25em]
                 "
               >
                 <span
                   className="
-                    w-8 h-px
+                    h-px w-8
                     bg-[#d6ac47]
                   "
                 />
@@ -1363,11 +1328,10 @@ export default function Home() {
               <h2
                 className="
                   mt-5
-                  text-4xl
-                  sm:text-5xl
-                  font-black
+                  text-4xl font-black
                   tracking-tight
                   text-emerald-950
+                  sm:text-5xl
                 "
               >
                 Plus qu'un Dahira.
@@ -1380,53 +1344,46 @@ export default function Home() {
 
               <p
                 className="
-                  mt-5
-                  text-slate-500
+                  mt-5 max-w-xl
                   leading-relaxed
-                  max-w-xl
+                  text-slate-500
                 "
               >
-                Un espace de spiritualité,
-                de fraternité et de partage
-                où chacun contribue à faire grandir
-                la communauté.
+                Foi, fraternité et service.
               </p>
+
             </div>
+
           </Reveal>
 
           <div
             className="
-              mt-14
-              grid
+              mt-14 grid gap-4
               sm:grid-cols-2
               lg:grid-cols-4
-              gap-4
             "
           >
+
             {[
               {
                 icon: Heart,
                 titre: "Spiritualité",
-                texte:
-                  "Cultiver la foi et la constance.",
+                texte: "Cultiver la foi.",
               },
               {
                 icon: Users,
                 titre: "Fraternité",
-                texte:
-                  "Avancer ensemble dans l'unité.",
+                texte: "Avancer ensemble.",
               },
               {
                 icon: Star,
                 titre: "Engagement",
-                texte:
-                  "Servir avec sincérité.",
+                texte: "Servir avec sincérité.",
               },
               {
                 icon: Sparkles,
                 titre: "Transmission",
-                texte:
-                  "Préserver et transmettre.",
+                texte: "Préserver les valeurs.",
               },
             ].map((item, index) => {
               const Icon = item.icon;
@@ -1438,24 +1395,23 @@ export default function Home() {
                 >
                   <div
                     className="
-                      group
-                      h-full
+                      group h-full
                       rounded-[1.75rem]
-                      bg-white
                       border border-slate-100
-                      p-6
+                      bg-white p-6
                       shadow-sm
                       transition-all duration-500
                       hover:-translate-y-2
                       hover:shadow-xl
                     "
                   >
+
                     <div
                       className="
-                        w-12 h-12
+                        flex h-12 w-12
+                        items-center justify-center
                         rounded-2xl
                         bg-emerald-50
-                        flex items-center justify-center
                         text-emerald-800
                         transition-all duration-300
                         group-hover:bg-emerald-900
@@ -1467,9 +1423,8 @@ export default function Home() {
 
                     <h3
                       className="
-                        mt-5
+                        mt-5 text-lg
                         font-black
-                        text-lg
                         text-emerald-950
                       "
                     >
@@ -1478,56 +1433,49 @@ export default function Home() {
 
                     <p
                       className="
-                        mt-2
-                        text-sm
+                        mt-2 text-sm
                         leading-relaxed
                         text-slate-500
                       "
                     >
                       {item.texte}
                     </p>
+
                   </div>
                 </Reveal>
               );
             })}
+
           </div>
         </div>
       </section>
 
-      {/* ====================================================
+      {/* ======================================================
           RAPPEL
-      ==================================================== */}
+      ====================================================== */}
 
-      <section
-        className="
-          px-5
-          pb-24
-          sm:pb-32
-        "
-      >
+      <section className="px-5 pb-24 sm:pb-32">
+
         <Reveal>
+
           <div
             className="
+              relative mx-auto
               max-w-6xl
-              mx-auto
-              relative
               overflow-hidden
               rounded-[2.5rem]
               bg-emerald-950
-              px-7
-              py-14
-              sm:px-14
-              sm:py-20
+              px-7 py-14
               text-center
+              sm:px-14 sm:py-20
             "
           >
+
             <div
               className="
-                absolute
-                -top-32
-                left-1/2
+                absolute -top-32 left-1/2
+                h-80 w-80
                 -translate-x-1/2
-                w-80 h-80
                 rounded-full
                 bg-[#d6ac47]/10
                 blur-3xl
@@ -1536,11 +1484,8 @@ export default function Home() {
 
             <div
               className="
-                absolute
-                top-10
-                left-10
-                w-2 h-2
-                rounded-full
+                absolute left-10 top-10
+                h-2 w-2 rounded-full
                 bg-[#d6ac47]
                 animate-pulse
               "
@@ -1548,13 +1493,9 @@ export default function Home() {
 
             <div
               className="
-                absolute
-                bottom-10
-                right-12
-                w-1.5 h-1.5
-                rounded-full
-                bg-white
-                animate-ping
+                absolute bottom-10 right-12
+                h-1.5 w-1.5 rounded-full
+                bg-white animate-ping
               "
             />
 
@@ -1563,8 +1504,7 @@ export default function Home() {
               <Sparkles
                 size={28}
                 className="
-                  mx-auto
-                  text-[#d6ac47]
+                  mx-auto text-[#d6ac47]
                 "
               />
 
@@ -1575,12 +1515,10 @@ export default function Home() {
                 <p
                   className="
                     mt-7
-                    text-2xl
+                    text-2xl font-black
+                    leading-tight text-white
                     sm:text-4xl
                     lg:text-5xl
-                    font-black
-                    leading-tight
-                    text-white
                   "
                 >
                   « {RAPPELS[rappelIndex]} »
@@ -1589,18 +1527,15 @@ export default function Home() {
 
               <div
                 className="
-                  mt-7
-                  flex
-                  justify-center
-                  gap-1.5
+                  mt-7 flex
+                  justify-center gap-1.5
                 "
               >
                 {RAPPELS.map((_, index) => (
                   <span
                     key={index}
                     className={`
-                      h-1.5
-                      rounded-full
+                      h-1.5 rounded-full
                       transition-all duration-500
                       ${
                         index === rappelIndex
@@ -1611,106 +1546,172 @@ export default function Home() {
                   />
                 ))}
               </div>
+
             </div>
           </div>
+
         </Reveal>
+
       </section>
 
-    {/* =====================================================
-    GUIDE
-====================================================== */}
-{/* =====================================================
-    GUIDE
-====================================================== */}
-<section
-  id="guide"
-  className="bg-emerald-950 px-6 py-20 text-white lg:py-24"
->
-  <div className="mx-auto max-w-6xl">
-    <div className="grid gap-10 lg:grid-cols-[280px_1fr] lg:items-center lg:gap-16">
-
-      {/* PHOTO DU GUIDE */}
-      <div className="flex justify-center lg:justify-start">
-        <div className="relative">
-          <div className="absolute -inset-3 rounded-[2rem] border border-amber-300/20" />
-
-          <div className="relative h-[390px] w-[280px] overflow-hidden rounded-[1.75rem] shadow-2xl">
-            <img
-              src={guideImage}
-              alt="Serigne Moustapha Abdou Khadr Mbacké"
-              className="h-full w-full object-cover"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* TEXTE DU GUIDE */}
-      <div>
-        <p className="font-semibold uppercase tracking-[0.2em] text-amber-300">
-          Notre guide
-        </p>
-
-        <h2 className="mt-4 text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-          Serigne Moustapha
-          <span className="block text-amber-300">
-            Abdou Khadr Mbacké
-          </span>
-        </h2>
-
-        <div className="mt-6 h-1 w-16 rounded-full bg-amber-400" />
-
-        <p className="mt-7 max-w-2xl text-lg leading-8 text-white/70">
-          Le Dahira bénéficie de l'accompagnement et des enseignements
-          de son guide, dont l'orientation contribue à la transmission
-          des valeurs spirituelles et à l'unité de ses membres.
-        </p>
-
-        <p className="mt-5 max-w-2xl leading-8 text-white/55">
-          Fils de Serigne Abdou Khadr Mbacké, quatrième Khalife Général
-          des Mourides, il s'inscrit dans une lignée spirituelle consacrée
-          à la transmission des enseignements de Cheikh Ahmadou Bamba
-          Khadimou Rassoul.
-        </p>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-      {/* ====================================================
-          PIONNIERS
-      ==================================================== */}
+      {/* ======================================================
+          GUIDE
+      ====================================================== */}
 
       <section
+        id="guide"
         className="
-          px-5
-          py-24
+          bg-emerald-950
+          px-6 py-20
+          text-white
+          lg:py-24
+        "
+      >
+        <div className="mx-auto max-w-6xl">
+
+          <Reveal>
+
+            <div
+              className="
+                grid gap-10
+                lg:grid-cols-[280px_1fr]
+                lg:items-center
+                lg:gap-16
+              "
+            >
+
+              {/* PHOTO */}
+
+              <div className="flex justify-center lg:justify-start">
+
+                <div className="relative">
+
+                  <div
+                    className="
+                      absolute -inset-3
+                      rounded-[2rem]
+                      border border-amber-300/20
+                    "
+                  />
+
+                  <div
+                    className="
+                      relative
+                      h-[390px] w-[280px]
+                      overflow-hidden
+                      rounded-[1.75rem]
+                      shadow-2xl
+                    "
+                  >
+                    <img
+                      src={guideImage}
+                      alt="Serigne Moustapha Abdou Khadr Mbacké"
+                      className="
+                        h-full w-full
+                        object-cover
+                        transition duration-700
+                        hover:scale-105
+                      "
+                    />
+                  </div>
+
+                </div>
+              </div>
+
+              {/* TEXTE */}
+
+              <div>
+
+                <p
+                  className="
+                    text-xs font-semibold
+                    uppercase tracking-[0.2em]
+                    text-amber-300
+                  "
+                >
+                  Notre guide
+                </p>
+
+                <h2
+                  className="
+                    mt-4
+                    text-3xl font-bold
+                    leading-tight
+                    sm:text-4xl
+                    lg:text-5xl
+                  "
+                >
+                  Serigne Moustapha
+                  <span
+                    className="
+                      block text-amber-300
+                    "
+                  >
+                    Abdou Khadr Mbacké
+                  </span>
+                </h2>
+
+                <div
+                  className="
+                    mt-6 h-1 w-16
+                    rounded-full
+                    bg-amber-400
+                  "
+                />
+
+                <p
+                  className="
+                    mt-7 max-w-2xl
+                    text-lg leading-8
+                    text-white/70
+                  "
+                >
+                  Un guide, une transmission,
+                  une orientation.
+                </p>
+
+              </div>
+
+            </div>
+
+          </Reveal>
+
+        </div>
+      </section>
+
+      {/* ======================================================
+          PIONNIERS
+      ====================================================== */}
+
+      <section
+        id="pionniers"
+        className="
+          px-5 py-24
           sm:py-32
         "
       >
-        <div className="max-w-6xl mx-auto">
+        <div className="mx-auto max-w-6xl">
 
           <Reveal>
+
             <div
               className="
-                flex
-                flex-col
+                flex flex-col gap-5
                 sm:flex-row
                 sm:items-end
                 sm:justify-between
-                gap-5
               "
             >
+
               <div>
 
                 <div
                   className="
                     flex items-center gap-2
-                    text-emerald-700
-                    text-xs
-                    font-black
+                    text-xs font-black
                     uppercase
                     tracking-[0.25em]
+                    text-emerald-700
                   "
                 >
                   <Users size={14} />
@@ -1720,69 +1721,64 @@ export default function Home() {
                 <h2
                   className="
                     mt-4
-                    text-3xl
-                    sm:text-4xl
-                    font-black
+                    text-3xl font-black
                     text-emerald-950
+                    sm:text-4xl
                   "
                 >
                   Ceux qui ont ouvert
-
                   <span className="text-[#b88b28]">
                     {" "}la voie.
                   </span>
                 </h2>
+
               </div>
 
               <p
                 className="
-                  max-w-md
-                  text-sm
+                  max-w-md text-sm
                   text-slate-500
                 "
               >
-                Honorer celles et ceux qui
-                ont contribué à l'histoire
-                de notre communauté.
+                Honorer nos pionniers.
               </p>
+
             </div>
+
           </Reveal>
 
           <div
             className="
-              mt-12
-              grid
+              mt-12 grid gap-4
               sm:grid-cols-3
-              gap-4
             "
           >
+
             {PIONNIERS.map(
               (pionnier, index) => (
                 <Reveal
                   key={`${pionnier.nom}-${index}`}
                   delay={index * 120}
                 >
+
                   <div
                     className="
-                      group
-                      relative
+                      group relative
                       overflow-hidden
                       rounded-[2rem]
-                      bg-white
                       border border-slate-100
-                      p-7
+                      bg-white p-7
                       shadow-sm
                       transition-all duration-500
                       hover:-translate-y-2
                       hover:shadow-xl
                     "
                   >
+
                     <div
                       className="
-                        absolute
-                        -right-8
-                        -top-8
-                        w-24 h-24
+                        absolute -right-8 -top-8
+                        h-24 w-24
                         rounded-full
                         bg-[#d6ac47]/10
                       "
@@ -1790,13 +1786,12 @@ export default function Home() {
 
                     <div
                       className="
-                        relative
-                        w-14 h-14
+                        relative flex h-14 w-14
+                        items-center justify-center
                         rounded-2xl
                         bg-emerald-900
-                        flex items-center justify-center
-                        text-[#d6ac47]
                         font-black
+                        text-[#d6ac47]
                       "
                     >
                       {index + 1}
@@ -1804,8 +1799,7 @@ export default function Home() {
 
                     <h3
                       className="
-                        mt-6
-                        text-xl
+                        mt-6 text-xl
                         font-black
                         text-emerald-950
                       "
@@ -1815,49 +1809,48 @@ export default function Home() {
 
                     <p
                       className="
-                        mt-1
-                        text-sm
+                        mt-1 text-sm
                         text-slate-400
                       "
                     >
                       {pionnier.fonction}
                     </p>
+
                   </div>
+
                 </Reveal>
               )
             )}
+
           </div>
         </div>
       </section>
 
-      {/* ====================================================
-          HISTORIQUE DU DAHIRA
-          REMPLACE AGENDA + ACTIVITES
-      ==================================================== */}
+      {/* ======================================================
+          HISTOIRE
+      ====================================================== */}
 
       <section
         id="histoire"
         className="
-          px-5
-          py-24
-          sm:py-32
           bg-white
+          px-5 py-24
+          sm:py-32
         "
       >
-        <div className="max-w-6xl mx-auto">
+        <div className="mx-auto max-w-6xl">
 
           <Reveal>
-            <div className="text-center max-w-3xl mx-auto">
+
+            <div className="mx-auto max-w-3xl text-center">
 
               <div
                 className="
                   inline-flex
                   items-center gap-2
+                  text-xs font-black
+                  uppercase tracking-[0.25em]
                   text-emerald-700
-                  text-xs
-                  font-black
-                  uppercase
-                  tracking-[0.25em]
                 "
               >
                 <CalendarDays size={14} />
@@ -1867,11 +1860,10 @@ export default function Home() {
               <h2
                 className="
                   mt-4
-                  text-4xl
-                  sm:text-5xl
-                  font-black
+                  text-4xl font-black
                   tracking-tight
                   text-emerald-950
+                  sm:text-5xl
                 "
               >
                 Une histoire.
@@ -1882,39 +1874,24 @@ export default function Home() {
                 </span>
               </h2>
 
-              <p
-                className="
-                  mt-5
-                  text-slate-500
-                  leading-relaxed
-                "
-              >
-                Découvrez les grandes étapes
-                de l'histoire du Dahira Mawahibou
-                Naafih et la construction progressive
-                de notre communauté.
-              </p>
             </div>
+
           </Reveal>
 
           {/* TIMELINE */}
 
           <div className="relative mt-16">
 
-            {/* LIGNE CENTRALE DESKTOP */}
-
             <div
               className="
-                hidden md:block
-                absolute
-                left-1/2
-                top-0
-                bottom-0
-                w-px
+                absolute bottom-0 left-1/2
+                top-0 hidden w-px
+                -translate-x-1/2
                 bg-gradient-to-b
                 from-transparent
                 via-[#d6ac47]/50
                 to-transparent
+                md:block
               "
             />
 
@@ -1930,18 +1907,15 @@ export default function Home() {
                       key={etape.titre}
                       delay={index * 120}
                     >
+
                       <div
                         className="
-                          relative
-                          grid
-                          md:grid-cols-2
+                          relative grid
                           gap-6
+                          md:grid-cols-2
                           md:gap-12
-                          items-center
                         "
                       >
-
-                        {/* CONTENU GAUCHE */}
 
                         <div
                           className={
@@ -1950,6 +1924,7 @@ export default function Home() {
                               : "md:col-start-2"
                           }
                         >
+
                           <div
                             className="
                               rounded-[2rem]
@@ -1963,28 +1938,27 @@ export default function Home() {
                               hover:shadow-xl
                             "
                           >
-                            <div
+
+                            <span
                               className="
                                 inline-flex
-                                items-center
                                 rounded-full
                                 bg-emerald-50
                                 px-3 py-1.5
                                 text-[10px]
+                                font-black
                                 uppercase
                                 tracking-[0.15em]
-                                font-black
                                 text-emerald-700
                               "
                             >
                               {etape.periode}
-                            </div>
+                            </span>
 
                             <h3
                               className="
                                 mt-4
-                                text-2xl
-                                font-black
+                                text-2xl font-black
                                 text-emerald-950
                               "
                             >
@@ -1993,14 +1967,14 @@ export default function Home() {
 
                             <p
                               className="
-                                mt-3
-                                text-sm
+                                mt-3 text-sm
                                 leading-relaxed
                                 text-slate-500
                               "
                             >
                               {etape.texte}
                             </p>
+
                           </div>
                         </div>
 
@@ -2008,86 +1982,74 @@ export default function Home() {
 
                         <div
                           className="
-                            hidden md:flex
-                            absolute
-                            left-1/2
+                            absolute left-1/2
+                            top-1/2 hidden
+                            h-11 w-11
                             -translate-x-1/2
-                            w-11 h-11
+                            -translate-y-1/2
+                            items-center justify-center
                             rounded-full
+                            border-4 border-white
                             bg-emerald-950
-                            border-4
-                            border-white
-                            shadow-lg
-                            items-center
-                            justify-center
                             text-[#d6ac47]
+                            shadow-lg
+                            md:flex
                           "
                         >
                           <span
                             className="
-                              text-xs
-                              font-black
+                              text-xs font-black
                             "
                           >
                             {index + 1}
                           </span>
                         </div>
 
-                        {/* ESPACE OPPOSE */}
-
-                        <div
-                          className={
-                            gauche
-                              ? "hidden md:block"
-                              : "hidden"
-                          }
-                        />
                       </div>
+
                     </Reveal>
                   );
                 }
               )}
+
             </div>
           </div>
         </div>
       </section>
 
-      {/* ====================================================
+      {/* ======================================================
           GALERIE
-      ==================================================== */}
+      ====================================================== */}
 
       <section
         id="galerie"
         className="
-          px-5
-          py-24
+          px-5 py-24
           sm:py-32
-          bg-white
         "
       >
-        <div className="max-w-6xl mx-auto">
+        <div className="mx-auto max-w-6xl">
 
           <Reveal>
+
             <div
               className="
-                flex
-                flex-col
+                flex flex-col gap-5
                 sm:flex-row
                 sm:items-end
                 sm:justify-between
-                gap-5
               "
             >
+
               <div>
 
                 <div
                   className="
                     flex items-center gap-2
-                    text-emerald-700
-                    text-xs
-                    font-black
+                    text-xs font-black
                     uppercase
                     tracking-[0.25em]
+                    text-emerald-700
                   "
                 >
                   <Star size={14} />
@@ -2097,147 +2059,208 @@ export default function Home() {
                 <h2
                   className="
                     mt-4
-                    text-4xl
-                    sm:text-5xl
-                    font-black
+                    text-4xl font-black
                     tracking-tight
                     text-emerald-950
+                    sm:text-5xl
                   "
                 >
                   Notre galerie.
                 </h2>
+
               </div>
 
               <p
                 className="
-                  max-w-sm
-                  text-sm
+                  max-w-sm text-sm
                   leading-relaxed
                   text-slate-500
                 "
               >
-                Quelques instants de vie
-                partagés par notre communauté.
+                Les moments du Dahira.
               </p>
+
             </div>
+
           </Reveal>
 
           {galerieVisible.length > 0 ? (
+
             <div
               className="
-                mt-12
-                grid
+                mt-12 grid
                 grid-cols-2
-                lg:grid-cols-3
                 gap-3
                 sm:gap-5
+                lg:grid-cols-3
               "
             >
+
               {galerieVisible.map(
                 (element, index) => {
-                  const imageUrl =
+
+                  const mediaUrl =
                     element.url ||
                     element.image_url ||
                     element.media_url ||
                     element.fichier_url;
 
+                  const url =
+                    construireUrlMedia(
+                      mediaUrl
+                    );
+
+                  const type =
+                    element.type_media ||
+                    element.type ||
+                    "";
+
+                  const estVideo =
+                    type === "video" ||
+                    type === "VIDÉO" ||
+                    type === "VIDEO";
+
                   return (
                     <Reveal
                       key={
                         element.id ||
-                        `${imageUrl}-${index}`
+                        `${url}-${index}`
                       }
                       delay={index * 80}
                     >
+
                       <div
                         className={`
-                          group
-                          relative
+                          group relative
                           overflow-hidden
                           rounded-3xl
                           bg-slate-100
                           ${
                             index === 0
-                              ? "lg:row-span-2 lg:h-full"
+                              ? "lg:row-span-2"
                               : ""
                           }
                         `}
                       >
-                        {imageUrl ? (
-                          <img
-                            src={imageUrl}
-                            alt={
-                              element.titre ||
-                              "Galerie du Dahira"
-                            }
-                            className="
-                              w-full
-                              aspect-square
-                              lg:aspect-[4/3]
-                              object-cover
-                              transition-transform
-                              duration-700
-                              group-hover:scale-110
-                            "
-                          />
+
+                        {url ? (
+
+                          estVideo ? (
+
+                            <video
+                              src={url}
+                              controls
+                              preload="metadata"
+                              playsInline
+                              className="
+                                aspect-square
+                                w-full
+                                object-cover
+                                lg:aspect-[4/3]
+                              "
+                            />
+
+                          ) : (
+
+                            <img
+                              src={url}
+                              alt={
+                                element.titre ||
+                                "Galerie du Dahira"
+                              }
+                              loading="lazy"
+                              className="
+                                aspect-square
+                                w-full
+                                object-cover
+                                transition-transform
+                                duration-700
+                                group-hover:scale-110
+                                lg:aspect-[4/3]
+                              "
+                            />
+
+                          )
+
                         ) : (
+
                           <div
                             className="
-                              aspect-square
-                              flex items-center
+                              flex aspect-square
+                              items-center
                               justify-center
+                              text-sm
                               text-slate-400
                             "
                           >
-                            Image indisponible
+                            Média indisponible
                           </div>
+
                         )}
+
+                        {/* OVERLAY */}
 
                         <div
                           className="
+                            pointer-events-none
                             absolute inset-0
                             bg-gradient-to-t
-                            from-black/60
+                            from-black/65
                             via-transparent
                             to-transparent
                             opacity-0
-                            group-hover:opacity-100
                             transition-opacity
                             duration-500
+                            group-hover:opacity-100
                           "
                         />
 
+                        {/* TITRE */}
+
                         <div
                           className="
-                            absolute
-                            left-4
-                            right-4
-                            bottom-4
+                            pointer-events-none
+                            absolute bottom-4
+                            left-4 right-4
                             translate-y-4
                             opacity-0
+                            transition-all duration-500
                             group-hover:translate-y-0
                             group-hover:opacity-100
-                            transition-all duration-500
                           "
                         >
+
                           <div
                             className="
+                              flex items-center gap-2
+                              text-sm font-bold
                               text-white
-                              text-sm
-                              font-bold
                             "
                           >
+                            {estVideo && (
+                              <Play
+                                size={14}
+                                fill="currentColor"
+                              />
+                            )}
+
                             {element.titre ||
                               "Moment partagé"}
                           </div>
+
                         </div>
+
                       </div>
+
                     </Reveal>
                   );
                 }
               )}
+
             </div>
+
           ) : (
+
             <div
               className="
                 mt-12
@@ -2248,6 +2271,7 @@ export default function Home() {
                 text-center
               "
             >
+
               <Star
                 size={30}
                 className="
@@ -2258,53 +2282,51 @@ export default function Home() {
 
               <p
                 className="
-                  mt-4
-                  font-bold
+                  mt-4 font-bold
                   text-slate-600
                 "
               >
                 Les prochains moments
                 apparaîtront ici.
               </p>
+
             </div>
+
           )}
+
         </div>
       </section>
 
-      {/* ====================================================
+      {/* ======================================================
           CONTACT / CTA
-      ==================================================== */}
+      ====================================================== */}
 
       <section
         id="contact"
         className="
-          px-5
-          pb-24
+          px-5 pb-24
           sm:pb-32
         "
       >
+
         <Reveal>
+
           <div
             className="
+              relative mx-auto
               max-w-6xl
-              mx-auto
-              relative
               overflow-hidden
               rounded-[2.5rem]
               bg-[#d6ac47]
-              px-7
-              py-14
-              sm:px-14
-              sm:py-16
+              px-7 py-14
+              sm:px-14 sm:py-16
             "
           >
 
             <div
               className="
-                absolute
-                -right-24
-                -top-24
-                w-72 h-72
+                absolute -right-24 -top-24
+                h-72 w-72
                 rounded-full
                 bg-white/20
                 blur-2xl
@@ -2313,10 +2335,8 @@ export default function Home() {
 
             <div
               className="
-                absolute
-                -left-20
-                -bottom-20
-                w-60 h-60
+                absolute -bottom-20 -left-20
+                h-60 w-60
                 rounded-full
                 bg-emerald-900/10
                 blur-2xl
@@ -2326,10 +2346,8 @@ export default function Home() {
             <div
               className="
                 relative z-10
-                grid
+                grid items-center gap-10
                 lg:grid-cols-[1fr_auto]
-                items-center
-                gap-10
               "
             >
 
@@ -2338,11 +2356,10 @@ export default function Home() {
                 <div
                   className="
                     flex items-center gap-2
-                    text-emerald-950/60
-                    text-xs
-                    font-black
+                    text-xs font-black
                     uppercase
                     tracking-[0.25em]
+                    text-emerald-950/60
                   "
                 >
                   <MapPin size={14} />
@@ -2352,11 +2369,10 @@ export default function Home() {
                 <h2
                   className="
                     mt-4
-                    text-4xl
-                    sm:text-5xl
-                    font-black
+                    text-4xl font-black
                     tracking-tight
                     text-emerald-950
+                    sm:text-5xl
                   "
                 >
                   Restons connectés.
@@ -2364,27 +2380,21 @@ export default function Home() {
 
                 <p
                   className="
-                    mt-4
-                    max-w-lg
-                    text-sm
-                    sm:text-base
-                    leading-relaxed
+                    mt-4 max-w-lg
+                    text-sm leading-relaxed
                     text-emerald-950/65
                   "
                 >
-                  Une question, une suggestion
-                  ou simplement envie d'échanger ?
-                  La communauté est là.
+                  La communauté continue.
                 </p>
+
               </div>
 
               <Link
                 to="/login"
                 className="
-                  group
-                  inline-flex
-                  items-center
-                  justify-center
+                  group inline-flex
+                  items-center justify-center
                   gap-3
                   rounded-2xl
                   bg-emerald-950
@@ -2407,33 +2417,34 @@ export default function Home() {
                   "
                 />
               </Link>
+
             </div>
           </div>
+
         </Reveal>
+
       </section>
 
-      {/* ====================================================
+      {/* ======================================================
           FOOTER
-      ==================================================== */}
+      ====================================================== */}
 
       <footer
         className="
           bg-emerald-950
-          px-5
-          py-12
+          px-5 py-12
           text-white
         "
       >
         <div
           className="
-            max-w-6xl
             mx-auto
-            flex
+            flex max-w-6xl
             flex-col
-            sm:flex-row
             items-center
             justify-between
             gap-7
+            sm:flex-row
           "
         >
 
@@ -2442,21 +2453,22 @@ export default function Home() {
               flex items-center gap-3
             "
           >
+
             <img
               src="/logo.png"
               alt="Dahira Mawahibou Naafih"
               className="
-                w-12 h-12
-                object-contain
+                h-12 w-12
                 rounded-xl
+                object-contain
               "
             />
 
             <div>
+
               <div
                 className="
-                  font-black
-                  text-sm
+                  text-sm font-black
                 "
               >
                 MAWAHIBOU NAAFIH
@@ -2472,19 +2484,16 @@ export default function Home() {
               >
                 Castors
               </div>
+
             </div>
+
           </div>
 
-          <div
-            className="
-              text-center
-              sm:text-right
-            "
-          >
+          <div className="text-center sm:text-right">
+
             <p
               className="
-                text-xs
-                text-white/40
+                text-xs text-white/40
               "
             >
               © {new Date().getFullYear()}
@@ -2494,17 +2503,18 @@ export default function Home() {
 
             <p
               className="
-                mt-1
-                text-[10px]
+                mt-1 text-[10px]
                 text-white/25
               "
             >
               Fraternité • Spiritualité • Engagement
             </p>
+
           </div>
+
         </div>
       </footer>
+
     </div>
   );
 }
-
