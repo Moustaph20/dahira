@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -18,6 +17,9 @@ import {
   RefreshCw,
   Pencil,
   Mic2,
+  FileText,
+  Download,
+  ExternalLink,
 } from "lucide-react";
 
 import api from "../services/api";
@@ -54,7 +56,6 @@ function formaterHeure(heureValue) {
 function construireUrlAudio(url) {
   if (!url) return "";
 
-  // URL Cloudinary ou autre URL externe
   if (/^https?:\/\//i.test(url)) {
     return url;
   }
@@ -77,6 +78,14 @@ function extraireKhassidasDeclamation(declamation) {
   }
 
   return [];
+}
+
+function nettoyerNomFichier(nom) {
+  return (
+    String(nom || "khassida")
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, "-")
+      .trim() || "khassida"
+  );
 }
 
 // ==========================================================
@@ -208,8 +217,7 @@ export default function ProgrammeReligieux() {
     ordre: 1,
   });
 
-  const [declamations, setDeclamations] =
-    useState([]);
+  const [declamations, setDeclamations] = useState([]);
 
   const [chargementDeclamations, setChargementDeclamations] =
     useState(false);
@@ -240,6 +248,23 @@ export default function ProgrammeReligieux() {
 
   const [chargementKhassidasDeclamation, setChargementKhassidasDeclamation] =
     useState(false);
+
+  // ========================================================
+  // LECTEUR PDF
+  // ========================================================
+
+  const [lecteurPdfOuvert, setLecteurPdfOuvert] =
+    useState(false);
+
+  const [pdfBlobUrl, setPdfBlobUrl] = useState("");
+  const [khassidaPdfSelectionnee, setKhassidaPdfSelectionnee] =
+    useState(null);
+
+  const [chargementPdf, setChargementPdf] =
+    useState(false);
+
+  const [telechargementPdfId, setTelechargementPdfId] =
+    useState(null);
 
   // ========================================================
   // GESTION DES ERREURS
@@ -281,7 +306,222 @@ export default function ProgrammeReligieux() {
   }
 
   // ========================================================
-  // CHARGER LES PROGRAMMES
+  // PDF : ID KHASSIDA
+  // ========================================================
+
+  function extraireIdKhassida(item) {
+    return (
+      item?.khassida?.id ||
+      item?.khassida_id ||
+      item?.id_khassida ||
+      item?.id ||
+      null
+    );
+  }
+
+  // ========================================================
+  // PDF : TITRE
+  // ========================================================
+
+  function extraireTitreKhassida(item) {
+    return (
+      item?.khassida?.titre ||
+      item?.khassida?.nom ||
+      item?.titre ||
+      "Khassida"
+    );
+  }
+
+  // ========================================================
+  // PDF : DISPONIBILITE
+  // ========================================================
+
+  function khassidaPossedePdf(item) {
+    return Boolean(
+      item?.khassida?.pdf_url ||
+      item?.pdf_url ||
+      item?.khassida?.document_url
+    );
+  }
+
+  // ========================================================
+  // PDF : LIRE
+  // ========================================================
+
+  async function lirePdfKhassida(item) {
+    const khassidaId = extraireIdKhassida(item);
+
+    if (!khassidaId) {
+      setErreur("Impossible d'identifier la Khassida.");
+      return;
+    }
+
+    if (!khassidaPossedePdf(item)) {
+      setErreur(
+        "Aucun PDF n'est associé à cette Khassida."
+      );
+      return;
+    }
+
+    setErreur("");
+    setChargementPdf(true);
+
+    try {
+      const response = await api.get(
+        `/khassidas/${khassidaId}/pdf/view`,
+        {
+          responseType: "blob",
+        }
+      );
+
+      if (pdfBlobUrl) {
+        URL.revokeObjectURL(pdfBlobUrl);
+      }
+
+      const blob =
+        response.data instanceof Blob
+          ? response.data
+          : new Blob([response.data], {
+              type: "application/pdf",
+            });
+
+      const nouvelleUrl =
+        URL.createObjectURL(blob);
+
+      setPdfBlobUrl(nouvelleUrl);
+
+      setKhassidaPdfSelectionnee({
+        id: khassidaId,
+        titre: extraireTitreKhassida(item),
+      });
+
+      setLecteurPdfOuvert(true);
+    } catch (error) {
+      afficherErreur(
+        error,
+        "Impossible d'ouvrir le PDF."
+      );
+    } finally {
+      setChargementPdf(false);
+    }
+  }
+
+  // ========================================================
+  // PDF : FERMER
+  // ========================================================
+
+  function fermerLecteurPdf() {
+    setLecteurPdfOuvert(false);
+
+    if (pdfBlobUrl) {
+      URL.revokeObjectURL(pdfBlobUrl);
+    }
+
+    setPdfBlobUrl("");
+    setKhassidaPdfSelectionnee(null);
+  }
+
+  // ========================================================
+  // PDF : NOUVEL ONGLET
+  // ========================================================
+
+  function ouvrirPdfNouvelOnglet() {
+    if (!pdfBlobUrl) return;
+
+    window.open(
+      pdfBlobUrl,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }
+
+  // ========================================================
+  // PDF : TELECHARGER
+  // ========================================================
+
+  async function telechargerPdfKhassida(item) {
+    const khassidaId =
+      extraireIdKhassida(item);
+
+    if (!khassidaId) {
+      setErreur(
+        "Impossible d'identifier la Khassida."
+      );
+      return;
+    }
+
+    if (!khassidaPossedePdf(item)) {
+      setErreur(
+        "Aucun PDF n'est associé à cette Khassida."
+      );
+      return;
+    }
+
+    setErreur("");
+    setTelechargementPdfId(khassidaId);
+
+    try {
+      const response = await api.get(
+        `/khassidas/${khassidaId}/pdf/download`,
+        {
+          responseType: "blob",
+        }
+      );
+
+      const blob =
+        response.data instanceof Blob
+          ? response.data
+          : new Blob([response.data], {
+              type: "application/pdf",
+            });
+
+      const url =
+        URL.createObjectURL(blob);
+
+      const nomFichier =
+        `${nettoyerNomFichier(
+          extraireTitreKhassida(item)
+        )}.pdf`;
+
+      const lien =
+        document.createElement("a");
+
+      lien.href = url;
+      lien.download = nomFichier;
+
+      document.body.appendChild(lien);
+      lien.click();
+      lien.remove();
+
+      URL.revokeObjectURL(url);
+
+      setMessage(
+        "Téléchargement du PDF lancé."
+      );
+    } catch (error) {
+      afficherErreur(
+        error,
+        "Impossible de télécharger le PDF."
+      );
+    } finally {
+      setTelechargementPdfId(null);
+    }
+  }
+
+  // ========================================================
+  // NETTOYAGE PDF
+  // ========================================================
+
+  useEffect(() => {
+    return () => {
+      if (pdfBlobUrl) {
+        URL.revokeObjectURL(pdfBlobUrl);
+      }
+    };
+  }, [pdfBlobUrl]);
+
+  // ========================================================
+  // PROGRAMMES
   // ========================================================
 
   async function chargerProgrammes(
@@ -339,14 +579,11 @@ export default function ProgrammeReligieux() {
     }
   }
 
-  // ========================================================
-  // CHARGER UN PROGRAMME
-  // ========================================================
-
   async function chargerProgramme(programmeId) {
     if (!programmeId) return;
 
     setChargementProgramme(true);
+    setErreur("");
 
     try {
       const response = await api.get(
@@ -363,15 +600,13 @@ export default function ProgrammeReligieux() {
           : []
       );
 
-      setDeclamations(
-        extraireKhassidasDeclamation(programme)
-      );
-
-      if (
-        Array.isArray(programme?.declamations)
-      ) {
+      if (Array.isArray(programme?.declamations)) {
         setDeclamations(
           programme.declamations
+        );
+      } else {
+        setDeclamations(
+          extraireKhassidasDeclamation(programme)
         );
       }
     } catch (error) {
@@ -383,10 +618,6 @@ export default function ProgrammeReligieux() {
       setChargementProgramme(false);
     }
   }
-
-  // ========================================================
-  // CHARGEMENT INITIAL
-  // ========================================================
 
   useEffect(() => {
     if (peutConsulter) {
@@ -422,102 +653,134 @@ export default function ProgrammeReligieux() {
   // CREER PROGRAMME
   // ========================================================
 
- async function creerProgramme(event) {
-  event.preventDefault();
+  async function creerProgramme(event) {
+    event.preventDefault();
 
-  setErreur("");
-  setMessage("");
+    setErreur("");
+    setMessage("");
 
-  try {
-    const kourelId =
-      utilisateur?.gestionnaire_kourel_id;
+    try {
+      const kourelId =
+        utilisateur?.gestionnaire_kourel_id;
 
-    if (!kourelId) {
-      throw new Error(
-        "Aucun Kourel de gestion n'est associé à votre compte."
-      );
-    }
-
-    if (!estGestionnaireKourel(kourelId)) {
-      throw new Error(
-        "Vous n'êtes pas gestionnaire de ce Kourel."
-      );
-    }
-
-    const annee = Number(formProgramme.annee);
-
-    if (
-      !Number.isInteger(annee) ||
-      annee < 2000 ||
-      annee > 2100
-    ) {
-      throw new Error(
-        "Veuillez saisir une année valide."
-      );
-    }
-
-    const mois = Number(formProgramme.mois);
-
-    if (
-      !Number.isInteger(mois) ||
-      mois < 1 ||
-      mois > 12
-    ) {
-      throw new Error(
-        "Veuillez sélectionner un mois valide."
-      );
-    }
-
-    const params = new URLSearchParams();
-
-    params.append(
-      "kourel_id",
-      String(kourelId)
-    );
-
-    params.append(
-      "annee",
-      String(annee)
-    );
-
-    params.append(
-      "mois",
-      String(mois)
-    );
-
-    console.log(
-      "CRÉATION PROGRAMME RELIGIEUX :",
-      {
-        kourel_id: kourelId,
-        annee,
-        mois,
+      if (!kourelId) {
+        throw new Error(
+          "Aucun Kourel de gestion n'est associé à votre compte."
+        );
       }
-    );
 
-    await api.post(
-      `/programmes-religieux?${params.toString()}`
-    );
+      if (!estGestionnaireKourel(kourelId)) {
+        throw new Error(
+          "Vous n'êtes pas gestionnaire de ce Kourel."
+        );
+      }
 
-    setMessage(
-      "Programme religieux créé avec succès."
-    );
+      const annee = Number(
+        formProgramme.annee
+      );
 
-    fermerModalProgramme();
+      if (
+        !Number.isInteger(annee) ||
+        annee < 2000 ||
+        annee > 2100
+      ) {
+        throw new Error(
+          "Veuillez saisir une année valide."
+        );
+      }
 
-    await chargerProgrammes(false);
-  } catch (error) {
-    console.error(
-      "ERREUR CRÉATION PROGRAMME :",
-      error
-    );
+      const mois = Number(
+        formProgramme.mois
+      );
 
-    afficherErreur(
-      error,
-      error?.message ||
-        "Impossible de créer le programme."
-    );
+      if (
+        !Number.isInteger(mois) ||
+        mois < 1 ||
+        mois > 12
+      ) {
+        throw new Error(
+          "Veuillez sélectionner un mois valide."
+        );
+      }
+
+      const params = new URLSearchParams();
+
+      params.append(
+        "kourel_id",
+        String(kourelId)
+      );
+
+      params.append(
+        "annee",
+        String(annee)
+      );
+
+      params.append(
+        "mois",
+        String(mois)
+      );
+
+      await api.post(
+        `/programmes-religieux?${params.toString()}`
+      );
+
+      setMessage(
+        "Programme religieux créé avec succès."
+      );
+
+      fermerModalProgramme();
+
+      await chargerProgrammes(false);
+    } catch (error) {
+      afficherErreur(
+        error,
+        error?.message ||
+          "Impossible de créer le programme."
+      );
+    }
   }
-}
+
+  // ========================================================
+  // SUPPRIMER PROGRAMME
+  // ========================================================
+
+  async function supprimerProgramme(
+    programmeId
+  ) {
+    if (!programmeId) return;
+
+    if (
+      !window.confirm(
+        "Voulez-vous vraiment supprimer ce programme religieux ?"
+      )
+    ) {
+      return;
+    }
+
+    setErreur("");
+    setMessage("");
+
+    try {
+      await api.delete(
+        `/programmes-religieux/${programmeId}`
+      );
+
+      setMessage(
+        "Programme religieux supprimé avec succès."
+      );
+
+      setProgrammeSelectionne(null);
+      setRepetitions([]);
+      setDeclamations([]);
+
+      await chargerProgrammes(false);
+    } catch (error) {
+      afficherErreur(
+        error,
+        "Impossible de supprimer le programme religieux."
+      );
+    }
+  }
 
   // ========================================================
   // REPETITIONS
@@ -525,16 +788,11 @@ export default function ProgrammeReligieux() {
 
   async function ouvrirRepetition(repetition) {
     setRepetitionSelectionnee(repetition);
-
     setKhassidasProgramme([]);
 
-    try {
-      await chargerKhassidas(
-        repetition.id
-      );
-    } catch (error) {
-      console.error(error);
-    }
+    await chargerKhassidas(
+      repetition.id
+    );
   }
 
   async function chargerKhassidas(
@@ -549,11 +807,11 @@ export default function ProgrammeReligieux() {
         `/programmes-religieux/${programmeSelectionne.id}/repetitions/${repetitionId}/khassidas`
       );
 
-      const liste = Array.isArray(response.data)
-        ? response.data
-        : [];
-
-      setKhassidasProgramme(liste);
+      setKhassidasProgramme(
+        Array.isArray(response.data)
+          ? response.data
+          : []
+      );
     } catch (error) {
       afficherErreur(
         error,
@@ -695,6 +953,7 @@ export default function ProgrammeReligieux() {
         repetitionId
       ) {
         setRepetitionSelectionnee(null);
+        setKhassidasProgramme([]);
       }
 
       await chargerProgramme(
@@ -709,7 +968,7 @@ export default function ProgrammeReligieux() {
   }
 
   // ========================================================
-  // GENERER LES REPETITIONS
+  // GENERER REPETITIONS
   // ========================================================
 
   async function genererRepetitions() {
@@ -780,10 +1039,14 @@ export default function ProgrammeReligieux() {
     setTonSelectionne("");
     setAudioSelectionne("");
 
+    setTons([]);
+    setAudios([]);
+
     setOrdreKhassida(
       (khassidasProgramme?.length || 0) + 1
     );
 
+    setErreur("");
     setModalKhassida(true);
 
     await chargerCatalogueKhassidas();
@@ -797,6 +1060,7 @@ export default function ProgrammeReligieux() {
     setModalKhassida(false);
 
     setKhassidaSelectionnee(null);
+
     setTons([]);
     setAudios([]);
 
@@ -807,43 +1071,66 @@ export default function ProgrammeReligieux() {
   }
 
   // ========================================================
-  // TONS KHASSIDA
+  // TONS D'UNE KHASSIDA
   // ========================================================
 
   async function selectionnerKhassida(
     khassidaId
   ) {
-    setKhassidaSelectionnee(
+    const khassida =
       khassidas.find(
         (item) =>
           Number(item.id) ===
           Number(khassidaId)
-      ) || null
-    );
+      ) || null;
+
+    setKhassidaSelectionnee(khassida);
 
     setTonSelectionne("");
     setAudioSelectionne("");
+
     setTons([]);
     setAudios([]);
 
-    if (!khassidaId) return;
+    if (!khassidaId) {
+      return;
+    }
 
+    setErreur("");
     setChargementTons(true);
 
     try {
       const response = await api.get(
-        `/programmes-religieux/khassidas/${khassidaId}/tons`
+        `/khassidas/${khassidaId}/tons`
       );
 
-      setTons(
-        Array.isArray(response.data)
-          ? response.data
-          : []
+      const listeTons = Array.isArray(
+        response.data
+      )
+        ? response.data
+        : [];
+
+      console.log(
+        "TONS KHASSIDA :",
+        listeTons
       );
+
+      setTons(listeTons);
+
+      if (listeTons.length === 0) {
+        setErreur(
+          "Aucun ton n'est associé à cette Khassida."
+        );
+      }
     } catch (error) {
+      console.error(
+        "Erreur chargement tons Khassida :",
+        error
+      );
+
       afficherErreur(
         error,
-        "Impossible de charger les tons."
+        "Impossible de charger les tons de cette Khassida."
       );
     } finally {
       setChargementTons(false);
@@ -851,7 +1138,7 @@ export default function ProgrammeReligieux() {
   }
 
   // ========================================================
-  // AUDIOS KHASSIDA
+  // AUDIOS D'UNE KHASSIDA + TON
   // ========================================================
 
   async function selectionnerTon(
@@ -868,22 +1155,41 @@ export default function ProgrammeReligieux() {
       return;
     }
 
+    setErreur("");
     setChargementAudios(true);
 
     try {
       const response = await api.get(
-        `/programmes-religieux/khassidas/${khassidaSelectionnee.id}/tons/${tonId}/audios`
+        `/khassidas/${khassidaSelectionnee.id}/tons/${tonId}/audios`
       );
 
-      setAudios(
-        Array.isArray(response.data)
-          ? response.data
-          : []
+      const listeAudios = Array.isArray(
+        response.data
+      )
+        ? response.data
+        : [];
+
+      console.log(
+        "AUDIOS KHASSIDA / TON :",
+        listeAudios
       );
+
+      setAudios(listeAudios);
+
+      if (listeAudios.length === 0) {
+        setErreur(
+          "Aucun audio n'est associé à cette Khassida pour ce ton."
+        );
+      }
     } catch (error) {
+      console.error(
+        "Erreur chargement audios :",
+        error
+      );
+
       afficherErreur(
         error,
-        "Impossible de charger les audios."
+        "Impossible de charger les audios de cette Khassida."
       );
     } finally {
       setChargementAudios(false);
@@ -923,6 +1229,13 @@ export default function ProgrammeReligieux() {
       return;
     }
 
+    if (!audioSelectionne) {
+      setErreur(
+        "Veuillez sélectionner un audio."
+      );
+      return;
+    }
+
     setErreur("");
     setMessage("");
 
@@ -934,13 +1247,24 @@ export default function ProgrammeReligieux() {
         ton_id: Number(
           tonSelectionne
         ),
+        audio_id: Number(
+          audioSelectionne
+        ),
         ordre: Number(
           ordreKhassida
         ),
       };
 
+      console.log(
+        "AJOUT KHASSIDA REPETITION :",
+        payload
+      );
+
+      const repetitionId =
+        repetitionSelectionnee.id;
+
       await api.post(
-        `/programmes-religieux/${programmeSelectionne.id}/repetitions/${repetitionSelectionnee.id}/khassidas`,
+        `/programmes-religieux/${programmeSelectionne.id}/repetitions/${repetitionId}/khassidas`,
         payload
       );
 
@@ -955,14 +1279,19 @@ export default function ProgrammeReligieux() {
       );
 
       await chargerKhassidas(
-        repetitionSelectionnee.id
+        repetitionId
       );
     } catch (error) {
-      afficherErreur(
-        error,
-        "Impossible d'ajouter la Khassida."
-      );
-    }
+  console.error("ERREUR AJOUT KHASSIDA REPETITION :", error);
+  console.error("STATUS :", error.response?.status);
+  console.error("REPONSE BACKEND :", error.response?.data);
+  console.error("DETAIL :", error.response?.data?.detail);
+
+  alert(
+    error.response?.data?.detail ||
+    "Erreur lors de l'ajout de la Khassida."
+  );
+}
   }
 
   // ========================================================
@@ -998,12 +1327,15 @@ export default function ProgrammeReligieux() {
         "Khassida retirée de la répétition."
       );
 
+      const repetitionId =
+        repetitionSelectionnee.id;
+
       await chargerProgramme(
         programmeSelectionne.id
       );
 
       await chargerKhassidas(
-        repetitionSelectionnee.id
+        repetitionId
       );
     } catch (error) {
       afficherErreur(
@@ -1049,20 +1381,18 @@ export default function ProgrammeReligieux() {
     setFormDeclamation({
       date_declamaion:
         declamation.date_declamaion ||
+        declamation.date_declamation ||
         "",
       date_declamation:
         declamation.date_declamation ||
+        declamation.date_declamaion ||
         "",
       heure_debut:
-        declamation.heure_debut?.slice(
-          0,
-          5
-        ) || "",
+        declamation.heure_debut?.slice(0, 5) ||
+        "",
       heure_fin:
-        declamation.heure_fin?.slice(
-          0,
-          5
-        ) || "",
+        declamation.heure_fin?.slice(0, 5) ||
+        "",
       lieu:
         declamation.lieu || "",
       ordre:
@@ -1169,6 +1499,14 @@ export default function ProgrammeReligieux() {
         "Déclamation supprimée avec succès."
       );
 
+      if (
+        declamationSelectionnee?.id ===
+        declamationId
+      ) {
+        setDeclamationSelectionnee(null);
+        setKhassidasDeclamation([]);
+      }
+
       await chargerProgramme(
         programmeSelectionne.id
       );
@@ -1189,9 +1527,7 @@ export default function ProgrammeReligieux() {
   ) {
     if (!programmeSelectionne?.id) return;
 
-    setChargementKhassidasDeclamation(
-      true
-    );
+    setChargementKhassidasDeclamation(true);
 
     try {
       const response = await api.get(
@@ -1209,9 +1545,7 @@ export default function ProgrammeReligieux() {
         "Impossible de charger les Khassidas de la déclamation."
       );
     } finally {
-      setChargementKhassidasDeclamation(
-        false
-      );
+      setChargementKhassidasDeclamation(false);
     }
   }
 
@@ -1230,6 +1564,16 @@ export default function ProgrammeReligieux() {
     setAudioDeclamationSelectionne("");
 
     setKhassidasDeclamation([]);
+    setTonsDeclamation([]);
+    setAudiosDeclamation([]);
+
+    setOrdreKhassidaDeclamation(
+      (
+        extraireKhassidasDeclamation(
+          declamation
+        )?.length || 0
+      ) + 1
+    );
 
     setModalKhassidaDeclamation(
       true
@@ -1260,6 +1604,10 @@ export default function ProgrammeReligieux() {
     setOrdreKhassidaDeclamation(1);
   }
 
+  // ========================================================
+  // TONS DECLAMATION
+  // ========================================================
+
   async function selectionnerKhassidaDeclamation(
     khassidaId
   ) {
@@ -1268,10 +1616,10 @@ export default function ProgrammeReligieux() {
         (item) =>
           Number(item.id) ===
           Number(khassidaId)
-      );
+      ) || null;
 
     setKhassidaDeclamationSelectionnee(
-      khassida || null
+      khassida
     );
 
     setTonDeclamationSelectionne("");
@@ -1280,20 +1628,38 @@ export default function ProgrammeReligieux() {
     setTonsDeclamation([]);
     setAudiosDeclamation([]);
 
-    if (!khassidaId) return;
+    if (!khassidaId) {
+      return;
+    }
 
+    setErreur("");
     setChargementTons(true);
 
     try {
       const response = await api.get(
-        `/programmes-religieux/declamations/khassidas/${khassidaId}/tons`
+        `/khassidas/${khassidaId}/tons`
+      );
+
+      const listeTons = Array.isArray(
+        response.data
+      )
+        ? response.data
+        : [];
+
+      console.log(
+        "TONS DECLAMATION :",
+        listeTons
       );
 
       setTonsDeclamation(
-        Array.isArray(response.data)
-          ? response.data
-          : []
+        listeTons
       );
+
+      if (listeTons.length === 0) {
+        setErreur(
+          "Aucun ton n'est associé à cette Khassida."
+        );
+      }
     } catch (error) {
       afficherErreur(
         error,
@@ -1303,6 +1669,10 @@ export default function ProgrammeReligieux() {
       setChargementTons(false);
     }
   }
+
+  // ========================================================
+  // AUDIOS DECLAMATION
+  // ========================================================
 
   async function selectionnerTonDeclamation(
     tonId
@@ -1324,18 +1694,34 @@ export default function ProgrammeReligieux() {
       return;
     }
 
+    setErreur("");
     setChargementAudios(true);
 
     try {
       const response = await api.get(
-        `/programmes-religieux/declamations/khassidas/${khassidaDeclamationSelectionnee.id}/tons/${tonId}/audios`
+        `/khassidas/${khassidaDeclamationSelectionnee.id}/tons/${tonId}/audios`
+      );
+
+      const listeAudios = Array.isArray(
+        response.data
+      )
+        ? response.data
+        : [];
+
+      console.log(
+        "AUDIOS DECLAMATION :",
+        listeAudios
       );
 
       setAudiosDeclamation(
-        Array.isArray(response.data)
-          ? response.data
-          : []
+        listeAudios
       );
+
+      if (listeAudios.length === 0) {
+        setErreur(
+          "Aucun audio n'est associé à cette Khassida pour ce ton."
+        );
+      }
     } catch (error) {
       afficherErreur(
         error,
@@ -1345,6 +1731,10 @@ export default function ProgrammeReligieux() {
       setChargementAudios(false);
     }
   }
+
+  // ========================================================
+  // AJOUT KHASSIDA DECLAMATION
+  // ========================================================
 
   async function ajouterKhassidaDeclamation(
     event
@@ -1393,6 +1783,14 @@ export default function ProgrammeReligieux() {
         ),
       };
 
+      if (
+        audioDeclamationSelectionne
+      ) {
+        payload.audio_id = Number(
+          audioDeclamationSelectionne
+        );
+      }
+
       await api.post(
         `/programmes-religieux/${programmeSelectionne.id}/declamations/${declamationSelectionnee.id}/khassidas`,
         payload
@@ -1402,10 +1800,13 @@ export default function ProgrammeReligieux() {
         "Khassida ajoutée à la déclamation."
       );
 
+      const programmeId =
+        programmeSelectionne.id;
+
       fermerModalKhassidaDeclamation();
 
       await chargerProgramme(
-        programmeSelectionne.id
+        programmeId
       );
     } catch (error) {
       afficherErreur(
@@ -1414,6 +1815,10 @@ export default function ProgrammeReligieux() {
       );
     }
   }
+
+  // ========================================================
+  // SUPPRIMER KHASSIDA DECLAMATION
+  // ========================================================
 
   async function supprimerKhassidaDeclamation(
     declamationKhassidaId
@@ -1454,7 +1859,7 @@ export default function ProgrammeReligieux() {
   }
 
   // ========================================================
-  // PROGRAMME NON AUTORISE
+  // ACCES REFUSE
   // ========================================================
 
   if (!chargement && !peutConsulter) {
@@ -1475,7 +1880,7 @@ export default function ProgrammeReligieux() {
   }
 
   // ========================================================
-  // CHARGEMENT INITIAL
+  // CHARGEMENT
   // ========================================================
 
   if (chargement) {
@@ -1483,6 +1888,7 @@ export default function ProgrammeReligieux() {
       <div className="flex min-h-[300px] items-center justify-center">
         <div className="flex items-center gap-3 text-slate-600">
           <Loader2 className="h-5 w-5 animate-spin" />
+
           <span>
             Chargement des programmes religieux...
           </span>
@@ -1577,7 +1983,7 @@ export default function ProgrammeReligieux() {
       )}
 
       {/* ================================================== */}
-      {/* LISTE PROGRAMMES */}
+      {/* PROGRAMMES */}
       {/* ================================================== */}
 
       {programmes.length === 0 ? (
@@ -1607,7 +2013,7 @@ export default function ProgrammeReligieux() {
       ) : (
         <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
           {/* ============================================== */}
-          {/* PROGRAMMES */}
+          {/* LISTE PROGRAMMES */}
           {/* ============================================== */}
 
           <div className="space-y-3">
@@ -1671,7 +2077,7 @@ export default function ProgrammeReligieux() {
           </div>
 
           {/* ============================================== */}
-          {/* DETAIL PROGRAMME */}
+          {/* DETAIL */}
           {/* ============================================== */}
 
           <div className="space-y-6">
@@ -1684,9 +2090,9 @@ export default function ProgrammeReligieux() {
               </div>
             ) : programmeSelectionne ? (
               <>
-                {/* ---------------------------------------- */}
+                {/* ======================================== */}
                 {/* CARTE PROGRAMME */}
-                {/* ---------------------------------------- */}
+                {/* ======================================== */}
 
                 <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -1744,9 +2150,9 @@ export default function ProgrammeReligieux() {
                   </div>
                 </div>
 
-                {/* ---------------------------------------- */}
+                {/* ======================================== */}
                 {/* REPETITIONS */}
-                {/* ---------------------------------------- */}
+                {/* ======================================== */}
 
                 <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <div className="flex flex-col gap-3 border-b border-slate-200 p-5 md:flex-row md:items-center md:justify-between">
@@ -1857,7 +2263,6 @@ export default function ProgrammeReligieux() {
                                     <div className="mt-4 grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
                                       <div className="flex items-center gap-2">
                                         <Clock className="h-4 w-4" />
-
                                         <span>
                                           {formaterHeure(
                                             repetition.heure_debut
@@ -1871,7 +2276,6 @@ export default function ProgrammeReligieux() {
 
                                       <div className="flex items-center gap-2">
                                         <MapPin className="h-4 w-4" />
-
                                         <span>
                                           {repetition.lieu ||
                                             "Lieu non précisé"}
@@ -1880,7 +2284,6 @@ export default function ProgrammeReligieux() {
 
                                       <div className="flex items-center gap-2">
                                         <BookOpen className="h-4 w-4" />
-
                                         <span>
                                           {Array.isArray(
                                             repetition.khassidas
@@ -1903,7 +2306,6 @@ export default function ProgrammeReligieux() {
                                           )
                                         }
                                         className="rounded-lg border border-slate-200 p-2 text-slate-600 hover:bg-slate-50"
-                                        title="Modifier"
                                       >
                                         <Pencil className="h-4 w-4" />
                                       </button>
@@ -1916,7 +2318,6 @@ export default function ProgrammeReligieux() {
                                           )
                                         }
                                         className="rounded-lg border border-red-200 p-2 text-red-600 hover:bg-red-50"
-                                        title="Supprimer"
                                       >
                                         <Trash2 className="h-4 w-4" />
                                       </button>
@@ -1924,15 +2325,14 @@ export default function ProgrammeReligieux() {
                                   )}
                                 </div>
 
-                                {/* KHASSIDAS DE LA REPETITION */}
+                                {/* KHASSIDAS */}
+
                                 {ouverte && (
                                   <div className="mt-5 border-t border-slate-200 pt-5">
                                     <div className="mb-4 flex items-center justify-between gap-3">
-                                      <div>
-                                        <h4 className="font-semibold text-slate-800">
-                                          Khassidas à répéter
-                                        </h4>
-                                      </div>
+                                      <h4 className="font-semibold text-slate-800">
+                                        Khassidas à répéter
+                                      </h4>
 
                                       {peutModifier && (
                                         <button
@@ -1959,7 +2359,6 @@ export default function ProgrammeReligieux() {
                                       0 ? (
                                       <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center">
                                         <Music className="mx-auto h-7 w-7 text-slate-400" />
-
                                         <p className="mt-2 text-sm text-slate-500">
                                           Aucune Khassida ajoutée.
                                         </p>
@@ -1970,54 +2369,146 @@ export default function ProgrammeReligieux() {
                                           (
                                             item,
                                             index
-                                          ) => (
-                                            <div
-                                              key={
-                                                item.id ||
-                                                `${item.khassida_id}-${index}`
-                                              }
-                                              className="rounded-xl border border-slate-200 bg-white p-4"
-                                            >
-                                              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                                                <div>
-                                                  <div className="flex items-center gap-2">
-                                                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
-                                                      {item.ordre ||
-                                                        index +
-                                                          1}
-                                                    </span>
+                                          ) => {
+                                            const titreKhassida =
+                                              extraireTitreKhassida(
+                                                item
+                                              );
 
-                                                    <span className="font-semibold text-slate-800">
-                                                      {item.khassida?.titre ||
-                                                        item.khassida?.nom ||
-                                                        item.titre ||
-                                                        "Khassida"}
-                                                    </span>
+                                            const possedePdf =
+                                              khassidaPossedePdf(
+                                                item
+                                              );
+
+                                            const idKhassida =
+                                              extraireIdKhassida(
+                                                item
+                                              );
+
+                                            const telechargementEnCours =
+                                              telechargementPdfId ===
+                                              idKhassida;
+
+                                            return (
+                                              <div
+                                                key={
+                                                  item.id ||
+                                                  `${item.khassida_id}-${index}`
+                                                }
+                                                className="rounded-xl border border-slate-200 bg-white p-4"
+                                              >
+                                                <div className="flex flex-col gap-4">
+                                                  <div className="flex items-start justify-between gap-3">
+                                                    <div className="min-w-0 flex-1">
+                                                      <div className="flex items-center gap-2">
+                                                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700">
+                                                          {item.ordre ||
+                                                            index +
+                                                              1}
+                                                        </span>
+
+                                                        <span className="font-semibold text-slate-800">
+                                                          {titreKhassida}
+                                                        </span>
+                                                      </div>
+
+                                                      <div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-500">
+                                                        <span>
+                                                          Ton :{" "}
+                                                          <strong className="text-slate-700">
+                                                            {item.ton?.nom ||
+                                                              item.ton?.titre ||
+                                                              item.ton_nom ||
+                                                              "—"}
+                                                          </strong>
+                                                        </span>
+
+                                                        {possedePdf && (
+                                                          <span className="inline-flex items-center gap-1 font-medium text-emerald-700">
+                                                            <FileText className="h-3.5 w-3.5" />
+                                                            PDF disponible
+                                                          </span>
+                                                        )}
+                                                      </div>
+                                                    </div>
+
+                                                    {peutModifier && (
+                                                      <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                          supprimerKhassidaRepetition(
+                                                            item.id
+                                                          )
+                                                        }
+                                                        className="rounded-lg border border-red-200 p-2 text-red-600 hover:bg-red-50"
+                                                      >
+                                                        <Trash2 className="h-4 w-4" />
+                                                      </button>
+                                                    )}
                                                   </div>
 
-                                                  <div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-500">
-                                                    <span>
-                                                      Ton :{" "}
-                                                      <strong className="text-slate-700">
-                                                        {item.ton?.nom ||
-                                                          item.ton?.titre ||
-                                                          item.ton_nom ||
-                                                          "—"}
-                                                      </strong>
-                                                    </span>
-                                                  </div>
+                                                  {/* PDF */}
+
+                                                  {possedePdf && (
+                                                    <div className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 p-3">
+                                                      <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                          lirePdfKhassida(
+                                                            item
+                                                          )
+                                                        }
+                                                        disabled={
+                                                          chargementPdf
+                                                        }
+                                                        className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-800 disabled:opacity-60"
+                                                      >
+                                                        {chargementPdf ? (
+                                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                          <FileText className="h-4 w-4" />
+                                                        )}
+                                                        Lire le PDF
+                                                      </button>
+
+                                                      <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                          telechargerPdfKhassida(
+                                                            item
+                                                          )
+                                                        }
+                                                        disabled={
+                                                          telechargementEnCours
+                                                        }
+                                                        className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 disabled:opacity-60"
+                                                      >
+                                                        {telechargementEnCours ? (
+                                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                          <Download className="h-4 w-4" />
+                                                        )}
+                                                        Télécharger
+                                                      </button>
+                                                    </div>
+                                                  )}
+
+                                                  {/* AUDIO */}
 
                                                   {item.audio?.fichier && (
-                                                    <div className="mt-3">
+                                                    <div>
+                                                      <div className="mb-2 flex items-center gap-2 text-xs text-slate-500">
+                                                        <Headphones className="h-4 w-4" />
+                                                        Audio
+                                                      </div>
+
                                                       <audio
                                                         controls
                                                         preload="metadata"
                                                         className="h-9 w-full max-w-md"
                                                         src={construireUrlAudio(
-                                                          item.audio
-                                                            .fichier ||
-                                                            item.audio
-                                                              .url
+                                                          item.audio.fichier ||
+                                                            item.audio.url
                                                         )}
                                                       >
                                                         Votre navigateur ne supporte pas la lecture audio.
@@ -2025,23 +2516,9 @@ export default function ProgrammeReligieux() {
                                                     </div>
                                                   )}
                                                 </div>
-
-                                                {peutModifier && (
-                                                  <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                      supprimerKhassidaRepetition(
-                                                        item.id
-                                                      )
-                                                    }
-                                                    className="self-start rounded-lg border border-red-200 p-2 text-red-600 hover:bg-red-50"
-                                                  >
-                                                    <Trash2 className="h-4 w-4" />
-                                                  </button>
-                                                )}
                                               </div>
-                                            </div>
-                                          )
+                                            );
+                                          }
                                         )}
                                       </div>
                                     )}
@@ -2056,9 +2533,9 @@ export default function ProgrammeReligieux() {
                   </div>
                 </section>
 
-                {/* ---------------------------------------- */}
+                {/* ======================================== */}
                 {/* DECLAMATIONS */}
-                {/* ---------------------------------------- */}
+                {/* ======================================== */}
 
                 <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
                   <div className="flex flex-col gap-3 border-b border-slate-200 p-5 md:flex-row md:items-center md:justify-between">
@@ -2219,59 +2696,130 @@ export default function ProgrammeReligieux() {
                                       ajoutée.
                                     </p>
                                   ) : (
-                                    <div className="space-y-2">
+                                    <div className="space-y-3">
                                       {listeKhassidas.map(
                                         (
                                           item,
                                           index
-                                        ) => (
-                                          <div
-                                            key={
-                                              item.id ||
-                                              `${item.khassida_id}-${index}`
-                                            }
-                                            className="flex items-center justify-between rounded-xl bg-slate-50 p-3"
-                                          >
-                                            <div className="flex items-center gap-3">
-                                              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-600">
-                                                {item.ordre ||
-                                                  index +
-                                                    1}
-                                              </span>
+                                        ) => {
+                                          const titreKhassida =
+                                            extraireTitreKhassida(
+                                              item
+                                            );
 
-                                              <div>
-                                                <p className="font-medium text-slate-800">
-                                                  {item.khassida?.titre ||
-                                                    item.khassida?.nom ||
-                                                    item.titre ||
-                                                    "Khassida"}
-                                                </p>
+                                          const possedePdf =
+                                            khassidaPossedePdf(
+                                              item
+                                            );
 
-                                                <p className="text-xs text-slate-500">
-                                                  Ton :{" "}
-                                                  {item.ton?.nom ||
-                                                    item.ton?.titre ||
-                                                    item.ton_nom ||
-                                                    "—"}
-                                                </p>
+                                          const idKhassida =
+                                            extraireIdKhassida(
+                                              item
+                                            );
+
+                                          const telechargementEnCours =
+                                            telechargementPdfId ===
+                                            idKhassida;
+
+                                          return (
+                                            <div
+                                              key={
+                                                item.id ||
+                                                `${item.khassida_id}-${index}`
+                                              }
+                                              className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                                            >
+                                              <div className="flex items-start justify-between gap-3">
+                                                <div className="flex min-w-0 items-start gap-3">
+                                                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-xs font-bold text-slate-600">
+                                                    {item.ordre ||
+                                                      index +
+                                                        1}
+                                                  </span>
+
+                                                  <div className="min-w-0">
+                                                    <p className="font-medium text-slate-800">
+                                                      {titreKhassida}
+                                                    </p>
+
+                                                    <p className="text-xs text-slate-500">
+                                                      Ton :{" "}
+                                                      {item.ton?.nom ||
+                                                        item.ton?.titre ||
+                                                        item.ton_nom ||
+                                                        "—"}
+                                                    </p>
+
+                                                    {possedePdf && (
+                                                      <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
+                                                        <FileText className="h-3.5 w-3.5" />
+                                                        PDF disponible
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                </div>
+
+                                                {peutModifier && (
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      supprimerKhassidaDeclamation(
+                                                        item.id
+                                                      )
+                                                    }
+                                                    className="rounded-lg p-2 text-red-600 hover:bg-red-100"
+                                                  >
+                                                    <Trash2 className="h-4 w-4" />
+                                                  </button>
+                                                )}
                                               </div>
-                                            </div>
 
-                                            {peutModifier && (
-                                              <button
-                                                type="button"
-                                                onClick={() =>
-                                                  supprimerKhassidaDeclamation(
-                                                    item.id
-                                                  )
-                                                }
-                                                className="rounded-lg p-2 text-red-600 hover:bg-red-100"
-                                              >
-                                                <Trash2 className="h-4 w-4" />
-                                              </button>
-                                            )}
-                                          </div>
-                                        )
+                                              {possedePdf && (
+                                                <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-200 pt-3">
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      lirePdfKhassida(
+                                                        item
+                                                      )
+                                                    }
+                                                    disabled={
+                                                      chargementPdf
+                                                    }
+                                                    className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-800 disabled:opacity-60"
+                                                  >
+                                                    {chargementPdf ? (
+                                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                                    ) : (
+                                                      <FileText className="h-4 w-4" />
+                                                    )}
+                                                    Lire le PDF
+                                                  </button>
+
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      telechargerPdfKhassida(
+                                                        item
+                                                      )
+                                                    }
+                                                    disabled={
+                                                      telechargementEnCours
+                                                    }
+                                                    className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 disabled:opacity-60"
+                                                  >
+                                                    {telechargementEnCours ? (
+                                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                                    ) : (
+                                                      <Download className="h-4 w-4" />
+                                                    )}
+                                                    Télécharger
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        }
                                       )}
                                     </div>
                                   )}
@@ -2290,9 +2838,9 @@ export default function ProgrammeReligieux() {
         </div>
       )}
 
-      {/* ================================================== */}
-      {/* MODAL PROGRAMME */}
-      {/* ================================================== */}
+      {/* ==================================================
+          MODAL PROGRAMME
+      ================================================== */}
 
       {modalProgramme && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -2405,12 +2953,6 @@ export default function ProgrammeReligieux() {
                   : "Aucun Kourel associé"}
               </div>
 
-              {erreur && (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                  {erreur}
-                </div>
-              )}
-
               <div className="flex justify-end gap-3">
                 <button
                   type="button"
@@ -2435,9 +2977,9 @@ export default function ProgrammeReligieux() {
         </div>
       )}
 
-      {/* ================================================== */}
-      {/* MODAL REPETITION */}
-      {/* ================================================== */}
+      {/* ==================================================
+          MODAL REPETITION
+      ================================================== */}
 
       {modalRepetition && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -2612,9 +3154,9 @@ export default function ProgrammeReligieux() {
         </div>
       )}
 
-      {/* ================================================== */}
-      {/* MODAL KHASSIDA REPETITION */}
-      {/* ================================================== */}
+      {/* ==================================================
+          MODAL KHASSIDA REPETITION
+      ================================================== */}
 
       {modalKhassida && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -2626,7 +3168,7 @@ export default function ProgrammeReligieux() {
                 </h2>
 
                 <p className="text-xs text-slate-500">
-                  Sélectionnez la Khassida et son ton.
+                  Sélectionnez la Khassida, le ton et l'audio.
                 </p>
               </div>
 
@@ -2647,6 +3189,8 @@ export default function ProgrammeReligieux() {
               }
               className="space-y-5 p-5"
             >
+              {/* KHASSIDA */}
+
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Khassida
@@ -2672,8 +3216,12 @@ export default function ProgrammeReligieux() {
                   {khassidas.map(
                     (khassida) => (
                       <option
-                        key={khassida.id}
-                        value={khassida.id}
+                        key={
+                          khassida.id
+                        }
+                        value={
+                          khassida.id
+                        }
                       >
                         {khassida.titre ||
                           khassida.nom}
@@ -2683,13 +3231,17 @@ export default function ProgrammeReligieux() {
                 </select>
               </div>
 
+              {/* TON */}
+
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Ton
                 </label>
 
                 <select
-                  value={tonSelectionne}
+                  value={
+                    tonSelectionne
+                  }
                   onChange={(event) =>
                     selectionnerTon(
                       event.target.value
@@ -2704,102 +3256,142 @@ export default function ProgrammeReligieux() {
                 >
                   <option value="">
                     {chargementTons
-                      ? "Chargement..."
-                      : "Sélectionner un ton"}
+                      ? "Chargement des tons..."
+                      : tons.length > 0
+                      ? "Sélectionner un ton"
+                      : khassidaSelectionnee
+                      ? "Aucun ton disponible"
+                      : "Sélectionner d'abord une Khassida"}
                   </option>
 
-                  {tons.map((ton) => (
-                    <option
-                      key={ton.id}
-                      value={ton.id}
-                    >
-                      {ton.nom ||
-                        ton.titre ||
-                        ton.libelle}
-                    </option>
-                  ))}
+                  {tons.map(
+                    (ton) => (
+                      <option
+                        key={
+                          ton.id
+                        }
+                        value={
+                          ton.id
+                        }
+                      >
+                        {ton.nom ||
+                          ton.titre ||
+                          ton.libelle ||
+                          `Ton #${ton.id}`}
+                      </option>
+                    )
+                  )}
                 </select>
               </div>
 
-              {audios.length > 0 && (
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
+              {/* AUDIO */}
+
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="block text-sm font-medium text-slate-700">
                     Audio
                   </label>
 
-                  <select
-                    value={
-                      audioSelectionne
-                    }
-                    onChange={(event) =>
-                      setAudioSelectionne(
-                        event.target.value
-                      )
-                    }
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3"
-                  >
-                    <option value="">
-                      Sélectionner un audio
-                    </option>
-
-                    {audios.map(
-                      (audio) => (
-                        <option
-                          key={audio.id}
-                          value={audio.id}
-                        >
-                          {audio.titre ||
-                            `Audio #${audio.id}`}
-                        </option>
-                      )
-                    )}
-                  </select>
+                  {chargementAudios && (
+                    <span className="flex items-center gap-1 text-xs text-slate-500">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Chargement...
+                    </span>
+                  )}
                 </div>
-              )}
 
-              {audioSelectionne &&
-                audios.find(
-                  (audio) =>
-                    Number(audio.id) ===
-                    Number(
-                      audioSelectionne
-                    )
-                ) && (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700">
-                      <Headphones className="h-4 w-4" />
-                      Écouter l'audio
-                    </div>
+                {!khassidaSelectionnee ? (
+                  <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+                    Sélectionnez d'abord une Khassida.
+                  </div>
+                ) : !tonSelectionne ? (
+                  <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+                    Sélectionnez d'abord un ton.
+                  </div>
+                ) : chargementAudios ? (
+                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Chargement des audios...
+                  </div>
+                ) : audios.length === 0 ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+                    Aucun audio disponible pour cette Khassida et ce ton.
+                  </div>
+                ) : (
+                  <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    {audios.map(
+                      (audio) => {
+                        const selectionne =
+                          Number(
+                            audioSelectionne
+                          ) ===
+                          Number(
+                            audio.id
+                          );
 
-                    <audio
-                      controls
-                      preload="metadata"
-                      className="w-full"
-                      src={construireUrlAudio(
-                        audios.find(
-                          (audio) =>
-                            Number(
+                        return (
+                          <div
+                            key={
                               audio.id
-                            ) ===
-                            Number(
-                              audioSelectionne
-                            )
-                        )?.fichier ||
-                          audios.find(
-                            (audio) =>
-                              Number(
-                                audio.id
-                              ) ===
-                              Number(
-                                audioSelectionne
-                              )
-                          )?.url
-                      )}
-                    >
-                      Votre navigateur ne supporte pas la lecture audio.
-                    </audio>
+                            }
+                            className={`rounded-xl bg-white p-3 ring-1 ${
+                              selectionne
+                                ? "ring-emerald-500"
+                                : "ring-slate-200"
+                            }`}
+                          >
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <Headphones className="h-4 w-4 shrink-0 text-emerald-600" />
+
+                                <span className="truncate text-sm font-medium text-slate-700">
+                                  {audio.titre ||
+                                    audio.nom ||
+                                    `Audio #${audio.id}`}
+                                </span>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setAudioSelectionne(
+                                    String(
+                                      audio.id
+                                    )
+                                  )
+                                }
+                                className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                                  selectionne
+                                    ? "bg-emerald-600 text-white"
+                                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                }`}
+                              >
+                                {selectionne
+                                  ? "Sélectionné"
+                                  : "Choisir"}
+                              </button>
+                            </div>
+
+                            <audio
+                              controls
+                              preload="metadata"
+                              className="h-9 w-full"
+                              src={construireUrlAudio(
+                                audio.fichier ||
+                                  audio.url
+                              )}
+                            >
+                              Votre navigateur ne supporte pas la lecture audio.
+                            </audio>
+                          </div>
+                        );
+                      }
+                    )}
                   </div>
                 )}
+              </div>
+
+              {/* ORDRE */}
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -2821,6 +3413,8 @@ export default function ProgrammeReligieux() {
                 />
               </div>
 
+              {/* ACTIONS */}
+
               <div className="flex justify-end gap-3">
                 <button
                   type="button"
@@ -2834,7 +3428,12 @@ export default function ProgrammeReligieux() {
 
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700"
+                  disabled={
+                    !khassidaSelectionnee ||
+                    !tonSelectionne ||
+                    !audioSelectionne
+                  }
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Check className="h-4 w-4" />
                   Ajouter
@@ -2845,9 +3444,9 @@ export default function ProgrammeReligieux() {
         </div>
       )}
 
-      {/* ================================================== */}
-      {/* MODAL DECLAMATION */}
-      {/* ================================================== */}
+      {/* ==================================================
+          MODAL DECLAMATION
+      ================================================== */}
 
       {modalDeclamation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -2892,11 +3491,9 @@ export default function ProgrammeReligieux() {
                       (ancien) => ({
                         ...ancien,
                         date_declamation:
-                          event.target
-                            .value,
+                          event.target.value,
                         date_declamaion:
-                          event.target
-                            .value,
+                          event.target.value,
                       })
                     )
                   }
@@ -2921,8 +3518,7 @@ export default function ProgrammeReligieux() {
                         (ancien) => ({
                           ...ancien,
                           heure_debut:
-                            event.target
-                              .value,
+                            event.target.value,
                         })
                       )
                     }
@@ -2945,8 +3541,7 @@ export default function ProgrammeReligieux() {
                         (ancien) => ({
                           ...ancien,
                           heure_fin:
-                            event.target
-                              .value,
+                            event.target.value,
                         })
                       )
                     }
@@ -3026,9 +3621,9 @@ export default function ProgrammeReligieux() {
         </div>
       )}
 
-      {/* ================================================== */}
-      {/* MODAL KHASSIDA DECLAMATION */}
-      {/* ================================================== */}
+      {/* ==================================================
+          MODAL KHASSIDA DECLAMATION
+      ================================================== */}
 
       {modalKhassidaDeclamation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -3040,7 +3635,7 @@ export default function ProgrammeReligieux() {
                 </h2>
 
                 <p className="text-xs text-slate-500">
-                  Déclamation
+                  Sélectionnez la Khassida, le ton et éventuellement l'audio.
                 </p>
               </div>
 
@@ -3061,6 +3656,8 @@ export default function ProgrammeReligieux() {
               }
               className="space-y-5 p-5"
             >
+              {/* KHASSIDA */}
+
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
                   Khassida
@@ -3073,8 +3670,7 @@ export default function ProgrammeReligieux() {
                   }
                   onChange={(event) =>
                     selectionnerKhassidaDeclamation(
-                      event.target
-                        .value
+                      event.target.value
                     )
                   }
                   className="w-full rounded-xl border border-slate-200 px-4 py-3"
@@ -3087,8 +3683,12 @@ export default function ProgrammeReligieux() {
                   {khassidas.map(
                     (khassida) => (
                       <option
-                        key={khassida.id}
-                        value={khassida.id}
+                        key={
+                          khassida.id
+                        }
+                        value={
+                          khassida.id
+                        }
                       >
                         {khassida.titre ||
                           khassida.nom}
@@ -3097,6 +3697,8 @@ export default function ProgrammeReligieux() {
                   )}
                 </select>
               </div>
+
+              {/* TON */}
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -3109,8 +3711,7 @@ export default function ProgrammeReligieux() {
                   }
                   onChange={(event) =>
                     selectionnerTonDeclamation(
-                      event.target
-                        .value
+                      event.target.value
                     )
                   }
                   className="w-full rounded-xl border border-slate-200 px-4 py-3"
@@ -3122,64 +3723,143 @@ export default function ProgrammeReligieux() {
                 >
                   <option value="">
                     {chargementTons
-                      ? "Chargement..."
-                      : "Sélectionner un ton"}
+                      ? "Chargement des tons..."
+                      : tonsDeclamation.length > 0
+                      ? "Sélectionner un ton"
+                      : khassidaDeclamationSelectionnee
+                      ? "Aucun ton disponible"
+                      : "Sélectionner d'abord une Khassida"}
                   </option>
 
                   {tonsDeclamation.map(
                     (ton) => (
                       <option
-                        key={ton.id}
-                        value={ton.id}
+                        key={
+                          ton.id
+                        }
+                        value={
+                          ton.id
+                        }
                       >
                         {ton.nom ||
                           ton.titre ||
-                          ton.libelle}
+                          ton.libelle ||
+                          `Ton #${ton.id}`}
                       </option>
                     )
                   )}
                 </select>
               </div>
 
-              {audiosDeclamation.length >
-                0 && (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-700">
-                    <Volume2 className="h-4 w-4" />
-                    Audios disponibles
+              {/* AUDIOS */}
+
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="block text-sm font-medium text-slate-700">
+                    Audios
+                  </label>
+
+                  {chargementAudios && (
+                    <span className="flex items-center gap-1 text-xs text-slate-500">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Chargement...
+                    </span>
+                  )}
+                </div>
+
+                {!khassidaDeclamationSelectionnee ? (
+                  <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+                    Sélectionnez d'abord une Khassida.
                   </div>
-
-                  <div className="space-y-3">
+                ) : !tonDeclamationSelectionne ? (
+                  <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
+                    Sélectionnez d'abord un ton.
+                  </div>
+                ) : chargementAudios ? (
+                  <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Chargement des audios...
+                  </div>
+                ) : audiosDeclamation.length ===
+                  0 ? (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+                    Aucun audio disponible pour cette Khassida et ce ton.
+                  </div>
+                ) : (
+                  <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
                     {audiosDeclamation.map(
-                      (audio) => (
-                        <div
-                          key={
+                      (audio) => {
+                        const selectionne =
+                          Number(
+                            audioDeclamationSelectionne
+                          ) ===
+                          Number(
                             audio.id
-                          }
-                          className="rounded-xl bg-white p-3"
-                        >
-                          <p className="mb-2 text-sm font-medium text-slate-700">
-                            {audio.titre ||
-                              `Audio #${audio.id}`}
-                          </p>
+                          );
 
-                          <audio
-                            controls
-                            preload="metadata"
-                            className="w-full"
-                            src={construireUrlAudio(
-                              audio.fichier ||
-                                audio.url
-                            )}
+                        return (
+                          <div
+                            key={
+                              audio.id
+                            }
+                            className={`rounded-xl bg-white p-3 ring-1 ${
+                              selectionne
+                                ? "ring-emerald-500"
+                                : "ring-slate-200"
+                            }`}
                           >
-                            Votre navigateur ne supporte pas la lecture audio.
-                          </audio>
-                        </div>
-                      )
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <Headphones className="h-4 w-4 shrink-0 text-emerald-600" />
+
+                                <span className="truncate text-sm font-medium text-slate-700">
+                                  {audio.titre ||
+                                    audio.nom ||
+                                    `Audio #${audio.id}`}
+                                </span>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setAudioDeclamationSelectionne(
+                                    String(
+                                      audio.id
+                                    )
+                                  )
+                                }
+                                className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold ${
+                                  selectionne
+                                    ? "bg-emerald-600 text-white"
+                                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                }`}
+                              >
+                                {selectionne
+                                  ? "Sélectionné"
+                                  : "Choisir"}
+                              </button>
+                            </div>
+
+                            <audio
+                              controls
+                              preload="metadata"
+                              className="h-9 w-full"
+                              src={construireUrlAudio(
+                                audio.fichier ||
+                                  audio.url
+                              )}
+                            >
+                              Votre navigateur ne supporte pas la lecture audio.
+                            </audio>
+                          </div>
+                        );
+                      }
                     )}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+
+              {/* ORDRE */}
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">
@@ -3214,7 +3894,11 @@ export default function ProgrammeReligieux() {
 
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700"
+                  disabled={
+                    !khassidaDeclamationSelectionnee ||
+                    !tonDeclamationSelectionne
+                  }
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Check className="h-4 w-4" />
                   Ajouter
@@ -3224,6 +3908,103 @@ export default function ProgrammeReligieux() {
           </div>
         </div>
       )}
+
+      {/* ==================================================
+          LECTEUR PDF
+      ================================================== */}
+
+      {lecteurPdfOuvert &&
+        pdfBlobUrl && (
+          <div className="fixed inset-0 z-[80] bg-black/70 p-3 sm:p-5">
+            <div className="mx-auto flex h-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+              <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-5">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+                    <FileText className="h-5 w-5" />
+                  </div>
+
+                  <div className="min-w-0">
+                    <h2 className="truncate font-bold text-slate-900">
+                      {khassidaPdfSelectionnee?.titre ||
+                        "Khassida"}
+                    </h2>
+
+                    <p className="text-xs text-slate-500">
+                      Lecture du Khassida
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={
+                      ouvrirPdfNouvelOnglet
+                    }
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-emerald-700"
+                    title="Ouvrir dans un nouvel onglet"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </button>
+
+                  {khassidaPdfSelectionnee && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        telechargerPdfKhassida(
+                          {
+                            id:
+                              khassidaPdfSelectionnee.id,
+
+                            khassida_id:
+                              khassidaPdfSelectionnee.id,
+
+                            titre:
+                              khassidaPdfSelectionnee.titre,
+
+                            khassida: {
+                              id:
+                                khassidaPdfSelectionnee.id,
+                              titre:
+                                khassidaPdfSelectionnee.titre,
+                              pdf_url: true,
+                            },
+                          }
+                        )
+                      }
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-emerald-700"
+                      title="Télécharger"
+                    >
+                      <Download className="h-4 w-4" />
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={
+                      fermerLecteurPdf
+                    }
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600"
+                    title="Fermer"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="min-h-0 flex-1 bg-slate-200">
+                <iframe
+                  src={pdfBlobUrl}
+                  title={
+                    khassidaPdfSelectionnee?.titre ||
+                    "Lecture PDF"
+                  }
+                  className="h-full w-full border-0"
+                />
+              </div>
+            </div>
+          </div>
+        )}
     </div>
   );
 }

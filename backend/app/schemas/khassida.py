@@ -41,6 +41,8 @@ class KhassidaBase(BaseModel):
 
     description: str | None = None
 
+    pdf_url: str | None = None
+
 
 # ============================================================
 # CRÉATION
@@ -68,6 +70,8 @@ class KhassidaUpdate(BaseModel):
     )
 
     description: str | None = None
+
+    pdf_url: str | None = None
 
 
 # ============================================================

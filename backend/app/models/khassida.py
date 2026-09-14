@@ -40,6 +40,15 @@ class Khassida(Base):
         nullable=True,
     )
 
+    # ==========================================================
+    # PDF
+    # ==========================================================
+
+    pdf_url: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
     actif: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
