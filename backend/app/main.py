@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
+from app.core.migrations import appliquer_migrations
 
 from app.core.firebase import initialiser_firebase
 
@@ -112,7 +113,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
-
+appliquer_migrations()
 # ============================================================
 # CORS
 # ============================================================
