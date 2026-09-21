@@ -21,32 +21,11 @@ router = APIRouter(
 )
 
 
-# ============================================================
-# OUTIL : VÉRIFIER UNE PERMISSION
-# ============================================================
-
 def utilisateur_a_permission(
     db: Session,
     utilisateur_id: int,
     code_permission: str,
 ) -> bool:
-    """
-    Vérifie directement en base si l'utilisateur possède
-    une permission donnée via sa fonction.
-
-    Chaîne :
-
-        Utilisateur
-             ↓
-        UtilisateurFonction
-             ↓
-           Fonction
-             ↓
-        FonctionPermission
-             ↓
-         Permission
-    """
-
     permission = (
         db.query(Permission)
         .filter(
@@ -78,10 +57,6 @@ def utilisateur_a_permission(
     return autorisation is not None
 
 
-# ============================================================
-# DASHBOARD
-# ============================================================
-
 @router.get("")
 def dashboard(
     db: Session = Depends(get_db),
@@ -91,31 +66,18 @@ def dashboard(
         )
     ),
 ):
-    """
-    Retourne les informations du tableau de bord.
-
-    Permission obligatoire :
-        DASHBOARD_CONSULTER
-
-    Les données financières sont retournées uniquement si
-    l'utilisateur possède également :
-        FINANCE_CONSULTER
-    """
-
-    # ========================================================
-    # VÉRIFICATION DE LA PERMISSION FINANCIÈRE
-    # ========================================================
-
+    # ---------------------------------------------------------
+    # Vérification de la permission financière
+    # ---------------------------------------------------------
     peut_consulter_finances = utilisateur_a_permission(
         db=db,
         utilisateur_id=current_user.id,
         code_permission="FINANCE_CONSULTER",
     )
 
-    # ========================================================
-    # MEMBRES ACTIFS
-    # ========================================================
-
+    # ---------------------------------------------------------
+    # Nombre de membres actifs
+    # ---------------------------------------------------------
     nombre_membres = (
         db.query(
             func.count(Membre.id)
@@ -127,28 +89,27 @@ def dashboard(
         or 0
     )
 
-    # ========================================================
-    # VALEURS FINANCIÈRES PAR DÉFAUT
-    # ========================================================
-
-    total_cotisations = 0.0
-    total_paiements = 0.0
+    # ---------------------------------------------------------
+    # Valeurs financières par défaut
+    # ---------------------------------------------------------
+    total_cotisations_estimees = 0.0
+    total_cotisations_encaissees = 0.0
     total_aides_exterieures = 0.0
     total_depenses = 0.0
     total_recettes = 0.0
     solde = 0.0
 
-    # ========================================================
-    # DONNÉES FINANCIÈRES
-    # ========================================================
-
+    # ---------------------------------------------------------
+    # Calculs financiers
+    # ---------------------------------------------------------
     if peut_consulter_finances:
 
-        # ----------------------------------------------------
-        # COTISATIONS ENCAISSÉES
-        # ----------------------------------------------------
-
-        total_cotisations = (
+        # -----------------------------------------------------
+        # 1. Cotisations estimées
+        #
+        # Cotisation.montant = montant attendu
+        # -----------------------------------------------------
+        total_cotisations_estimees = (
             db.query(
                 func.coalesce(
                     func.sum(
@@ -164,11 +125,12 @@ def dashboard(
             or 0
         )
 
-        # ----------------------------------------------------
-        # PAIEMENTS EFFECTUÉS
-        # ----------------------------------------------------
-
-        total_paiements = (
+        # -----------------------------------------------------
+        # 2. Cotisations réellement encaissées
+        #
+        # Paiement.montant = argent réellement reçu
+        # -----------------------------------------------------
+        total_cotisations_encaissees = (
             db.query(
                 func.coalesce(
                     func.sum(
@@ -184,10 +146,9 @@ def dashboard(
             or 0
         )
 
-        # ----------------------------------------------------
-        # AIDES EXTÉRIEURES
-        # ----------------------------------------------------
-
+        # -----------------------------------------------------
+        # 3. Aides extérieures
+        # -----------------------------------------------------
         total_aides_exterieures = (
             db.query(
                 func.coalesce(
@@ -204,10 +165,9 @@ def dashboard(
             or 0
         )
 
-        # ----------------------------------------------------
-        # DÉPENSES
-        # ----------------------------------------------------
-
+        # -----------------------------------------------------
+        # 4. Dépenses
+        # -----------------------------------------------------
         total_depenses = (
             db.query(
                 func.coalesce(
@@ -224,16 +184,15 @@ def dashboard(
             or 0
         )
 
-        # ----------------------------------------------------
-        # CONVERSION EN FLOAT
-        # ----------------------------------------------------
-
-        total_cotisations = float(
-            total_cotisations
+        # -----------------------------------------------------
+        # Conversion en float
+        # -----------------------------------------------------
+        total_cotisations_estimees = float(
+            total_cotisations_estimees
         )
 
-        total_paiements = float(
-            total_paiements
+        total_cotisations_encaissees = float(
+            total_cotisations_encaissees
         )
 
         total_aides_exterieures = float(
@@ -244,40 +203,33 @@ def dashboard(
             total_depenses
         )
 
-        # ----------------------------------------------------
-        # TOTAL RECETTES
+        # -----------------------------------------------------
+        # 5. Total des recettes
         #
-        # Cotisations + aides extérieures
-        # ----------------------------------------------------
-
+        # IMPORTANT :
+        # On utilise les montants réellement encaissés,
+        # pas les cotisations estimées.
+        # -----------------------------------------------------
         total_recettes = (
-            total_cotisations
+            total_cotisations_encaissees
             + total_aides_exterieures
         )
 
-        # ----------------------------------------------------
-        # SOLDE
-        #
-        # Recettes - dépenses
-        # ----------------------------------------------------
-
+        # -----------------------------------------------------
+        # 6. Solde disponible
+        # -----------------------------------------------------
         solde = (
             total_recettes
             - total_depenses
         )
 
-    # ========================================================
-    # RÉPONSE
-    # ========================================================
-
+    # ---------------------------------------------------------
+    # Réponse API
+    # ---------------------------------------------------------
     return {
         "message": (
             "Tableau de bord chargé avec succès"
         ),
-
-        # ----------------------------------------------------
-        # DROITS
-        # ----------------------------------------------------
 
         "dashboard_consulter": True,
 
@@ -285,34 +237,37 @@ def dashboard(
             peut_consulter_finances
         ),
 
-        # ----------------------------------------------------
-        # MEMBRES
-        # ----------------------------------------------------
-
+        # Membres
         "membres_actifs": nombre_membres,
 
-        # ----------------------------------------------------
-        # FINANCES
-        # ----------------------------------------------------
-
-        "cotisations_encaissees": (
-            total_cotisations
+        # Cotisations
+        "cotisations_estimees": (
+            total_cotisations_estimees
             if peut_consulter_finances
             else None
         ),
 
+        "cotisations_encaissees": (
+            total_cotisations_encaissees
+            if peut_consulter_finances
+            else None
+        ),
+
+        # Aides
         "aides_exterieures": (
             total_aides_exterieures
             if peut_consulter_finances
             else None
         ),
 
+        # Recettes
         "total_recettes": (
             total_recettes
             if peut_consulter_finances
             else None
         ),
 
+        # Dépenses
         "depenses": (
             total_depenses
             if peut_consulter_finances
@@ -325,12 +280,7 @@ def dashboard(
             else None
         ),
 
-        "paiements_effectues": (
-            total_paiements
-            if peut_consulter_finances
-            else None
-        ),
-
+        # Solde
         "solde_disponible": (
             solde
             if peut_consulter_finances

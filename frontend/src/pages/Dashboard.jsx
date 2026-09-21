@@ -11,7 +11,6 @@ import {
   ArrowDownCircle,
   Banknote,
   Landmark,
-  CreditCard,
   CircleCheck,
   AlertCircle,
 } from "lucide-react";
@@ -152,16 +151,18 @@ function Dashboard() {
     donnees?.membres_actifs ?? 0
   );
 
+  // Montant théorique attendu
+  const cotisationsEstimees = Number(
+    donnees?.cotisations_estimees ?? 0
+  );
+
+  // Montant réellement encaissé via les paiements
   const cotisationsEncaissees = Number(
     donnees?.cotisations_encaissees ?? 0
   );
 
   const aidesExterieures = Number(
     donnees?.aides_exterieures ?? 0
-  );
-
-  const paiementsEffectues = Number(
-    donnees?.paiements_effectues ?? 0
   );
 
   const totalRecettes = Number(
@@ -178,6 +179,16 @@ function Dashboard() {
   const soldeDisponible = Number(
     donnees?.solde_disponible ??
       totalRecettes - totalDepenses
+  );
+
+
+  // ============================================================
+  // RESTE À ENCAISSER
+  // ============================================================
+
+  const resteAEncaisser = Math.max(
+    0,
+    cotisationsEstimees - cotisationsEncaissees
   );
 
 
@@ -216,19 +227,19 @@ function Dashboard() {
     },
 
     {
-      titre: "Cotisations encaissées",
-      valeur: `${formaterMontant(cotisationsEncaissees)} FCFA`,
-      description: "Cotisations réellement reçues",
+      titre: "Cotisations estimées",
+      valeur: `${formaterMontant(cotisationsEstimees)} FCFA`,
+      description: "Montant total attendu des cotisations",
       icone: Wallet,
-      couleur: "emerald",
+      couleur: "blue",
     },
 
     {
-      titre: "Aides extérieures",
-      valeur: `${formaterMontant(aidesExterieures)} FCFA`,
-      description: "Participations provenant de l'extérieur",
-      icone: Banknote,
-      couleur: "amber",
+      titre: "Cotisations encaissées",
+      valeur: `${formaterMontant(cotisationsEncaissees)} FCFA`,
+      description: "Cotisations réellement reçues",
+      icone: TrendingUp,
+      couleur: "emerald",
     },
 
     {
@@ -411,7 +422,7 @@ function Dashboard() {
         </div>
 
 
-        {/* PAIEMENTS */}
+        {/* RESTE À ENCAISSER */}
 
         <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6">
 
@@ -419,11 +430,11 @@ function Dashboard() {
 
             <div>
               <p className="text-sm font-medium text-blue-700">
-                Paiements effectués
+                Reste à encaisser
               </p>
 
               <p className="mt-2 text-3xl font-bold text-blue-900">
-                {formaterMontant(paiementsEffectues)}
+                {formaterMontant(resteAEncaisser)}
               </p>
 
               <p className="mt-1 text-sm text-blue-700">
@@ -433,7 +444,7 @@ function Dashboard() {
 
 
             <div className="rounded-xl bg-white p-3 shadow-sm">
-              <CreditCard
+              <Wallet
                 size={25}
                 className="text-blue-600"
               />
@@ -652,7 +663,7 @@ function Dashboard() {
           </h2>
 
           <p className="mt-1 text-sm text-slate-500">
-            Origine des recettes encaissées par le Dahira.
+            Origine des recettes réellement encaissées par le Dahira.
           </p>
 
         </div>
@@ -674,7 +685,7 @@ function Dashboard() {
                   className="text-emerald-600"
                 />
 
-                Cotisations
+                Cotisations encaissées
 
               </span>
 
@@ -788,7 +799,36 @@ function Dashboard() {
       <div className="grid gap-5 md:grid-cols-3">
 
 
-        {/* COTISATIONS */}
+        {/* COTISATIONS ESTIMÉES */}
+
+        <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6">
+
+          <div className="flex items-center gap-3">
+
+            <div className="rounded-lg bg-white p-2 shadow-sm">
+
+              <Wallet
+                size={20}
+                className="text-blue-600"
+              />
+
+            </div>
+
+            <p className="text-sm font-medium text-blue-700">
+              Cotisations estimées
+            </p>
+
+          </div>
+
+
+          <p className="mt-4 text-2xl font-bold text-blue-900">
+            {formaterMontant(cotisationsEstimees)} FCFA
+          </p>
+
+        </div>
+
+
+        {/* COTISATIONS ENCAISSÉES */}
 
         <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-6">
 
@@ -796,7 +836,7 @@ function Dashboard() {
 
             <div className="rounded-lg bg-white p-2 shadow-sm">
 
-              <Wallet
+              <TrendingUp
                 size={20}
                 className="text-emerald-600"
               />
@@ -845,36 +885,8 @@ function Dashboard() {
 
         </div>
 
-
-        {/* PAIEMENTS */}
-
-        <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6">
-
-          <div className="flex items-center gap-3">
-
-            <div className="rounded-lg bg-white p-2 shadow-sm">
-
-              <CreditCard
-                size={20}
-                className="text-blue-600"
-              />
-
-            </div>
-
-            <p className="text-sm font-medium text-blue-700">
-              Paiements effectués
-            </p>
-
-          </div>
-
-
-          <p className="mt-4 text-2xl font-bold text-blue-900">
-            {formaterMontant(paiementsEffectues)} FCFA
-          </p>
-
-        </div>
-
       </div>
+
 
     </div>
   );
@@ -882,3 +894,4 @@ function Dashboard() {
 
 
 export default Dashboard;
+
