@@ -68,9 +68,11 @@ function Dashboard() {
 
   function dateLocaleISO(date = new Date()) {
     const annee = date.getFullYear();
+
     const mois = String(
       date.getMonth() + 1
     ).padStart(2, "0");
+
     const jour = String(
       date.getDate()
     ).padStart(2, "0");
@@ -176,9 +178,7 @@ function Dashboard() {
   // CHARGEMENT DU DASHBOARD
   // ============================================================
 
-  async function chargerDashboard(
-    dates = null
-  ) {
+  async function chargerDashboard(dates = null) {
     try {
       setChargement(true);
       setErreur("");
@@ -216,6 +216,7 @@ function Dashboard() {
         dateDebut:
           response.data?.date_debut ??
           null,
+
         dateFin:
           response.data?.date_fin ??
           null,
@@ -267,18 +268,24 @@ function Dashboard() {
         debut = dateLocaleISO(
           aujourdHui
         );
+
         fin = dateLocaleISO(
           aujourdHui
         );
+
         break;
 
       case "mois":
-        debut = premierJourMois(
-          aujourdHui
-        );
-        fin = dernierJourMois(
-          aujourdHui
-        );
+        debut =
+          premierJourMois(
+            aujourdHui
+          );
+
+        fin =
+          dernierJourMois(
+            aujourdHui
+          );
+
         break;
 
       case "trimestre":
@@ -286,10 +293,12 @@ function Dashboard() {
           premierJourTrimestre(
             aujourdHui
           );
+
         fin =
           dernierJourTrimestre(
             aujourdHui
           );
+
         break;
 
       case "annee":
@@ -297,10 +306,12 @@ function Dashboard() {
           premierJourAnnee(
             aujourdHui
           );
+
         fin =
           dernierJourAnnee(
             aujourdHui
           );
+
         break;
 
       default:
@@ -314,6 +325,7 @@ function Dashboard() {
       setDateFin("");
 
       chargerDashboard(null);
+
       return;
     }
 
@@ -335,6 +347,7 @@ function Dashboard() {
       setErreur(
         "Veuillez sélectionner une date de début et une date de fin."
       );
+
       return;
     }
 
@@ -342,6 +355,7 @@ function Dashboard() {
       setErreur(
         "La date de début doit être antérieure ou égale à la date de fin."
       );
+
       return;
     }
 
@@ -460,8 +474,10 @@ function Dashboard() {
   /*
    * Montant théorique attendu pour les cotisations.
    *
-   * Sur une période de plusieurs mois, le backend tient compte
-   * du nombre de mois couverts.
+   * Le backend calcule ce montant à partir :
+   * - de tous les membres actifs ;
+   * - de leur montant de cotisation ;
+   * - du nombre de mois couverts par la période.
    */
   const cotisationsEstimees = Number(
     donnees?.cotisations_estimees ?? 0
@@ -473,14 +489,20 @@ function Dashboard() {
    * Cela comprend :
    * - les cotisations normales ;
    * - les paiements partiels ;
-   * - les versements volontaires des membres non cotisants.
+   * - les versements volontaires des membres
+   *   ayant une cotisation mensuelle à 0.
+   *
+   * Le montant est filtré par date dans le backend.
    */
   const cotisationsEncaissees = Number(
     donnees?.cotisations_encaissees ?? 0
   );
 
   /*
-   * Argent reçu de personnes/organismes extérieurs.
+   * Argent reçu de personnes ou organismes extérieurs.
+   *
+   * Le backend applique également le filtre
+   * de période sur date_aide.
    */
   const aidesExterieures = Number(
     donnees?.aides_exterieures ?? 0
@@ -488,13 +510,28 @@ function Dashboard() {
 
   /*
    * TOTAL DES RECETTES RÉELLES
+   *
+   * IMPORTANT :
+   * On utilise maintenant directement la valeur
+   * calculée par le backend.
+   *
+   * Le backend calcule :
+   *
+   * paiements de la période
+   * +
+   * aides extérieures de la période
+   *
+   * = total_recettes
    */
-  const totalRecettes =
-    cotisationsEncaissees +
-    aidesExterieures;
+  const totalRecettes = Number(
+    donnees?.total_recettes ?? 0
+  );
 
   /*
-   * TOTAL DES SORTIES D'ARGENT.
+   * TOTAL DES SORTIES D'ARGENT
+   *
+   * Le backend applique le filtre sur
+   * Depense.date_depense.
    */
   const totalDepenses = Number(
     donnees?.total_depenses ??
@@ -503,10 +540,15 @@ function Dashboard() {
   );
 
   /*
-   * SOLDE RÉEL DISPONIBLE.
+   * SOLDE RÉEL DISPONIBLE
+   *
+   * On utilise directement le calcul du backend :
+   *
+   * total_recettes - total_depenses
    */
-  const soldeDisponible =
-    totalRecettes - totalDepenses;
+  const soldeDisponible = Number(
+    donnees?.solde_disponible ?? 0
+  );
 
   // ============================================================
   // RESTE À ENCAISSER
@@ -550,45 +592,61 @@ function Dashboard() {
   const statistiques = [
     {
       titre: "Membres actifs",
+
       valeur: formaterMontant(
         membresActifs
       ),
+
       description:
         "Membres actuellement actifs",
+
       icone: Users,
+
       couleur: "blue",
     },
 
     {
       titre: "Cotisations estimées",
+
       valeur: `${formaterMontant(
         cotisationsEstimees
       )} FCFA`,
+
       description:
         "Montant théorique attendu des cotisations",
+
       icone: Wallet,
+
       couleur: "blue",
     },
 
     {
       titre: "Recettes encaissées",
+
       valeur: `${formaterMontant(
         totalRecettes
       )} FCFA`,
+
       description:
         "Argent réellement reçu par le Dahira",
+
       icone: TrendingUp,
+
       couleur: "emerald",
     },
 
     {
       titre: "Dépenses",
+
       valeur: `${formaterMontant(
         totalDepenses
       )} FCFA`,
+
       description:
         "Total des sorties de caisse",
+
       icone: TrendingDown,
+
       couleur: "red",
     },
   ];
@@ -629,6 +687,7 @@ function Dashboard() {
                 ? {
                     dateDebut:
                       periodeAppliquee.dateDebut,
+
                     dateFin:
                       periodeAppliquee.dateFin,
                   }
@@ -845,6 +904,7 @@ function Dashboard() {
                   <CalendarDays
                     size={17}
                   />
+
                   Appliquer
                 </button>
 
@@ -907,10 +967,12 @@ function Dashboard() {
                   </div>
 
                   <div className="rounded-xl bg-slate-100 p-3 transition group-hover:bg-emerald-50">
+
                     <Icon
                       size={22}
                       className="text-slate-700 transition group-hover:text-emerald-700"
                     />
+
                   </div>
 
                 </div>
@@ -939,6 +1001,7 @@ function Dashboard() {
           <div className="flex items-center justify-between">
 
             <div>
+
               <p className="text-sm font-medium text-emerald-700">
                 Total recettes
               </p>
@@ -952,13 +1015,16 @@ function Dashboard() {
               <p className="mt-1 text-sm text-emerald-700">
                 FCFA
               </p>
+
             </div>
 
             <div className="rounded-xl bg-white p-3 shadow-sm">
+
               <TrendingUp
                 size={25}
                 className="text-emerald-600"
               />
+
             </div>
 
           </div>
@@ -972,6 +1038,7 @@ function Dashboard() {
           <div className="flex items-center justify-between">
 
             <div>
+
               <p className="text-sm font-medium text-red-700">
                 Total dépenses
               </p>
@@ -985,13 +1052,16 @@ function Dashboard() {
               <p className="mt-1 text-sm text-red-700">
                 FCFA
               </p>
+
             </div>
 
             <div className="rounded-xl bg-white p-3 shadow-sm">
+
               <TrendingDown
                 size={25}
                 className="text-red-600"
               />
+
             </div>
 
           </div>
@@ -1005,6 +1075,7 @@ function Dashboard() {
           <div className="flex items-center justify-between">
 
             <div>
+
               <p className="text-sm font-medium text-blue-700">
                 Reste à encaisser
               </p>
@@ -1018,13 +1089,16 @@ function Dashboard() {
               <p className="mt-1 text-sm text-blue-700">
                 FCFA
               </p>
+
             </div>
 
             <div className="rounded-xl bg-white p-3 shadow-sm">
+
               <Wallet
                 size={25}
                 className="text-blue-600"
               />
+
             </div>
 
           </div>
@@ -1048,13 +1122,16 @@ function Dashboard() {
             <div className="flex items-center gap-3">
 
               <div className="rounded-xl bg-emerald-500/10 p-3">
+
                 <Landmark
                   size={24}
                   className="text-emerald-400"
                 />
+
               </div>
 
               <div>
+
                 <p className="text-sm font-medium text-slate-400">
                   Situation financière
                 </p>
@@ -1062,6 +1139,7 @@ function Dashboard() {
                 <h2 className="text-xl font-bold text-white">
                   Solde disponible
                 </h2>
+
               </div>
 
             </div>
@@ -1075,6 +1153,7 @@ function Dashboard() {
                     : "text-red-400"
                 }`}
               >
+
                 {formaterMontant(
                   soldeDisponible
                 )}
@@ -1082,6 +1161,7 @@ function Dashboard() {
                 <span className="ml-2 text-xl text-slate-400">
                   FCFA
                 </span>
+
               </p>
 
               <div className="mt-4 flex items-center gap-2">
@@ -1133,10 +1213,12 @@ function Dashboard() {
                 <div className="flex items-center gap-3">
 
                   <div className="rounded-lg bg-emerald-500/10 p-2">
+
                     <ArrowUpCircle
                       size={19}
                       className="text-emerald-400"
                     />
+
                   </div>
 
                   <span className="text-sm text-slate-300">
@@ -1146,10 +1228,12 @@ function Dashboard() {
                 </div>
 
                 <span className="font-bold text-emerald-400">
+
                   {formaterMontant(
                     totalRecettes
                   )}{" "}
                   FCFA
+
                 </span>
 
               </div>
@@ -1161,10 +1245,12 @@ function Dashboard() {
                 <div className="flex items-center gap-3">
 
                   <div className="rounded-lg bg-red-500/10 p-2">
+
                     <ArrowDownCircle
                       size={19}
                       className="text-red-400"
                     />
+
                   </div>
 
                   <span className="text-sm text-slate-300">
@@ -1174,10 +1260,12 @@ function Dashboard() {
                 </div>
 
                 <span className="font-bold text-red-400">
+
                   {formaterMontant(
                     totalDepenses
                   )}{" "}
                   FCFA
+
                 </span>
 
               </div>
@@ -1199,10 +1287,12 @@ function Dashboard() {
                         : "text-red-400"
                     }`}
                   >
+
                     {formaterMontant(
                       soldeDisponible
                     )}{" "}
                     FCFA
+
                   </span>
 
                 </div>
@@ -1257,14 +1347,18 @@ function Dashboard() {
               <div className="text-right">
 
                 <span className="font-semibold text-emerald-700">
+
                   {formaterMontant(
                     cotisationsEncaissees
                   )}{" "}
                   FCFA
+
                 </span>
 
                 <span className="ml-2 text-xs text-slate-400">
+
                   ({pourcentageCotisations.toFixed(1)} %)
+
                 </span>
 
               </div>
@@ -1310,14 +1404,18 @@ function Dashboard() {
               <div className="text-right">
 
                 <span className="font-semibold text-amber-700">
+
                   {formaterMontant(
                     aidesExterieures
                   )}{" "}
                   FCFA
+
                 </span>
 
                 <span className="ml-2 text-xs text-slate-400">
+
                   ({pourcentageAides.toFixed(1)} %)
+
                 </span>
 
               </div>
@@ -1352,10 +1450,12 @@ function Dashboard() {
             </span>
 
             <span className="text-xl font-bold text-slate-900">
+
               {formaterMontant(
                 totalRecettes
               )}{" "}
               FCFA
+
             </span>
 
           </div>
@@ -1392,10 +1492,12 @@ function Dashboard() {
           </div>
 
           <p className="mt-4 text-2xl font-bold text-blue-900">
+
             {formaterMontant(
               cotisationsEstimees
             )}{" "}
             FCFA
+
           </p>
 
         </div>
@@ -1422,10 +1524,12 @@ function Dashboard() {
           </div>
 
           <p className="mt-4 text-2xl font-bold text-emerald-900">
+
             {formaterMontant(
               totalRecettes
             )}{" "}
             FCFA
+
           </p>
 
         </div>
@@ -1452,10 +1556,12 @@ function Dashboard() {
           </div>
 
           <p className="mt-4 text-2xl font-bold text-amber-900">
+
             {formaterMontant(
               aidesExterieures
             )}{" "}
             FCFA
+
           </p>
 
         </div>
