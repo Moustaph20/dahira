@@ -15,7 +15,6 @@ import {
   ArrowDownCircle,
   UserRound,
   Paperclip,
-  ExternalLink,
 } from "lucide-react";
 
 import api from "../api/client";
@@ -40,6 +39,13 @@ export default function Finances() {
   const [depenses, setDepenses] = useState([]);
   const [aides, setAides] = useState([]);
   const [cotisations, setCotisations] = useState([]);
+
+  // Tous les membres actifs.
+  // Ils servent notamment au calcul des cotisations prévues.
+  const [membresActifs, setMembresActifs] = useState([]);
+
+  // Membres actifs dont la cotisation mensuelle fixe est de 0.
+  // Ils peuvent quand même effectuer des versements volontaires.
   const [membresNonCotisants, setMembresNonCotisants] = useState([]);
 
   const [chargement, setChargement] = useState(true);
@@ -72,6 +78,14 @@ export default function Finances() {
     date_aide: aujourdHui,
   });
 
+  const extraireListe = (data, cle) => {
+    if (Array.isArray(data)) {
+      return data;
+    }
+
+    return Array.isArray(data?.[cle]) ? data[cle] : [];
+  };
+
   const chargerDonnees = async () => {
     setChargement(true);
     setErreur("");
@@ -103,28 +117,78 @@ export default function Finances() {
         requetes.push({ data: [] });
       }
 
-      const [responseDepenses, responseAides, responseCotisations] =
-        await Promise.all(requetes);
+      /*
+       * On charge également TOUS les membres actifs.
+       *
+       * Cette liste sert au calcul :
+       *
+       * Cotisations prévues =
+       * somme des montant_cotisation de TOUS les membres actifs
+       *
+       * Un membre à 0 FCFA est donc bien pris en compte,
+       * mais contribue naturellement à hauteur de 0 FCFA.
+       */
+      if (peutConsulterCotisations || peutCreerPaiement) {
+        requetes.push(
+          api
+            .get("/cotisations/membres-actifs")
+            .catch(() => ({ data: { membres: [] } }))
+        );
+      } else {
+        requetes.push({ data: { membres: [] } });
+      }
 
-      setDepenses(
-        Array.isArray(responseDepenses.data)
-          ? responseDepenses.data
-          : responseDepenses.data?.depenses || []
+      const [
+        responseDepenses,
+        responseAides,
+        responseCotisations,
+        responseMembres,
+      ] = await Promise.all(requetes);
+
+      const listeDepenses = extraireListe(
+        responseDepenses.data,
+        "depenses"
       );
 
-      setAides(
-        Array.isArray(responseAides.data)
-          ? responseAides.data
-          : responseAides.data?.aides || []
+      const listeAides = extraireListe(
+        responseAides.data,
+        "aides"
       );
 
-      setCotisations(
-        Array.isArray(responseCotisations.data)
-          ? responseCotisations.data
-          : responseCotisations.data?.cotisations || []
+      const listeCotisations = extraireListe(
+        responseCotisations.data,
+        "cotisations"
+      );
+
+      /*
+       * L'API /cotisations/membres-actifs renvoie :
+       *
+       * {
+       *   membres: [...]
+       * }
+       *
+       * et non directement [...]
+       */
+      const listeMembres = extraireListe(
+        responseMembres.data,
+        "membres"
+      ).filter((membre) => membre?.actif === true);
+
+      setDepenses(listeDepenses);
+      setAides(listeAides);
+      setCotisations(listeCotisations);
+
+      setMembresActifs(listeMembres);
+
+      setMembresNonCotisants(
+        listeMembres.filter(
+          (membre) =>
+            Number(membre?.montant_cotisation ?? 0) === 0
+        )
       );
     } catch (error) {
       console.error("Erreur chargement finances :", error);
+
       setErreur(
         error?.response?.data?.detail ||
           "Impossible de charger les données financières."
@@ -143,29 +207,23 @@ export default function Finances() {
     setChargementMembres(true);
 
     try {
-      const response = await api.get("/cotisations/membres-actifs");
-
-      /*
-       * IMPORTANT :
-       * L'API retourne :
-       *
-       * {
-       *   "membres": [...]
-       * }
-       *
-       * et non directement [...]
-       */
-      const membres = Array.isArray(response.data)
-        ? response.data
-        : response.data?.membres || [];
-
-      const nonCotisants = membres.filter(
-        (membre) =>
-          membre?.actif === true &&
-          Number(membre?.montant_cotisation ?? 0) === 0
+      const response = await api.get(
+        "/cotisations/membres-actifs"
       );
 
-      setMembresNonCotisants(nonCotisants);
+      const membres = extraireListe(
+        response.data,
+        "membres"
+      ).filter((membre) => membre?.actif === true);
+
+      setMembresActifs(membres);
+
+      setMembresNonCotisants(
+        membres.filter(
+          (membre) =>
+            Number(membre?.montant_cotisation ?? 0) === 0
+        )
+      );
     } catch (error) {
       console.error(
         "Erreur chargement membres non cotisants :",
@@ -191,7 +249,8 @@ export default function Finances() {
   const totalDepenses = useMemo(
     () =>
       depenses.reduce(
-        (total, depense) => total + Number(depense?.montant || 0),
+        (total, depense) =>
+          total + Number(depense?.montant || 0),
         0
       ),
     [depenses]
@@ -200,38 +259,85 @@ export default function Finances() {
   const totalAides = useMemo(
     () =>
       aides.reduce(
-        (total, aide) => total + Number(aide?.montant || 0),
+        (total, aide) =>
+          total + Number(aide?.montant || 0),
         0
       ),
     [aides]
   );
 
+  /*
+   * IMPORTANT :
+   *
+   * Les cotisations prévues NE SONT PLUS calculées à partir
+   * des lignes existantes dans la table cotisations.
+   *
+   * Elles sont calculées à partir de TOUS les membres actifs.
+   *
+   * Exemple :
+   *
+   * 35 membres actifs
+   * - certains à 5 000
+   * - certains à 7 000
+   * - certains à 0
+   *
+   * Le total prévu correspond à la somme des montants
+   * mensuels de ces 35 membres.
+   */
   const totalCotisationsPrevues = useMemo(
     () =>
-      cotisations.reduce(
-        (total, cotisation) => total + Number(cotisation?.montant || 0),
+      membresActifs.reduce(
+        (total, membre) =>
+          total +
+          Number(membre?.montant_cotisation || 0),
         0
       ),
-    [cotisations]
+    [membresActifs]
   );
 
+  /*
+   * Ici on garde uniquement l'argent réellement encaissé
+   * à travers les paiements des cotisations/versements.
+   */
   const totalPaiementsCotisations = useMemo(
     () =>
       cotisations.reduce(
         (total, cotisation) =>
-          total + Number(cotisation?.montant_cotise || 0),
+          total +
+          Number(cotisation?.montant_cotise || 0),
         0
       ),
     [cotisations]
   );
 
-  const totalRecettes = totalPaiementsCotisations + totalAides;
+  /*
+   * Les recettes réelles =
+   * - paiements/versements des membres
+   * - Barkelou extérieurs
+   */
+  const totalRecettes =
+    totalPaiementsCotisations + totalAides;
 
+  /*
+   * Le reste à encaisser est basé sur les prévisions
+   * de TOUS les membres actifs.
+   *
+   * Les Barkelou extérieurs ne diminuent pas ce reste,
+   * puisqu'ils ne correspondent pas aux cotisations des membres.
+   */
   const totalResteAEncaisser = Math.max(
     0,
-    totalCotisationsPrevues - totalPaiementsCotisations
+    totalCotisationsPrevues -
+      totalPaiementsCotisations
   );
 
+  /*
+   * Le solde correspond uniquement à l'argent réellement
+   * encaissé moins les dépenses.
+   *
+   * Les cotisations prévues n'entrent donc jamais dans
+   * le solde tant qu'elles ne sont pas encaissées.
+   */
   const solde = totalRecettes - totalDepenses;
 
   const fermerModal = () => {
@@ -257,7 +363,9 @@ export default function Finances() {
       !formDepense.montant ||
       Number(formDepense.montant) <= 0
     ) {
-      setErreurFormulaire("Le montant doit être supérieur à 0.");
+      setErreurFormulaire(
+        "Le montant doit être supérieur à 0."
+      );
       return;
     }
 
@@ -266,11 +374,16 @@ export default function Finances() {
 
       const formData = new FormData();
 
-      formData.append("motif", formDepense.motif.trim());
+      formData.append(
+        "motif",
+        formDepense.motif.trim()
+      );
+
       formData.append(
         "montant",
         Number(formDepense.montant)
       );
+
       formData.append(
         "date_depense",
         formDepense.date_depense
@@ -306,7 +419,9 @@ export default function Finances() {
 
       await api.post("/depenses", formData);
 
-      setMessageSucces("Dépense enregistrée avec succès.");
+      setMessageSucces(
+        "Dépense enregistrée avec succès."
+      );
 
       setFormDepense({
         motif: "",
@@ -325,7 +440,10 @@ export default function Finances() {
         setMessageSucces("");
       }, 1000);
     } catch (error) {
-      console.error("Erreur ajout dépense :", error);
+      console.error(
+        "Erreur ajout dépense :",
+        error
+      );
 
       setErreurFormulaire(
         error?.response?.data?.detail ||
@@ -346,7 +464,9 @@ export default function Finances() {
       !formAide.montant ||
       Number(formAide.montant) <= 0
     ) {
-      setErreurFormulaire("Le montant doit être supérieur à 0.");
+      setErreurFormulaire(
+        "Le montant doit être supérieur à 0."
+      );
       return;
     }
 
@@ -355,10 +475,10 @@ export default function Finances() {
 
       /*
        * CAS 1 :
-       * Versement volontaire d'un membre non cotisant.
+       * Barkelou provenant d'un membre non cotisant.
        *
-       * On crée/récupère une cotisation à 0 FCFA,
-       * puis on enregistre le versement comme Paiement.
+       * On l'enregistre comme Paiement sur une cotisation
+       * à 0 FCFA.
        */
       if (formAide.membre_id) {
         if (!peutCreerPaiement) {
@@ -371,7 +491,8 @@ export default function Finances() {
         const membreId = Number(formAide.membre_id);
 
         const membre = membresNonCotisants.find(
-          (item) => Number(item.id) === membreId
+          (item) =>
+            Number(item.id) === membreId
         );
 
         if (!membre) {
@@ -382,62 +503,87 @@ export default function Finances() {
         }
 
         const maintenant = new Date();
-        const moisActuel = maintenant.toLocaleDateString(
-          "fr-FR",
-          { month: "long" }
-        );
+
+        const moisActuel =
+          maintenant.toLocaleDateString(
+            "fr-FR",
+            {
+              month: "long",
+            }
+          );
 
         const moisNormalise = moisActuel
           .toLowerCase()
           .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "");
-
-        const anneeActuelle = maintenant.getFullYear();
-
-        let cotisation = cotisations.find(
-          (item) =>
-            Number(item?.membre_id) === membreId &&
-            String(item?.annee) === String(anneeActuelle) &&
-            String(item?.mois_concerne || "")
-              .toLowerCase()
-              .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "") ===
-              moisNormalise
-        );
-
-        /*
-         * Si aucune cotisation du mois n'existe,
-         * on en crée une avec montant = 0.
-         */
-        if (!cotisation) {
-          const responseCotisation = await api.post(
-            "/cotisations",
-            null,
-            {
-              params: {
-                membre_id: membreId,
-                montant: 0,
-                mois_concerne: moisActuel,
-                annee: anneeActuelle,
-              },
-            }
+          .replace(
+            /[\u0300-\u036f]/g,
+            ""
           );
 
-          cotisation = responseCotisation.data;
+        const anneeActuelle =
+          maintenant.getFullYear();
+
+        let cotisation =
+          cotisations.find(
+            (item) =>
+              Number(item?.membre_id) ===
+                membreId &&
+              String(item?.annee) ===
+                String(anneeActuelle) &&
+              String(
+                item?.mois_concerne || ""
+              )
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(
+                  /[\u0300-\u036f]/g,
+                  ""
+                ) === moisNormalise
+          );
+
+        /*
+         * Si aucune cotisation n'existe encore
+         * pour ce membre et ce mois, on crée une
+         * cotisation à 0 FCFA.
+         */
+        if (!cotisation) {
+          const responseCotisation =
+            await api.post(
+              "/cotisations",
+              null,
+              {
+                params: {
+                  membre_id: membreId,
+                  montant: 0,
+                  mois_concerne:
+                    moisActuel,
+                  annee:
+                    anneeActuelle,
+                },
+              }
+            );
+
+          cotisation =
+            responseCotisation.data;
         }
 
         /*
-         * Le versement réel est enregistré comme Paiement.
+         * Le montant réel est enregistré
+         * comme Paiement.
          */
         await api.post(
           `/cotisations/${cotisation.id}/paiements`,
           null,
           {
             params: {
-              montant: Number(formAide.montant),
-              mode_paiement: "espèce",
+              montant: Number(
+                formAide.montant
+              ),
+              mode_paiement:
+                "espèce",
               date_paiement:
-                formAide.date_aide || aujourdHui,
+                formAide.date_aide ||
+                aujourdHui,
               reference: null,
             },
           }
@@ -446,7 +592,9 @@ export default function Finances() {
         setMessageSucces(
           `Versement de ${Number(
             formAide.montant
-          ).toLocaleString("fr-FR")} FCFA enregistré pour ${membre.prenom} ${membre.nom}.`
+          ).toLocaleString(
+            "fr-FR"
+          )} FCFA enregistré pour ${membre.prenom} ${membre.nom}.`
         );
 
         setFormAide({
@@ -478,13 +626,23 @@ export default function Finances() {
         return;
       }
 
-      await api.post("/aides-exterieures", {
-        source: formAide.source.trim(),
-        montant: Number(formAide.montant),
-        description:
-          formAide.description.trim() || null,
-        date_aide: formAide.date_aide || aujourdHui,
-      });
+      await api.post(
+        "/aides-exterieures",
+        {
+          source:
+            formAide.source.trim(),
+          montant:
+            Number(
+              formAide.montant
+            ),
+          description:
+            formAide.description.trim() ||
+            null,
+          date_aide:
+            formAide.date_aide ||
+            aujourdHui,
+        }
+      );
 
       setMessageSucces(
         "Barkelou extérieur enregistré avec succès."
@@ -505,9 +663,13 @@ export default function Finances() {
         setMessageSucces("");
       }, 1000);
     } catch (error) {
-      console.error("Erreur ajout Barkelou :", error);
+      console.error(
+        "Erreur ajout Barkelou :",
+        error
+      );
 
-      const detail = error?.response?.data?.detail;
+      const detail =
+        error?.response?.data?.detail;
 
       setErreurFormulaire(
         typeof detail === "string"
@@ -520,36 +682,54 @@ export default function Finances() {
   };
 
   const formatMontant = (montant) =>
-    Number(montant || 0).toLocaleString("fr-FR");
+    Number(montant || 0).toLocaleString(
+      "fr-FR"
+    );
 
   const formatDate = (date) => {
     if (!date) return "—";
 
     const d = new Date(date);
 
-    if (Number.isNaN(d.getTime())) return date;
+    if (Number.isNaN(d.getTime())) {
+      return date;
+    }
 
-    return d.toLocaleDateString("fr-FR");
+    return d.toLocaleDateString(
+      "fr-FR"
+    );
   };
 
   const nomMembre = (membre) =>
-    `${membre?.prenom || ""} ${membre?.nom || ""}`.trim();
+    `${membre?.prenom || ""} ${
+      membre?.nom || ""
+    }`.trim();
 
-  const dernieresDepenses = [...depenses]
-    .sort(
-      (a, b) =>
-        new Date(b?.date_depense || 0) -
-        new Date(a?.date_depense || 0)
-    )
-    .slice(0, 5);
+  const dernieresDepenses =
+    [...depenses]
+      .sort(
+        (a, b) =>
+          new Date(
+            b?.date_depense || 0
+          ) -
+          new Date(
+            a?.date_depense || 0
+          )
+      )
+      .slice(0, 5);
 
-  const derniersAides = [...aides]
-    .sort(
-      (a, b) =>
-        new Date(b?.date_aide || 0) -
-        new Date(a?.date_aide || 0)
-    )
-    .slice(0, 5);
+  const derniersAides =
+    [...aides]
+      .sort(
+        (a, b) =>
+          new Date(
+            b?.date_aide || 0
+          ) -
+          new Date(
+            a?.date_aide || 0
+          )
+      )
+      .slice(0, 5);
 
   if (chargement) {
     return (
@@ -564,7 +744,6 @@ export default function Finances() {
 
   return (
     <div className="space-y-6">
-      {/* EN-TÊTE */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
@@ -593,7 +772,6 @@ export default function Finances() {
         </div>
       )}
 
-      {/* KPI */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
@@ -601,8 +779,12 @@ export default function Finances() {
               <p className="text-sm text-slate-500">
                 Recettes encaissées
               </p>
+
               <p className="mt-2 text-2xl font-bold text-slate-900">
-                {formatMontant(totalRecettes)} FCFA
+                {formatMontant(
+                  totalRecettes
+                )}{" "}
+                FCFA
               </p>
             </div>
 
@@ -618,8 +800,12 @@ export default function Finances() {
               <p className="text-sm text-slate-500">
                 Sorties d'argent
               </p>
+
               <p className="mt-2 text-2xl font-bold text-slate-900">
-                {formatMontant(totalDepenses)} FCFA
+                {formatMontant(
+                  totalDepenses
+                )}{" "}
+                FCFA
               </p>
             </div>
 
@@ -635,8 +821,12 @@ export default function Finances() {
               <p className="text-sm text-slate-500">
                 Barkelou extérieur
               </p>
+
               <p className="mt-2 text-2xl font-bold text-slate-900">
-                {formatMontant(totalAides)} FCFA
+                {formatMontant(
+                  totalAides
+                )}{" "}
+                FCFA
               </p>
             </div>
 
@@ -652,8 +842,12 @@ export default function Finances() {
               <p className="text-sm text-slate-500">
                 Solde disponible
               </p>
+
               <p className="mt-2 text-2xl font-bold text-slate-900">
-                {formatMontant(solde)} FCFA
+                {formatMontant(
+                  solde
+                )}{" "}
+                FCFA
               </p>
             </div>
 
@@ -664,7 +858,6 @@ export default function Finances() {
         </div>
       </div>
 
-      {/* COTISATIONS */}
       {peutConsulterCotisations && (
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-5 flex items-center justify-between">
@@ -687,8 +880,12 @@ export default function Finances() {
               <p className="text-sm text-slate-500">
                 Cotisations prévues
               </p>
+
               <p className="mt-1 text-xl font-bold text-slate-900">
-                {formatMontant(totalCotisationsPrevues)} FCFA
+                {formatMontant(
+                  totalCotisationsPrevues
+                )}{" "}
+                FCFA
               </p>
             </div>
 
@@ -696,8 +893,12 @@ export default function Finances() {
               <p className="text-sm text-emerald-700">
                 Cotisations et versements encaissés
               </p>
+
               <p className="mt-1 text-xl font-bold text-emerald-800">
-                {formatMontant(totalPaiementsCotisations)} FCFA
+                {formatMontant(
+                  totalPaiementsCotisations
+                )}{" "}
+                FCFA
               </p>
             </div>
 
@@ -705,16 +906,20 @@ export default function Finances() {
               <p className="text-sm text-amber-700">
                 Reste à encaisser
               </p>
+
               <p className="mt-1 text-xl font-bold text-amber-800">
-                {formatMontant(totalResteAEncaisser)} FCFA
+                {formatMontant(
+                  totalResteAEncaisser
+                )}{" "}
+                FCFA
               </p>
             </div>
           </div>
         </div>
       )}
 
-      {/* ACTIONS */}
-      {(peutCreerDepense || peutCreerAide) && (
+      {(peutCreerDepense ||
+        peutCreerAide) && (
         <div className="flex flex-wrap gap-3">
           {peutCreerDepense && (
             <button
@@ -748,9 +953,7 @@ export default function Finances() {
         </div>
       )}
 
-      {/* LISTES */}
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        {/* DEPENSES */}
         {peutConsulterDepenses && (
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-100 p-5">
@@ -758,6 +961,7 @@ export default function Finances() {
                 <h2 className="font-bold text-slate-900">
                   Dernières dépenses
                 </h2>
+
                 <p className="mt-1 text-xs text-slate-500">
                   Les dernières sorties d'argent enregistrées.
                 </p>
@@ -767,40 +971,50 @@ export default function Finances() {
             </div>
 
             <div className="divide-y divide-slate-100">
-              {dernieresDepenses.length === 0 ? (
+              {dernieresDepenses.length ===
+              0 ? (
                 <div className="p-6 text-center text-sm text-slate-500">
                   Aucune dépense enregistrée.
                 </div>
               ) : (
-                dernieresDepenses.map((depense) => (
-                  <div
-                    key={depense.id}
-                    className="flex items-center justify-between gap-4 p-4"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-slate-900">
-                        {depense.motif || "Dépense"}
-                      </p>
+                dernieresDepenses.map(
+                  (depense) => (
+                    <div
+                      key={depense.id}
+                      className="flex items-center justify-between gap-4 p-4"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-slate-900">
+                          {depense.motif ||
+                            "Dépense"}
+                        </p>
 
-                      <p className="mt-1 text-xs text-slate-500">
-                        {formatDate(depense.date_depense)}
-                        {depense.remis_a
-                          ? ` • ${depense.remis_a}`
-                          : ""}
+                        <p className="mt-1 text-xs text-slate-500">
+                          {formatDate(
+                            depense.date_depense
+                          )}
+
+                          {depense.remis_a
+                            ? ` • ${depense.remis_a}`
+                            : ""}
+                        </p>
+                      </div>
+
+                      <p className="shrink-0 font-bold text-red-600">
+                        -{" "}
+                        {formatMontant(
+                          depense.montant
+                        )}{" "}
+                        FCFA
                       </p>
                     </div>
-
-                    <p className="shrink-0 font-bold text-red-600">
-                      - {formatMontant(depense.montant)} FCFA
-                    </p>
-                  </div>
-                ))
+                  )
+                )
               )}
             </div>
           </div>
         )}
 
-        {/* AIDES */}
         {peutConsulterAides && (
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-100 p-5">
@@ -808,6 +1022,7 @@ export default function Finances() {
                 <h2 className="font-bold text-slate-900">
                   Derniers Barkelou extérieurs
                 </h2>
+
                 <p className="mt-1 text-xs text-slate-500">
                   Les aides reçues de sources extérieures.
                 </p>
@@ -817,41 +1032,51 @@ export default function Finances() {
             </div>
 
             <div className="divide-y divide-slate-100">
-              {derniersAides.length === 0 ? (
+              {derniersAides.length ===
+              0 ? (
                 <div className="p-6 text-center text-sm text-slate-500">
                   Aucun Barkelou extérieur enregistré.
                 </div>
               ) : (
-                derniersAides.map((aide) => (
-                  <div
-                    key={aide.id}
-                    className="flex items-center justify-between gap-4 p-4"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-slate-900">
-                        {aide.source || "Source extérieure"}
-                      </p>
+                derniersAides.map(
+                  (aide) => (
+                    <div
+                      key={aide.id}
+                      className="flex items-center justify-between gap-4 p-4"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-slate-900">
+                          {aide.source ||
+                            "Source extérieure"}
+                        </p>
 
-                      <p className="mt-1 text-xs text-slate-500">
-                        {formatDate(aide.date_aide)}
-                        {aide.description
-                          ? ` • ${aide.description}`
-                          : ""}
+                        <p className="mt-1 text-xs text-slate-500">
+                          {formatDate(
+                            aide.date_aide
+                          )}
+
+                          {aide.description
+                            ? ` • ${aide.description}`
+                            : ""}
+                        </p>
+                      </div>
+
+                      <p className="shrink-0 font-bold text-emerald-600">
+                        +{" "}
+                        {formatMontant(
+                          aide.montant
+                        )}{" "}
+                        FCFA
                       </p>
                     </div>
-
-                    <p className="shrink-0 font-bold text-emerald-600">
-                      + {formatMontant(aide.montant)} FCFA
-                    </p>
-                  </div>
-                ))
+                  )
+                )
               )}
             </div>
           </div>
         )}
       </div>
 
-      {/* MODAL */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl">
@@ -904,12 +1129,18 @@ export default function Finances() {
 
                   <input
                     type="text"
-                    value={formDepense.motif}
+                    value={
+                      formDepense.motif
+                    }
                     onChange={(e) =>
-                      setFormDepense((prev) => ({
-                        ...prev,
-                        motif: e.target.value,
-                      }))
+                      setFormDepense(
+                        (prev) => ({
+                          ...prev,
+                          motif:
+                            e.target
+                              .value,
+                        })
+                      )
                     }
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
                     placeholder="Ex. Achat de matériel"
@@ -926,12 +1157,18 @@ export default function Finances() {
                       type="number"
                       min="0"
                       step="1"
-                      value={formDepense.montant}
+                      value={
+                        formDepense.montant
+                      }
                       onChange={(e) =>
-                        setFormDepense((prev) => ({
-                          ...prev,
-                          montant: e.target.value,
-                        }))
+                        setFormDepense(
+                          (prev) => ({
+                            ...prev,
+                            montant:
+                              e.target
+                                .value,
+                          })
+                        )
                       }
                       className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
                       placeholder="0"
@@ -945,12 +1182,18 @@ export default function Finances() {
 
                     <input
                       type="date"
-                      value={formDepense.date_depense}
+                      value={
+                        formDepense.date_depense
+                      }
                       onChange={(e) =>
-                        setFormDepense((prev) => ({
-                          ...prev,
-                          date_depense: e.target.value,
-                        }))
+                        setFormDepense(
+                          (prev) => ({
+                            ...prev,
+                            date_depense:
+                              e.target
+                                .value,
+                          })
+                        )
                       }
                       className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
                     />
@@ -964,12 +1207,18 @@ export default function Finances() {
 
                   <input
                     type="text"
-                    value={formDepense.type_sortie}
+                    value={
+                      formDepense.type_sortie
+                    }
                     onChange={(e) =>
-                      setFormDepense((prev) => ({
-                        ...prev,
-                        type_sortie: e.target.value,
-                      }))
+                      setFormDepense(
+                        (prev) => ({
+                          ...prev,
+                          type_sortie:
+                            e.target
+                              .value,
+                        })
+                      )
                     }
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
                     placeholder="Ex. Achat, transport..."
@@ -983,12 +1232,18 @@ export default function Finances() {
 
                   <input
                     type="text"
-                    value={formDepense.remis_a}
+                    value={
+                      formDepense.remis_a
+                    }
                     onChange={(e) =>
-                      setFormDepense((prev) => ({
-                        ...prev,
-                        remis_a: e.target.value,
-                      }))
+                      setFormDepense(
+                        (prev) => ({
+                          ...prev,
+                          remis_a:
+                            e.target
+                              .value,
+                        })
+                      )
                     }
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
                     placeholder="Nom du bénéficiaire"
@@ -1002,12 +1257,18 @@ export default function Finances() {
 
                   <textarea
                     rows={3}
-                    value={formDepense.description}
+                    value={
+                      formDepense.description
+                    }
                     onChange={(e) =>
-                      setFormDepense((prev) => ({
-                        ...prev,
-                        description: e.target.value,
-                      }))
+                      setFormDepense(
+                        (prev) => ({
+                          ...prev,
+                          description:
+                            e.target
+                              .value,
+                        })
+                      )
                     }
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
                     placeholder="Informations complémentaires..."
@@ -1023,11 +1284,15 @@ export default function Finances() {
                   <input
                     type="file"
                     onChange={(e) =>
-                      setFormDepense((prev) => ({
-                        ...prev,
-                        piece_jointe:
-                          e.target.files?.[0] || null,
-                      }))
+                      setFormDepense(
+                        (prev) => ({
+                          ...prev,
+                          piece_jointe:
+                            e.target
+                              .files?.[0] ||
+                            null,
+                        })
+                      )
                     }
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm"
                   />
@@ -1035,12 +1300,15 @@ export default function Finances() {
 
                 <button
                   type="submit"
-                  disabled={enregistrement}
+                  disabled={
+                    enregistrement
+                  }
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {enregistrement && (
                     <RefreshCw className="h-4 w-4 animate-spin" />
                   )}
+
                   Enregistrer la dépense
                 </button>
               </form>
@@ -1062,7 +1330,6 @@ export default function Finances() {
                   </div>
                 )}
 
-                {/* MEMBRE NON COTISANT */}
                 {peutCreerPaiement && (
                   <div>
                     <label className="mb-1.5 flex items-center gap-2 text-sm font-semibold text-slate-700">
@@ -1071,13 +1338,19 @@ export default function Finances() {
                     </label>
 
                     <select
-                      value={formAide.membre_id}
+                      value={
+                        formAide.membre_id
+                      }
                       onChange={(e) =>
-                        setFormAide((prev) => ({
-                          ...prev,
-                          membre_id: e.target.value,
-                          source: "",
-                        }))
+                        setFormAide(
+                          (prev) => ({
+                            ...prev,
+                            membre_id:
+                              e.target
+                                .value,
+                            source: "",
+                          })
+                        )
                       }
                       className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-slate-400"
                     >
@@ -1085,14 +1358,23 @@ export default function Finances() {
                         — Barkelou extérieur —
                       </option>
 
-                      {membresNonCotisants.map((membre) => (
-                        <option
-                          key={membre.id}
-                          value={membre.id}
-                        >
-                          {nomMembre(membre)} — 0 FCFA
-                        </option>
-                      ))}
+                      {membresNonCotisants.map(
+                        (membre) => (
+                          <option
+                            key={
+                              membre.id
+                            }
+                            value={
+                              membre.id
+                            }
+                          >
+                            {nomMembre(
+                              membre
+                            )}{" "}
+                            — 0 FCFA
+                          </option>
+                        )
+                      )}
                     </select>
 
                     {chargementMembres && (
@@ -1102,7 +1384,8 @@ export default function Finances() {
                     )}
 
                     {!chargementMembres &&
-                      membresNonCotisants.length === 0 && (
+                      membresNonCotisants.length ===
+                        0 && (
                         <p className="mt-2 text-xs text-slate-500">
                           Aucun membre non cotisant disponible.
                         </p>
@@ -1110,16 +1393,20 @@ export default function Finances() {
 
                     {formAide.membre_id && (
                       <div className="mt-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700">
-                        Ce montant sera enregistré comme{" "}
-                        <strong>versement du membre</strong> et
-                        apparaîtra dans ses versements. Il ne sera
-                        pas enregistré comme Barkelou extérieur.
+                        Ce montant sera enregistré
+                        comme{" "}
+                        <strong>
+                          versement du membre
+                        </strong>{" "}
+                        et apparaîtra dans ses
+                        versements. Il ne sera pas
+                        enregistré comme Barkelou
+                        extérieur.
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* SOURCE EXTÉRIEURE */}
                 {!formAide.membre_id && (
                   <div>
                     <label className="mb-1.5 flex items-center gap-2 text-sm font-semibold text-slate-700">
@@ -1129,12 +1416,18 @@ export default function Finances() {
 
                     <input
                       type="text"
-                      value={formAide.source}
+                      value={
+                        formAide.source
+                      }
                       onChange={(e) =>
-                        setFormAide((prev) => ({
-                          ...prev,
-                          source: e.target.value,
-                        }))
+                        setFormAide(
+                          (prev) => ({
+                            ...prev,
+                            source:
+                              e.target
+                                .value,
+                          })
+                        )
                       }
                       className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
                       placeholder="Ex. Donateur, partenaire..."
@@ -1152,12 +1445,18 @@ export default function Finances() {
                       type="number"
                       min="1"
                       step="1"
-                      value={formAide.montant}
+                      value={
+                        formAide.montant
+                      }
                       onChange={(e) =>
-                        setFormAide((prev) => ({
-                          ...prev,
-                          montant: e.target.value,
-                        }))
+                        setFormAide(
+                          (prev) => ({
+                            ...prev,
+                            montant:
+                              e.target
+                                .value,
+                          })
+                        )
                       }
                       className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
                       placeholder="0"
@@ -1172,12 +1471,18 @@ export default function Finances() {
 
                     <input
                       type="date"
-                      value={formAide.date_aide}
+                      value={
+                        formAide.date_aide
+                      }
                       onChange={(e) =>
-                        setFormAide((prev) => ({
-                          ...prev,
-                          date_aide: e.target.value,
-                        }))
+                        setFormAide(
+                          (prev) => ({
+                            ...prev,
+                            date_aide:
+                              e.target
+                                .value,
+                          })
+                        )
                       }
                       className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
                     />
@@ -1192,12 +1497,18 @@ export default function Finances() {
 
                   <textarea
                     rows={3}
-                    value={formAide.description}
+                    value={
+                      formAide.description
+                    }
                     onChange={(e) =>
-                      setFormAide((prev) => ({
-                        ...prev,
-                        description: e.target.value,
-                      }))
+                      setFormAide(
+                        (prev) => ({
+                          ...prev,
+                          description:
+                            e.target
+                              .value,
+                        })
+                      )
                     }
                     className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
                     placeholder="Informations complémentaires..."
@@ -1206,12 +1517,15 @@ export default function Finances() {
 
                 <button
                   type="submit"
-                  disabled={enregistrement}
+                  disabled={
+                    enregistrement
+                  }
                   className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {enregistrement && (
                     <RefreshCw className="h-4 w-4 animate-spin" />
                   )}
+
                   Enregistrer
                 </button>
               </form>
