@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends
+from datetime import date, timedelta
+from calendar import monthrange
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -20,6 +23,10 @@ router = APIRouter(
     tags=["Dashboard"],
 )
 
+
+# ============================================================
+# PERMISSION
+# ============================================================
 
 def utilisateur_a_permission(
     db: Session,
@@ -57,8 +64,114 @@ def utilisateur_a_permission(
     return autorisation is not None
 
 
+# ============================================================
+# OUTILS DATES
+# ============================================================
+
+def premier_jour_du_mois(d: date) -> date:
+    return d.replace(day=1)
+
+
+def dernier_jour_du_mois(d: date) -> date:
+    dernier_jour = monthrange(d.year, d.month)[1]
+    return d.replace(day=dernier_jour)
+
+
+def ajouter_mois(d: date, nombre: int) -> date:
+    """
+    Ajoute un nombre de mois à une date.
+    """
+    mois_total = d.year * 12 + (d.month - 1) + nombre
+
+    nouvelle_annee = mois_total // 12
+    nouveau_mois = mois_total % 12 + 1
+
+    nouveau_jour = min(
+        d.day,
+        monthrange(nouvelle_annee, nouveau_mois)[1],
+    )
+
+    return date(
+        nouvelle_annee,
+        nouveau_mois,
+        nouveau_jour,
+    )
+
+
+def nombre_mois_couverts(
+    date_debut: date,
+    date_fin: date,
+) -> int:
+    """
+    Compte le nombre de mois calendaires touchés par la période.
+
+    Exemple :
+    01/09/2026 -> 30/09/2026 = 1 mois
+    15/09/2026 -> 10/10/2026 = 2 mois
+    01/01/2026 -> 31/03/2026 = 3 mois
+    """
+
+    return (
+        (date_fin.year - date_debut.year) * 12
+        + date_fin.month
+        - date_debut.month
+        + 1
+    )
+
+
+def normaliser_periode(
+    date_debut: date | None,
+    date_fin: date | None,
+):
+    """
+    Vérifie et normalise les dates de période.
+    """
+
+    if date_debut and date_fin:
+        if date_debut > date_fin:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "La date de début doit être antérieure "
+                    "ou égale à la date de fin."
+                ),
+            )
+
+        return date_debut, date_fin
+
+    # Si une seule date est fournie,
+    # on considère cela comme une erreur.
+    if date_debut and not date_fin:
+        raise HTTPException(
+            status_code=400,
+            detail="La date de fin est obligatoire.",
+        )
+
+    if date_fin and not date_debut:
+        raise HTTPException(
+            status_code=400,
+            detail="La date de début est obligatoire.",
+        )
+
+    # Aucune période :
+    # on retourne None / None.
+    return None, None
+
+
+# ============================================================
+# DASHBOARD
+# ============================================================
+
 @router.get("")
 def dashboard(
+    date_debut: date | None = Query(
+        default=None,
+        description="Date de début de la période",
+    ),
+    date_fin: date | None = Query(
+        default=None,
+        description="Date de fin de la période",
+    ),
     db: Session = Depends(get_db),
     current_user=Depends(
         require_permission(
@@ -67,8 +180,23 @@ def dashboard(
     ),
 ):
     # ---------------------------------------------------------
-    # Vérification de la permission financière
+    # Vérification des dates
     # ---------------------------------------------------------
+
+    date_debut, date_fin = normaliser_periode(
+        date_debut,
+        date_fin,
+    )
+
+    periode_active = (
+        date_debut is not None
+        and date_fin is not None
+    )
+
+    # ---------------------------------------------------------
+    # Permission financière
+    # ---------------------------------------------------------
+
     peut_consulter_finances = utilisateur_a_permission(
         db=db,
         utilisateur_id=current_user.id,
@@ -78,6 +206,7 @@ def dashboard(
     # ---------------------------------------------------------
     # Nombre de membres actifs
     # ---------------------------------------------------------
+
     nombre_membres = (
         db.query(
             func.count(Membre.id)
@@ -92,6 +221,7 @@ def dashboard(
     # ---------------------------------------------------------
     # Valeurs financières par défaut
     # ---------------------------------------------------------
+
     total_cotisations_estimees = 0.0
     total_cotisations_encaissees = 0.0
     total_aides_exterieures = 0.0
@@ -100,36 +230,35 @@ def dashboard(
     solde = 0.0
 
     # ---------------------------------------------------------
-    # Calculs financiers
+    # CALCULS FINANCIERS
     # ---------------------------------------------------------
+
     if peut_consulter_finances:
 
-        # -----------------------------------------------------
+        # =====================================================
         # 1. COTISATIONS PRÉVUES
+        # =====================================================
         #
-        # IMPORTANT :
-        #
-        # On ne se base PAS sur les lignes Cotisation déjà
-        # créées en base.
-        #
-        # Les cotisations prévues représentent le montant
-        # mensuel théorique de TOUS les membres actifs
-        # ayant une cotisation obligatoire supérieure à 0.
+        # On part de TOUS les membres actifs.
         #
         # Exemple :
         #
-        # Membre A : 7 000
-        # Membre B : 5 000
-        # Membre C : 0
-        # Membre D : 10 000 mais inactif
+        # Membre A = 7 000
+        # Membre B = 5 000
+        # Membre C = 0
         #
-        # Cotisations prévues = 7 000 + 5 000
-        #                      = 12 000
+        # Prévision mensuelle = 12 000
         #
-        # Le membre à 0 n'est pas compté.
-        # Le membre inactif n'est pas compté.
-        # -----------------------------------------------------
-        total_cotisations_estimees = (
+        # Si période = septembre + octobre :
+        #
+        # 12 000 x 2 = 24 000
+        #
+        # Si aucune période n'est sélectionnée :
+        # on conserve le comportement actuel :
+        # prévision mensuelle.
+        # =====================================================
+
+        total_mensuel_cotisations = (
             db.query(
                 func.coalesce(
                     func.sum(
@@ -146,23 +275,32 @@ def dashboard(
             or 0
         )
 
-        # -----------------------------------------------------
+        total_mensuel_cotisations = float(
+            total_mensuel_cotisations
+        )
+
+        if periode_active:
+            mois_couverts = nombre_mois_couverts(
+                date_debut,
+                date_fin,
+            )
+
+            total_cotisations_estimees = (
+                total_mensuel_cotisations
+                * mois_couverts
+            )
+        else:
+            mois_couverts = 1
+
+            total_cotisations_estimees = (
+                total_mensuel_cotisations
+            )
+
+        # =====================================================
         # 2. PAIEMENTS RÉELLEMENT ENCAISSÉS
-        #
-        # Paiement.montant représente l'argent réellement
-        # reçu.
-        #
-        # Cela comprend :
-        #
-        # - les paiements de cotisations normales ;
-        # - les paiements partiels ;
-        # - les versements volontaires des membres
-        #   ayant une cotisation de 0.
-        #
-        # Un versement volontaire de 5 000 FCFA par un membre
-        # non cotisant est donc compté ici.
-        # -----------------------------------------------------
-        total_cotisations_encaissees = (
+        # =====================================================
+
+        requete_paiements = (
             db.query(
                 func.coalesce(
                     func.sum(
@@ -174,22 +312,24 @@ def dashboard(
             .filter(
                 Paiement.actif.is_(True)
             )
-            .scalar()
+        )
+
+        if periode_active:
+            requete_paiements = requete_paiements.filter(
+                Paiement.date_paiement >= date_debut,
+                Paiement.date_paiement <= date_fin,
+            )
+
+        total_cotisations_encaissees = (
+            requete_paiements.scalar()
             or 0
         )
 
-        # -----------------------------------------------------
+        # =====================================================
         # 3. AIDES EXTÉRIEURES
-        #
-        # Il s'agit uniquement des recettes enregistrées
-        # comme aides provenant de l'extérieur.
-        #
-        # Une barkelou d'un membre non cotisant ne doit PAS
-        # être enregistrée ici : elle est enregistrée comme
-        # Paiement et apparaît donc dans les encaissements
-        # des membres.
-        # -----------------------------------------------------
-        total_aides_exterieures = (
+        # =====================================================
+
+        requete_aides = (
             db.query(
                 func.coalesce(
                     func.sum(
@@ -201,14 +341,24 @@ def dashboard(
             .filter(
                 AideExterieure.actif.is_(True)
             )
-            .scalar()
+        )
+
+        if periode_active:
+            requete_aides = requete_aides.filter(
+                AideExterieure.date_aide >= date_debut,
+                AideExterieure.date_aide <= date_fin,
+            )
+
+        total_aides_exterieures = (
+            requete_aides.scalar()
             or 0
         )
 
-        # -----------------------------------------------------
+        # =====================================================
         # 4. DÉPENSES
-        # -----------------------------------------------------
-        total_depenses = (
+        # =====================================================
+
+        requete_depenses = (
             db.query(
                 func.coalesce(
                     func.sum(
@@ -220,13 +370,23 @@ def dashboard(
             .filter(
                 Depense.actif.is_(True)
             )
-            .scalar()
+        )
+
+        if periode_active:
+            requete_depenses = requete_depenses.filter(
+                Depense.date_depense >= date_debut,
+                Depense.date_depense <= date_fin,
+            )
+
+        total_depenses = (
+            requete_depenses.scalar()
             or 0
         )
 
-        # -----------------------------------------------------
-        # Conversion en float
-        # -----------------------------------------------------
+        # =====================================================
+        # CONVERSION
+        # =====================================================
+
         total_cotisations_estimees = float(
             total_cotisations_estimees
         )
@@ -243,32 +403,28 @@ def dashboard(
             total_depenses
         )
 
-        # -----------------------------------------------------
-        # 5. TOTAL DES RECETTES
-        #
-        # Seul l'argent réellement reçu entre dans les
-        # recettes.
-        #
-        # Les cotisations prévues ne sont PAS des recettes.
-        # -----------------------------------------------------
+        # =====================================================
+        # 5. TOTAL RECETTES
+        # =====================================================
+
         total_recettes = (
             total_cotisations_encaissees
             + total_aides_exterieures
         )
 
-        # -----------------------------------------------------
-        # 6. SOLDE DISPONIBLE
-        #
-        # Recettes réelles - dépenses
-        # -----------------------------------------------------
+        # =====================================================
+        # 6. SOLDE
+        # =====================================================
+
         solde = (
             total_recettes
             - total_depenses
         )
 
-    # ---------------------------------------------------------
-    # Réponse API
-    # ---------------------------------------------------------
+    # =========================================================
+    # RÉPONSE
+    # =========================================================
+
     return {
         "message": (
             "Tableau de bord chargé avec succès"
@@ -283,50 +439,64 @@ def dashboard(
         # -----------------------------------------------------
         # Membres
         # -----------------------------------------------------
+
         "membres_actifs": nombre_membres,
 
         # -----------------------------------------------------
-        # Cotisations prévues
-        #
-        # Somme des cotisations mensuelles fixes des membres
-        # actifs ayant montant_cotisation > 0.
+        # Informations période
         # -----------------------------------------------------
+
+        "periode_active": periode_active,
+
+        "date_debut": (
+            date_debut.isoformat()
+            if date_debut
+            else None
+        ),
+
+        "date_fin": (
+            date_fin.isoformat()
+            if date_fin
+            else None
+        ),
+
+        "mois_couverts": (
+            nombre_mois_couverts(
+                date_debut,
+                date_fin,
+            )
+            if periode_active
+            else 1
+        ),
+
+        # -----------------------------------------------------
+        # Finances
+        # -----------------------------------------------------
+
         "cotisations_estimees": (
             total_cotisations_estimees
             if peut_consulter_finances
             else None
         ),
 
-        # -----------------------------------------------------
-        # Paiements réellement encaissés
-        # -----------------------------------------------------
         "cotisations_encaissees": (
             total_cotisations_encaissees
             if peut_consulter_finances
             else None
         ),
 
-        # -----------------------------------------------------
-        # Aides extérieures
-        # -----------------------------------------------------
         "aides_exterieures": (
             total_aides_exterieures
             if peut_consulter_finances
             else None
         ),
 
-        # -----------------------------------------------------
-        # Recettes réelles
-        # -----------------------------------------------------
         "total_recettes": (
             total_recettes
             if peut_consulter_finances
             else None
         ),
 
-        # -----------------------------------------------------
-        # Dépenses
-        # -----------------------------------------------------
         "depenses": (
             total_depenses
             if peut_consulter_finances
@@ -339,9 +509,6 @@ def dashboard(
             else None
         ),
 
-        # -----------------------------------------------------
-        # Solde disponible
-        # -----------------------------------------------------
         "solde_disponible": (
             solde
             if peut_consulter_finances
