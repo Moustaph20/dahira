@@ -5,9 +5,12 @@ import api from "./client";
 | CRÉER UNE COTISATION
 |--------------------------------------------------------------------------
 |
-| Crée une seule cotisation pour un membre et une période.
-| Si un paiement initial est fourni, il est automatiquement
-| associé à cette cotisation.
+| Une cotisation représente le montant fixe dû par le membre
+| pour une période donnée.
+|
+| IMPORTANT :
+| Aucun paiement n'est créé ici.
+| Le paiement est enregistré séparément avec ajouterPaiement().
 |
 |--------------------------------------------------------------------------
 */
@@ -15,28 +18,19 @@ import api from "./client";
 export const creerCotisation = async ({
   membre_id,
   montant,
-  montant_cotise,
   mois_concerne,
   annee,
-  mode_paiement = "espèce",
   date_cotisation = null,
-  reference = null,
 }) => {
   const params = {
     membre_id: Number(membre_id),
     montant: Number(montant),
-    montant_cotise: Number(montant_cotise),
     mois_concerne,
     annee: Number(annee),
-    mode_paiement,
   };
 
   if (date_cotisation) {
     params.date_cotisation = date_cotisation;
-  }
-
-  if (reference) {
-    params.reference = reference;
   }
 
   const response = await api.post(
@@ -56,18 +50,21 @@ export const creerCotisation = async ({
 | AJOUTER UN PAIEMENT
 |--------------------------------------------------------------------------
 |
-| Permet de compléter une cotisation existante.
+| Enregistre l'argent réellement reçu pour une cotisation
+| existante.
 |
 |--------------------------------------------------------------------------
 */
 
-export const ajouterPaiement = async ({
+export const ajouterPaiement = async (
   cotisation_id,
-  montant,
-  mode_paiement = "espèce",
-  date_paiement = null,
-  reference = null,
-}) => {
+  {
+    montant,
+    mode_paiement = "espèce",
+    date_paiement = null,
+    reference = null,
+  }
+) => {
   const params = {
     montant: Number(montant),
     mode_paiement,

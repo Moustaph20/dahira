@@ -193,12 +193,9 @@ def construire_cotisation(
 def creer_cotisation(
     membre_id: int,
     montant: float,
-    montant_cotise: float,
     mois_concerne: str,
     annee: int,
-    mode_paiement: str = "espèce",
     date_cotisation: date | None = None,
-    reference: str | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(
         require_permission("COTISATION_CREER")
@@ -215,24 +212,6 @@ def creer_cotisation(
             detail=(
                 "Le montant mensuel doit être "
                 "supérieur à zéro."
-            ),
-        )
-
-    if montant_cotise < 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Le montant cotisé ne peut pas "
-                "être négatif."
-            ),
-        )
-
-    if montant_cotise > montant:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Le montant cotisé ne peut pas "
-                "dépasser le montant mensuel fixé."
             ),
         )
 
@@ -256,23 +235,6 @@ def creer_cotisation(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="L'année concernée est invalide.",
-        )
-
-    # --------------------------------------------------------
-    # VALIDATION MODE PAIEMENT
-    # --------------------------------------------------------
-
-    mode_paiement = (
-        mode_paiement or ""
-    ).strip()
-
-    if montant_cotise > 0 and not mode_paiement:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Le mode de paiement est obligatoire "
-                "si un montant est encaissé."
-            ),
         )
 
     # --------------------------------------------------------
@@ -317,21 +279,32 @@ def creer_cotisation(
                 f"{mois_concerne} {annee} "
                 "existe déjà pour ce membre. "
                 "Utilisez « Ajouter un paiement » "
-                "pour effectuer un versement supplémentaire."
+                "pour effectuer un versement."
             ),
         )
 
     # --------------------------------------------------------
     # CRÉER LA COTISATION
     # --------------------------------------------------------
+    #
+    # Une cotisation représente le montant fixe dû.
+    #
+    # Aucun paiement n'est créé ici.
+    #
+    # Exemple :
+    #
+    # Cotisation = 7 000 FCFA
+    # Paiement   = 0 FCFA
+    # Reste      = 7 000 FCFA
+    #
+    # Le paiement sera ajouté séparément avec
+    # POST /cotisations/{cotisation_id}/paiements
+    #
 
     cotisation = Cotisation(
         membre_id=membre_id,
         montant=montant,
-        montant_du=max(
-            0,
-            montant - montant_cotise,
-        ),
+        montant_du=montant,
         mois_concerne=mois_concerne,
         annee=annee,
         date_cotisation=(
@@ -341,32 +314,9 @@ def creer_cotisation(
 
     db.add(cotisation)
 
-    paiement = None
-
     try:
 
         db.flush()
-
-        # ----------------------------------------------------
-        # PREMIER PAIEMENT
-        # ----------------------------------------------------
-
-        if montant_cotise > 0:
-
-            paiement = Paiement(
-                membre_id=membre_id,
-                cotisation_id=cotisation.id,
-                montant=montant_cotise,
-                mode_paiement=mode_paiement,
-                date_paiement=(
-                    date_cotisation or date.today()
-                ),
-                reference=reference,
-            )
-
-            db.add(paiement)
-
-            db.flush()
 
         # ----------------------------------------------------
         # NOTIFICATION DU MEMBRE
@@ -383,26 +333,12 @@ def creer_cotisation(
 
         if utilisateur_membre:
 
-            if montant_cotise > 0:
-
-                message_notification = (
-                    f"Votre cotisation du mois de "
-                    f"{mois_concerne} {annee} a été enregistrée "
-                    f"pour un montant de {montant:g} FCFA. "
-                    f"Montant versé : "
-                    f"{montant_cotise:g} FCFA. "
-                    f"Reste à payer : "
-                    f"{max(0, montant - montant_cotise):g} FCFA."
-                )
-
-            else:
-
-                message_notification = (
-                    f"Votre cotisation du mois de "
-                    f"{mois_concerne} {annee} a été créée "
-                    f"pour un montant de {montant:g} FCFA. "
-                    "Aucun paiement n'a encore été enregistré."
-                )
+            message_notification = (
+                f"Votre cotisation du mois de "
+                f"{mois_concerne} {annee} a été créée "
+                f"pour un montant de {montant:g} FCFA. "
+                "Aucun paiement n'a encore été enregistré."
+            )
 
             creer_notification(
                 db=db,
@@ -414,15 +350,12 @@ def creer_cotisation(
             )
 
         # ----------------------------------------------------
-        # COMMIT UNIQUE
+        # COMMIT
         # ----------------------------------------------------
 
         db.commit()
 
         db.refresh(cotisation)
-
-        if paiement:
-            db.refresh(paiement)
 
     except IntegrityError as error:
 
@@ -458,24 +391,7 @@ def creer_cotisation(
 
         "cotisation": resultat,
 
-        "paiement": (
-            {
-                "id": paiement.id,
-                "membre_id": paiement.membre_id,
-                "cotisation_id":
-                    paiement.cotisation_id,
-                "montant":
-                    float(paiement.montant),
-                "mode_paiement":
-                    paiement.mode_paiement,
-                "date_paiement":
-                    paiement.date_paiement,
-                "reference":
-                    paiement.reference,
-            }
-            if paiement
-            else None
-        ),
+        "paiement": None,
     }
 
 
@@ -677,7 +593,7 @@ def ajouter_paiement(
             )
 
         # ----------------------------------------------------
-        # COMMIT UNIQUE
+        # COMMIT
         # ----------------------------------------------------
 
         db.commit()
