@@ -660,6 +660,58 @@ def ajouter_paiement(
 
 
 # ============================================================
+# LISTER LES MEMBRES ACTIFS POUR LES COTISATIONS
+# ============================================================
+
+@router.get("/membres-actifs")
+def lister_membres_actifs_pour_cotisations(
+    db: Session = Depends(get_db),
+    current_user=Depends(
+        require_permission("COTISATION_CREER")
+    ),
+):
+    """
+    Retourne uniquement les informations nécessaires
+    à la gestion des cotisations.
+
+    Cette route est volontairement séparée de
+    GET /membres afin de ne pas donner la permission
+    MEMBRE_CONSULTER aux utilisateurs qui doivent
+    uniquement gérer les cotisations.
+    """
+
+    membres = (
+        db.query(Membre)
+        .filter(
+            Membre.actif.is_(True)
+        )
+        .order_by(
+            Membre.nom.asc(),
+            Membre.prenom.asc(),
+        )
+        .all()
+    )
+
+    return {
+        "nombre": len(membres),
+
+        "membres": [
+            {
+                "id": membre.id,
+                "nom": membre.nom,
+                "prenom": membre.prenom,
+                "telephone": membre.telephone,
+                "montant_cotisation": float(
+                    membre.montant_cotisation or 0
+                ),
+                "actif": membre.actif,
+            }
+            for membre in membres
+        ],
+    }
+
+
+# ============================================================
 # LISTER LES COTISATIONS
 # ============================================================
 
