@@ -105,30 +105,62 @@ def dashboard(
     if peut_consulter_finances:
 
         # -----------------------------------------------------
-        # 1. Cotisations estimées
+        # 1. COTISATIONS PRÉVUES
         #
-        # Cotisation.montant = montant attendu
+        # IMPORTANT :
+        #
+        # On ne se base PAS sur les lignes Cotisation déjà
+        # créées en base.
+        #
+        # Les cotisations prévues représentent le montant
+        # mensuel théorique de TOUS les membres actifs
+        # ayant une cotisation obligatoire supérieure à 0.
+        #
+        # Exemple :
+        #
+        # Membre A : 7 000
+        # Membre B : 5 000
+        # Membre C : 0
+        # Membre D : 10 000 mais inactif
+        #
+        # Cotisations prévues = 7 000 + 5 000
+        #                      = 12 000
+        #
+        # Le membre à 0 n'est pas compté.
+        # Le membre inactif n'est pas compté.
         # -----------------------------------------------------
         total_cotisations_estimees = (
             db.query(
                 func.coalesce(
                     func.sum(
-                        Cotisation.montant
+                        Membre.montant_cotisation
                     ),
                     0,
                 )
             )
             .filter(
-                Cotisation.actif.is_(True)
+                Membre.actif.is_(True),
+                Membre.montant_cotisation > 0,
             )
             .scalar()
             or 0
         )
 
         # -----------------------------------------------------
-        # 2. Cotisations réellement encaissées
+        # 2. PAIEMENTS RÉELLEMENT ENCAISSÉS
         #
-        # Paiement.montant = argent réellement reçu
+        # Paiement.montant représente l'argent réellement
+        # reçu.
+        #
+        # Cela comprend :
+        #
+        # - les paiements de cotisations normales ;
+        # - les paiements partiels ;
+        # - les versements volontaires des membres
+        #   ayant une cotisation de 0.
+        #
+        # Un versement volontaire de 5 000 FCFA par un membre
+        # non cotisant est donc compté ici.
         # -----------------------------------------------------
         total_cotisations_encaissees = (
             db.query(
@@ -147,7 +179,15 @@ def dashboard(
         )
 
         # -----------------------------------------------------
-        # 3. Aides extérieures
+        # 3. AIDES EXTÉRIEURES
+        #
+        # Il s'agit uniquement des recettes enregistrées
+        # comme aides provenant de l'extérieur.
+        #
+        # Une barkelou d'un membre non cotisant ne doit PAS
+        # être enregistrée ici : elle est enregistrée comme
+        # Paiement et apparaît donc dans les encaissements
+        # des membres.
         # -----------------------------------------------------
         total_aides_exterieures = (
             db.query(
@@ -166,7 +206,7 @@ def dashboard(
         )
 
         # -----------------------------------------------------
-        # 4. Dépenses
+        # 4. DÉPENSES
         # -----------------------------------------------------
         total_depenses = (
             db.query(
@@ -204,11 +244,12 @@ def dashboard(
         )
 
         # -----------------------------------------------------
-        # 5. Total des recettes
+        # 5. TOTAL DES RECETTES
         #
-        # IMPORTANT :
-        # On utilise les montants réellement encaissés,
-        # pas les cotisations estimées.
+        # Seul l'argent réellement reçu entre dans les
+        # recettes.
+        #
+        # Les cotisations prévues ne sont PAS des recettes.
         # -----------------------------------------------------
         total_recettes = (
             total_cotisations_encaissees
@@ -216,7 +257,9 @@ def dashboard(
         )
 
         # -----------------------------------------------------
-        # 6. Solde disponible
+        # 6. SOLDE DISPONIBLE
+        #
+        # Recettes réelles - dépenses
         # -----------------------------------------------------
         solde = (
             total_recettes
@@ -237,37 +280,53 @@ def dashboard(
             peut_consulter_finances
         ),
 
+        # -----------------------------------------------------
         # Membres
+        # -----------------------------------------------------
         "membres_actifs": nombre_membres,
 
-        # Cotisations
+        # -----------------------------------------------------
+        # Cotisations prévues
+        #
+        # Somme des cotisations mensuelles fixes des membres
+        # actifs ayant montant_cotisation > 0.
+        # -----------------------------------------------------
         "cotisations_estimees": (
             total_cotisations_estimees
             if peut_consulter_finances
             else None
         ),
 
+        # -----------------------------------------------------
+        # Paiements réellement encaissés
+        # -----------------------------------------------------
         "cotisations_encaissees": (
             total_cotisations_encaissees
             if peut_consulter_finances
             else None
         ),
 
-        # Aides
+        # -----------------------------------------------------
+        # Aides extérieures
+        # -----------------------------------------------------
         "aides_exterieures": (
             total_aides_exterieures
             if peut_consulter_finances
             else None
         ),
 
-        # Recettes
+        # -----------------------------------------------------
+        # Recettes réelles
+        # -----------------------------------------------------
         "total_recettes": (
             total_recettes
             if peut_consulter_finances
             else None
         ),
 
+        # -----------------------------------------------------
         # Dépenses
+        # -----------------------------------------------------
         "depenses": (
             total_depenses
             if peut_consulter_finances
@@ -280,7 +339,9 @@ def dashboard(
             else None
         ),
 
-        # Solde
+        # -----------------------------------------------------
+        # Solde disponible
+        # -----------------------------------------------------
         "solde_disponible": (
             solde
             if peut_consulter_finances
