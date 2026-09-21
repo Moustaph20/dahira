@@ -16,7 +16,7 @@ TONS = [
     "S Abdou Khadr Gassama",
     "Nawaytou",
     "S Mbacké Fall",
-    "S Cissé"
+    "S Cissé",
     "Autre",
 ]
 

@@ -219,6 +219,7 @@ FONCTIONS = {
             "AIDE_EXTERIEURE_SUPPRIMER"
             "AIDE_EXTERIEURE_CONSULTER",
             "KOUREL_CONSULTER",
+            "REUNION_CONSULTER",
         ],
     },
 
@@ -270,6 +271,7 @@ FONCTIONS = {
             "AIDE_EXTERIEURE_MODIFIER",
             "AIDE_EXTERIEURE_SUPPRIMER",
             "KOUREL_CONSULTER",
+            "REUNION_CONSULTER",
         ],
     },
 
@@ -293,6 +295,7 @@ FONCTIONS = {
             "DEPENSE_CONSULTER",
             "AIDE_EXTERIEURE_CONSULTER",
             "KOUREL_CONSULTER",
+            "REUNION_CONSULTER",
         ],
     },
 
@@ -312,6 +315,7 @@ FONCTIONS = {
             "COMMUNICATION_MODIFIER",
             "NOTIFICATION_CONSULTER",
             "KOUREL_CONSULTER",
+            "REUNION_CONSULTER",
         ],
     },
 
@@ -335,6 +339,7 @@ FONCTIONS = {
             "RELATION_EXTERIEUR_CREER",
             "RELATION_EXTERIEUR_MODIFIER",
             "RELATION_EXTERIEUR_SUPPRIMER",
+            "REUNION_CONSULTER",
         ],
     },
 
@@ -355,6 +360,7 @@ FONCTIONS = {
             "RELATION_EXTERIEUR_CONSULTER",
             "RELATION_EXTERIEUR_CREER",
             "RELATION_EXTERIEUR_MODIFIER",
+            "REUNION_CONSULTER",
         ],
     },
 
