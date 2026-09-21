@@ -685,25 +685,18 @@ function Layout() {
      ========================================================== */
 
   const navigationActivites = useMemo(() => {
-    const items = [];
-
-    if (
-      possedePermission(
-        "REUNION_CONSULTER"
-      )
-    ) {
-      items.push({
-        code: "REUNIONS",
-        nom: "Réunions",
-        description:
-          "Réunions du Dahira",
-        chemin: "/reunions",
-        permission:
-          "REUNION_CONSULTER",
-        icone: CalendarDays,
-        couleur: "cyan",
-      });
-    }
+  return [
+    {
+      code: "REUNIONS",
+      nom: "Réunions",
+      description: "Réunions du Dahira",
+      chemin: "/reunions",
+      permission: null,
+      icone: CalendarDays,
+      couleur: "cyan",
+    },
+  ];
+}, []);
 
     /*
      * Programme religieux n'est volontairement
