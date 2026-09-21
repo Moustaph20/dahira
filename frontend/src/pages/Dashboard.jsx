@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 
 import {
@@ -17,12 +16,10 @@ import {
 
 import api from "../api/client";
 
-
 function Dashboard() {
   const [donnees, setDonnees] = useState(null);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState("");
-
 
   // ============================================================
   // FORMATAGE DES MONTANTS
@@ -35,7 +32,6 @@ function Dashboard() {
       maximumFractionDigits: 0,
     }).format(valeur);
   }
-
 
   // ============================================================
   // CHARGEMENT DU DASHBOARD
@@ -74,7 +70,6 @@ function Dashboard() {
     }
   }
 
-
   // ============================================================
   // CHARGEMENT INITIAL
   // ============================================================
@@ -82,7 +77,6 @@ function Dashboard() {
   useEffect(() => {
     chargerDashboard();
   }, []);
-
 
   // ============================================================
   // CHARGEMENT
@@ -104,7 +98,6 @@ function Dashboard() {
       </div>
     );
   }
-
 
   // ============================================================
   // ERREUR
@@ -142,76 +135,133 @@ function Dashboard() {
     );
   }
 
-
   // ============================================================
-  // DONNÉES
+  // DONNÉES FINANCIÈRES
   // ============================================================
 
   const membresActifs = Number(
     donnees?.membres_actifs ?? 0
   );
 
-  // Montant théorique attendu
+  /*
+   * Montant théorique attendu pour les cotisations.
+   *
+   * IMPORTANT :
+   * Il ne s'agit PAS d'argent encaissé.
+   * Cela représente uniquement les cotisations mensuelles
+   * fixes attendues des membres concernés.
+   */
   const cotisationsEstimees = Number(
     donnees?.cotisations_estimees ?? 0
   );
 
-  // Montant réellement encaissé via les paiements
+  /*
+   * Argent réellement reçu des membres.
+   *
+   * Cela comprend :
+   * - les cotisations normales ;
+   * - les paiements partiels ;
+   * - les versements volontaires des membres non cotisants.
+   *
+   * Une barkelou versée par un membre non cotisant doit donc
+   * apparaître ici et NON dans les aides extérieures.
+   */
   const cotisationsEncaissees = Number(
     donnees?.cotisations_encaissees ?? 0
   );
 
+  /*
+   * Argent reçu de personnes/organismes extérieurs
+   * au système des membres.
+   */
   const aidesExterieures = Number(
     donnees?.aides_exterieures ?? 0
   );
 
-  const totalRecettes = Number(
-    donnees?.total_recettes ??
-      cotisationsEncaissees + aidesExterieures
-  );
+  /*
+   * TOTAL DES RECETTES RÉELLES
+   *
+   * On le recalcule volontairement ici au lieu de faire
+   * confiance à donnees.total_recettes.
+   *
+   * Formule :
+   *
+   * cotisations encaissées
+   * +
+   * aides extérieures
+   */
+  const totalRecettes =
+    cotisationsEncaissees + aidesExterieures;
 
+  /*
+   * TOTAL DES SORTIES D'ARGENT.
+   */
   const totalDepenses = Number(
     donnees?.total_depenses ??
       donnees?.depenses ??
       0
   );
 
-  const soldeDisponible = Number(
-    donnees?.solde_disponible ??
-      totalRecettes - totalDepenses
-  );
-
+  /*
+   * SOLDE RÉEL DISPONIBLE.
+   *
+   * Formule :
+   *
+   * recettes réelles - dépenses
+   */
+  const soldeDisponible =
+    totalRecettes - totalDepenses;
 
   // ============================================================
   // RESTE À ENCAISSER
   // ============================================================
 
+  /*
+   * Les versements volontaires des membres non cotisants
+   * ne diminuent pas les cotisations estimées puisqu'ils
+   * n'avaient aucune cotisation obligatoire.
+   *
+   * Exemple :
+   *
+   * Cotisations estimées : 7 000
+   * Cotisations encaissées : 5 000
+   * Reste : 2 000
+   *
+   * Si un membre non cotisant verse 5 000 :
+   *
+   * Cotisations estimées : 7 000
+   * Cotisations encaissées : 10 000
+   *
+   * Le reste est donc 0.
+   */
   const resteAEncaisser = Math.max(
     0,
     cotisationsEstimees - cotisationsEncaissees
   );
 
-
   // ============================================================
-  // CALCULS
+  // COMPOSITION DES RECETTES
   // ============================================================
 
   const totalSourcesRecettes =
-    cotisationsEncaissees + aidesExterieures;
+    totalRecettes;
 
   let pourcentageCotisations = 0;
   let pourcentageAides = 0;
 
   if (totalSourcesRecettes > 0) {
     pourcentageCotisations =
-      (cotisationsEncaissees / totalSourcesRecettes) * 100;
+      (cotisationsEncaissees /
+        totalSourcesRecettes) *
+      100;
 
     pourcentageAides =
-      (aidesExterieures / totalSourcesRecettes) * 100;
+      (aidesExterieures /
+        totalSourcesRecettes) *
+      100;
   }
 
   const soldePositif = soldeDisponible >= 0;
-
 
   // ============================================================
   // STATISTIQUES PRINCIPALES
@@ -228,29 +278,37 @@ function Dashboard() {
 
     {
       titre: "Cotisations estimées",
-      valeur: `${formaterMontant(cotisationsEstimees)} FCFA`,
-      description: "Montant total attendu des cotisations",
+      valeur: `${formaterMontant(
+        cotisationsEstimees
+      )} FCFA`,
+      description:
+        "Montant théorique attendu des cotisations",
       icone: Wallet,
       couleur: "blue",
     },
 
     {
-      titre: "Cotisations encaissées",
-      valeur: `${formaterMontant(cotisationsEncaissees)} FCFA`,
-      description: "Cotisations réellement reçues",
+      titre: "Recettes encaissées",
+      valeur: `${formaterMontant(
+        totalRecettes
+      )} FCFA`,
+      description:
+        "Argent réellement reçu par le Dahira",
       icone: TrendingUp,
       couleur: "emerald",
     },
 
     {
       titre: "Dépenses",
-      valeur: `${formaterMontant(totalDepenses)} FCFA`,
-      description: "Total des sorties de caisse",
+      valeur: `${formaterMontant(
+        totalDepenses
+      )} FCFA`,
+      description:
+        "Total des sorties de caisse",
       icone: TrendingDown,
       couleur: "red",
     },
   ];
-
 
   // ============================================================
   // RENDU
@@ -258,7 +316,6 @@ function Dashboard() {
 
   return (
     <div className="space-y-8">
-
 
       {/* ======================================================
           EN-TÊTE
@@ -280,7 +337,6 @@ function Dashboard() {
           </p>
         </div>
 
-
         <button
           type="button"
           onClick={chargerDashboard}
@@ -289,14 +345,17 @@ function Dashboard() {
         >
           <RefreshCw
             size={18}
-            className={chargement ? "animate-spin" : ""}
+            className={
+              chargement
+                ? "animate-spin"
+                : ""
+            }
           />
 
           Actualiser
         </button>
 
       </div>
-
 
       {/* ======================================================
           CARTES STATISTIQUES
@@ -325,18 +384,14 @@ function Dashboard() {
                   </p>
                 </div>
 
-
                 <div className="rounded-xl bg-slate-100 p-3 transition group-hover:bg-emerald-50">
-
                   <Icon
                     size={22}
                     className="text-slate-700 transition group-hover:text-emerald-700"
                   />
-
                 </div>
 
               </div>
-
 
               <p className="mt-4 text-xs text-slate-400">
                 {statistique.description}
@@ -348,13 +403,11 @@ function Dashboard() {
 
       </div>
 
-
       {/* ======================================================
           RÉSUMÉ FINANCIER
       ====================================================== */}
 
       <div className="grid gap-5 lg:grid-cols-3">
-
 
         {/* TOTAL RECETTES */}
 
@@ -368,14 +421,15 @@ function Dashboard() {
               </p>
 
               <p className="mt-2 text-3xl font-bold text-emerald-900">
-                {formaterMontant(totalRecettes)}
+                {formaterMontant(
+                  totalRecettes
+                )}
               </p>
 
               <p className="mt-1 text-sm text-emerald-700">
                 FCFA
               </p>
             </div>
-
 
             <div className="rounded-xl bg-white p-3 shadow-sm">
               <TrendingUp
@@ -387,7 +441,6 @@ function Dashboard() {
           </div>
 
         </div>
-
 
         {/* TOTAL DÉPENSES */}
 
@@ -401,14 +454,15 @@ function Dashboard() {
               </p>
 
               <p className="mt-2 text-3xl font-bold text-red-900">
-                {formaterMontant(totalDepenses)}
+                {formaterMontant(
+                  totalDepenses
+                )}
               </p>
 
               <p className="mt-1 text-sm text-red-700">
                 FCFA
               </p>
             </div>
-
 
             <div className="rounded-xl bg-white p-3 shadow-sm">
               <TrendingDown
@@ -420,7 +474,6 @@ function Dashboard() {
           </div>
 
         </div>
-
 
         {/* RESTE À ENCAISSER */}
 
@@ -434,14 +487,15 @@ function Dashboard() {
               </p>
 
               <p className="mt-2 text-3xl font-bold text-blue-900">
-                {formaterMontant(resteAEncaisser)}
+                {formaterMontant(
+                  resteAEncaisser
+                )}
               </p>
 
               <p className="mt-1 text-sm text-blue-700">
                 FCFA
               </p>
             </div>
-
 
             <div className="rounded-xl bg-white p-3 shadow-sm">
               <Wallet
@@ -456,7 +510,6 @@ function Dashboard() {
 
       </div>
 
-
       {/* ======================================================
           SOLDE PRINCIPAL
       ====================================================== */}
@@ -465,7 +518,6 @@ function Dashboard() {
 
         <div className="grid lg:grid-cols-2">
 
-
           {/* GAUCHE */}
 
           <div className="p-8 lg:p-10">
@@ -473,17 +525,13 @@ function Dashboard() {
             <div className="flex items-center gap-3">
 
               <div className="rounded-xl bg-emerald-500/10 p-3">
-
                 <Landmark
                   size={24}
                   className="text-emerald-400"
                 />
-
               </div>
 
-
               <div>
-
                 <p className="text-sm font-medium text-slate-400">
                   Situation financière
                 </p>
@@ -491,11 +539,9 @@ function Dashboard() {
                 <h2 className="text-xl font-bold text-white">
                   Solde disponible
                 </h2>
-
               </div>
 
             </div>
-
 
             <div className="mt-8">
 
@@ -506,13 +552,14 @@ function Dashboard() {
                     : "text-red-400"
                 }`}
               >
-                {formaterMontant(soldeDisponible)}
+                {formaterMontant(
+                  soldeDisponible
+                )}
 
                 <span className="ml-2 text-xl text-slate-400">
                   FCFA
                 </span>
               </p>
-
 
               <div className="mt-4 flex items-center gap-2">
 
@@ -542,7 +589,6 @@ function Dashboard() {
 
               </div>
 
-
               <p className="mt-3 text-sm text-slate-400">
                 Total recettes − total dépenses
               </p>
@@ -551,13 +597,11 @@ function Dashboard() {
 
           </div>
 
-
           {/* DROITE */}
 
           <div className="border-t border-white/10 p-8 lg:border-l lg:border-t-0 lg:p-10">
 
             <div className="space-y-6">
-
 
               {/* RECETTES */}
 
@@ -566,12 +610,10 @@ function Dashboard() {
                 <div className="flex items-center gap-3">
 
                   <div className="rounded-lg bg-emerald-500/10 p-2">
-
                     <ArrowUpCircle
                       size={19}
                       className="text-emerald-400"
                     />
-
                   </div>
 
                   <span className="text-sm text-slate-300">
@@ -580,13 +622,14 @@ function Dashboard() {
 
                 </div>
 
-
                 <span className="font-bold text-emerald-400">
-                  {formaterMontant(totalRecettes)} FCFA
+                  {formaterMontant(
+                    totalRecettes
+                  )}{" "}
+                  FCFA
                 </span>
 
               </div>
-
 
               {/* DÉPENSES */}
 
@@ -595,12 +638,10 @@ function Dashboard() {
                 <div className="flex items-center gap-3">
 
                   <div className="rounded-lg bg-red-500/10 p-2">
-
                     <ArrowDownCircle
                       size={19}
                       className="text-red-400"
                     />
-
                   </div>
 
                   <span className="text-sm text-slate-300">
@@ -609,13 +650,14 @@ function Dashboard() {
 
                 </div>
 
-
                 <span className="font-bold text-red-400">
-                  {formaterMontant(totalDepenses)} FCFA
+                  {formaterMontant(
+                    totalDepenses
+                  )}{" "}
+                  FCFA
                 </span>
 
               </div>
-
 
               {/* SOLDE */}
 
@@ -634,7 +676,10 @@ function Dashboard() {
                         : "text-red-400"
                     }`}
                   >
-                    {formaterMontant(soldeDisponible)} FCFA
+                    {formaterMontant(
+                      soldeDisponible
+                    )}{" "}
+                    FCFA
                   </span>
 
                 </div>
@@ -648,7 +693,6 @@ function Dashboard() {
         </div>
 
       </div>
-
 
       {/* ======================================================
           COMPOSITION DES RECETTES
@@ -668,11 +712,9 @@ function Dashboard() {
 
         </div>
 
-
         <div className="space-y-7">
 
-
-          {/* COTISATIONS */}
+          {/* COTISATIONS ET VERSEMENTS DES MEMBRES */}
 
           <div>
 
@@ -685,15 +727,17 @@ function Dashboard() {
                   className="text-emerald-600"
                 />
 
-                Cotisations encaissées
+                Cotisations et versements des membres
 
               </span>
-
 
               <div className="text-right">
 
                 <span className="font-semibold text-emerald-700">
-                  {formaterMontant(cotisationsEncaissees)} FCFA
+                  {formaterMontant(
+                    cotisationsEncaissees
+                  )}{" "}
+                  FCFA
                 </span>
 
                 <span className="ml-2 text-xs text-slate-400">
@@ -704,7 +748,6 @@ function Dashboard() {
 
             </div>
 
-
             <div className="h-3 overflow-hidden rounded-full bg-slate-100">
 
               <div
@@ -712,7 +755,10 @@ function Dashboard() {
                 style={{
                   width: `${Math.min(
                     100,
-                    Math.max(0, pourcentageCotisations)
+                    Math.max(
+                      0,
+                      pourcentageCotisations
+                    )
                   )}%`,
                 }}
               />
@@ -721,8 +767,7 @@ function Dashboard() {
 
           </div>
 
-
-          {/* AIDES */}
+          {/* AIDES EXTÉRIEURES */}
 
           <div>
 
@@ -739,11 +784,13 @@ function Dashboard() {
 
               </span>
 
-
               <div className="text-right">
 
                 <span className="font-semibold text-amber-700">
-                  {formaterMontant(aidesExterieures)} FCFA
+                  {formaterMontant(
+                    aidesExterieures
+                  )}{" "}
+                  FCFA
                 </span>
 
                 <span className="ml-2 text-xs text-slate-400">
@@ -754,7 +801,6 @@ function Dashboard() {
 
             </div>
 
-
             <div className="h-3 overflow-hidden rounded-full bg-slate-100">
 
               <div
@@ -762,7 +808,10 @@ function Dashboard() {
                 style={{
                   width: `${Math.min(
                     100,
-                    Math.max(0, pourcentageAides)
+                    Math.max(
+                      0,
+                      pourcentageAides
+                    )
                   )}%`,
                 }}
               />
@@ -770,7 +819,6 @@ function Dashboard() {
             </div>
 
           </div>
-
 
           {/* TOTAL */}
 
@@ -780,9 +828,11 @@ function Dashboard() {
               Total recettes
             </span>
 
-
             <span className="text-xl font-bold text-slate-900">
-              {formaterMontant(totalRecettes)} FCFA
+              {formaterMontant(
+                totalRecettes
+              )}{" "}
+              FCFA
             </span>
 
           </div>
@@ -791,13 +841,11 @@ function Dashboard() {
 
       </div>
 
-
       {/* ======================================================
           RÉSUMÉ FINAL
       ====================================================== */}
 
       <div className="grid gap-5 md:grid-cols-3">
-
 
         {/* COTISATIONS ESTIMÉES */}
 
@@ -820,15 +868,16 @@ function Dashboard() {
 
           </div>
 
-
           <p className="mt-4 text-2xl font-bold text-blue-900">
-            {formaterMontant(cotisationsEstimees)} FCFA
+            {formaterMontant(
+              cotisationsEstimees
+            )}{" "}
+            FCFA
           </p>
 
         </div>
 
-
-        {/* COTISATIONS ENCAISSÉES */}
+        {/* RECETTES ENCAISSÉES */}
 
         <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-6">
 
@@ -844,20 +893,21 @@ function Dashboard() {
             </div>
 
             <p className="text-sm font-medium text-emerald-700">
-              Cotisations encaissées
+              Recettes encaissées
             </p>
 
           </div>
 
-
           <p className="mt-4 text-2xl font-bold text-emerald-900">
-            {formaterMontant(cotisationsEncaissees)} FCFA
+            {formaterMontant(
+              totalRecettes
+            )}{" "}
+            FCFA
           </p>
 
         </div>
 
-
-        {/* AIDES */}
+        {/* AIDES EXTÉRIEURES */}
 
         <div className="rounded-2xl border border-amber-100 bg-amber-50 p-6">
 
@@ -878,20 +928,19 @@ function Dashboard() {
 
           </div>
 
-
           <p className="mt-4 text-2xl font-bold text-amber-900">
-            {formaterMontant(aidesExterieures)} FCFA
+            {formaterMontant(
+              aidesExterieures
+            )}{" "}
+            FCFA
           </p>
 
         </div>
 
       </div>
 
-
     </div>
   );
 }
 
-
 export default Dashboard;
-

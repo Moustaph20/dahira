@@ -47,6 +47,12 @@ function Finances() {
   const peutCreerAide =
     aPermission("AIDE_EXTERIEURE_CREER");
 
+  const peutConsulterCotisations =
+    aPermission("COTISATION_CONSULTER");
+
+  const peutCreerCotisation =
+    aPermission("COTISATION_CREER");
+
 
   // ============================================================
   // ÉTATS
@@ -55,6 +61,10 @@ function Finances() {
   const [depenses, setDepenses] = useState([]);
 
   const [aides, setAides] = useState([]);
+
+  const [cotisations, setCotisations] = useState([]);
+
+  const [membresActifs, setMembresActifs] = useState([]);
 
   const [chargement, setChargement] = useState(true);
 
@@ -98,7 +108,7 @@ function Finances() {
 
 
   // ============================================================
-  // FORMULAIRE AIDE EXTÉRIEURE
+  // FORMULAIRE BARKELou / VERSEMENT
   // ============================================================
 
   const [formAide, setFormAide] = useState({
@@ -113,6 +123,8 @@ function Finances() {
       new Date()
         .toISOString()
         .split("T")[0],
+
+    membre_id: "",
   });
 
 
@@ -129,6 +141,74 @@ function Finances() {
     }).format(
       Number(montant ?? 0)
     );
+
+  }
+
+
+  // ============================================================
+  // NOM DU MEMBRE
+  // ============================================================
+
+  function obtenirNomMembre(membre) {
+
+    if (!membre) {
+      return "";
+    }
+
+    return [
+      membre.prenom,
+      membre.nom,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+  }
+
+
+  // ============================================================
+  // CHARGER LES MEMBRES ACTIFS
+  // ============================================================
+
+  async function chargerMembresActifs() {
+
+    if (!peutCreerCotisation) {
+
+      setMembresActifs([]);
+
+      return;
+
+    }
+
+
+    try {
+
+      const response =
+        await api.get(
+          "/cotisations/membres-actifs"
+        );
+
+
+      const membres =
+        Array.isArray(response.data)
+          ? response.data
+          : [];
+
+
+      setMembresActifs(membres);
+
+    } catch (error) {
+
+      console.error(
+        "ERREUR CHARGEMENT MEMBRES ACTIFS :",
+        error
+      );
+
+
+      setMembresActifs([]);
+
+    }
+
   }
 
 
@@ -181,7 +261,7 @@ function Finances() {
 
 
       // --------------------------------------------------------
-      // AIDES EXTÉRIEURES
+      // BARKELou / AIDES EXTÉRIEURES
       // --------------------------------------------------------
 
       if (peutConsulterAides) {
@@ -213,12 +293,82 @@ function Finances() {
 
 
       // --------------------------------------------------------
-      // IMPORTANT :
-      // AUCUN APPEL À /dashboard
+      // COTISATIONS / PAIEMENTS RÉELS
       // --------------------------------------------------------
 
-      await Promise.all(requetes);
+      if (peutConsulterCotisations) {
 
+        requetes.push(
+          api
+            .get("/cotisations")
+            .then((response) => {
+
+              console.log(
+                "COTISATIONS / PAIEMENTS :",
+                response.data
+              );
+
+              setCotisations(
+                Array.isArray(
+                  response.data?.cotisations
+                )
+                  ? response.data.cotisations
+                  : []
+              );
+
+            })
+        );
+
+      } else {
+
+        setCotisations([]);
+
+      }
+
+
+      // --------------------------------------------------------
+      // MEMBRES ACTIFS
+      // --------------------------------------------------------
+
+      if (peutCreerCotisation) {
+
+        requetes.push(
+          api
+            .get("/cotisations/membres-actifs")
+            .then((response) => {
+
+              console.log(
+                "MEMBRES ACTIFS :",
+                response.data
+              );
+
+              setMembresActifs(
+                Array.isArray(response.data)
+                  ? response.data
+                  : []
+              );
+
+            })
+            .catch((error) => {
+
+              console.error(
+                "ERREUR MEMBRES ACTIFS :",
+                error
+              );
+
+              setMembresActifs([]);
+
+            })
+        );
+
+      } else {
+
+        setMembresActifs([]);
+
+      }
+
+
+      await Promise.all(requetes);
 
     } catch (error) {
 
@@ -277,7 +427,11 @@ function Finances() {
   }, [
     utilisateur,
     peutConsulterDepenses,
+    peutCreerDepense,
     peutConsulterAides,
+    peutCreerAide,
+    peutConsulterCotisations,
+    peutCreerCotisation,
   ]);
 
 
@@ -285,13 +439,23 @@ function Finances() {
   // OUVRIR MODAL
   // ============================================================
 
-  function ouvrirModal(type) {
+  async function ouvrirModal(type) {
 
     setErreurFormulaire("");
 
     setMessageSucces("");
 
     setModal(type);
+
+
+    if (
+      type === "aide" &&
+      peutCreerCotisation
+    ) {
+
+      await chargerMembresActifs();
+
+    }
 
   }
 
@@ -357,7 +521,7 @@ function Finances() {
 
 
   // ============================================================
-  // MODIFIER AIDE
+  // MODIFIER BARKELou
   // ============================================================
 
   function modifierAide(
@@ -391,10 +555,6 @@ function Finances() {
     setMessageSucces("");
 
 
-    // ----------------------------------------------------------
-    // VÉRIFICATION PERMISSION
-    // ----------------------------------------------------------
-
     if (!peutCreerDepense) {
 
       setErreurFormulaire(
@@ -405,10 +565,6 @@ function Finances() {
 
     }
 
-
-    // ----------------------------------------------------------
-    // VALIDATION
-    // ----------------------------------------------------------
 
     if (!formDepense.motif.trim()) {
 
@@ -467,10 +623,6 @@ function Finances() {
 
     }
 
-
-    // ----------------------------------------------------------
-    // ENREGISTREMENT
-    // ----------------------------------------------------------
 
     try {
 
@@ -623,7 +775,7 @@ function Finances() {
 
 
   // ============================================================
-  // AJOUTER AIDE EXTÉRIEURE
+  // AJOUTER BARKELou / VERSEMENT
   // ============================================================
 
   async function ajouterAide(event) {
@@ -634,10 +786,6 @@ function Finances() {
 
     setMessageSucces("");
 
-
-    // ----------------------------------------------------------
-    // VÉRIFICATION PERMISSION
-    // ----------------------------------------------------------
 
     if (!peutCreerAide) {
 
@@ -650,14 +798,27 @@ function Finances() {
     }
 
 
-    // ----------------------------------------------------------
-    // VALIDATION
-    // ----------------------------------------------------------
-
-    if (!formAide.source.trim()) {
+    if (
+      !formAide.membre_id &&
+      !formAide.source.trim()
+    ) {
 
       setErreurFormulaire(
-        "Veuillez saisir la source de l'aide."
+        "Veuillez sélectionner un membre ou saisir la source de la barkelou."
+      );
+
+      return;
+
+    }
+
+
+    if (
+      formAide.membre_id &&
+      !peutCreerCotisation
+    ) {
+
+      setErreurFormulaire(
+        "Vous n'avez pas la permission d'enregistrer le versement d'un membre."
       );
 
       return;
@@ -695,30 +856,259 @@ function Finances() {
       setEnregistrement(true);
 
 
-      await api.post(
-        "/aides-exterieures",
-        {
+      // ========================================================
+      // CAS 1 :
+      // VERSEMENT D'UN MEMBRE NON COTISANT
+      // ========================================================
 
-          source:
-            formAide.source.trim(),
+      if (formAide.membre_id) {
 
-          montant:
-            Number(formAide.montant),
+        const membreId =
+          Number(formAide.membre_id);
 
-          description:
-            formAide.description.trim() ||
-            null,
 
-          date_aide:
-            formAide.date_aide,
+        const membre =
+          membresActifs.find(
+            (item) =>
+              Number(item.id) === membreId
+          );
+
+
+        if (!membre) {
+
+          throw new Error(
+            "Le membre sélectionné est introuvable."
+          );
 
         }
-      );
 
 
-      setMessageSucces(
-        "L'aide extérieure a été enregistrée avec succès."
-      );
+        const montantCotisation =
+          Number(
+            membre.montant_cotisation ?? 0
+          );
+
+
+        // ------------------------------------------------------
+        // Un membre sélectionné ici doit être non cotisant.
+        // ------------------------------------------------------
+
+        if (montantCotisation > 0) {
+
+          setErreurFormulaire(
+            "Ce membre possède une cotisation mensuelle. Son versement doit être enregistré depuis la gestion des cotisations."
+          );
+
+          return;
+
+        }
+
+
+        const dateVersement =
+          formAide.date_aide;
+
+
+        const dateObjet =
+          new Date(
+            `${dateVersement}T12:00:00`
+          );
+
+
+        const mois = [
+          "Janvier",
+          "Février",
+          "Mars",
+          "Avril",
+          "Mai",
+          "Juin",
+          "Juillet",
+          "Août",
+          "Septembre",
+          "Octobre",
+          "Novembre",
+          "Décembre",
+        ][
+          dateObjet.getMonth()
+        ];
+
+
+        const annee =
+          dateObjet.getFullYear();
+
+
+        // ------------------------------------------------------
+        // Chercher une cotisation 0 existante pour ce mois.
+        // ------------------------------------------------------
+
+        let cotisationExistante = null;
+
+
+        try {
+
+          const response =
+            await api.get(
+              "/cotisations",
+              {
+                params: {
+                  membre_id: membreId,
+                  mois_concerne: mois,
+                  annee,
+                },
+              }
+            );
+
+
+          const liste =
+            Array.isArray(
+              response.data?.cotisations
+            )
+              ? response.data.cotisations
+              : [];
+
+
+          cotisationExistante =
+            liste.find(
+              (cotisation) =>
+                Number(
+                  cotisation.membre_id
+                ) === membreId &&
+                String(
+                  cotisation.mois_concerne
+                ).toLowerCase() ===
+                  mois.toLowerCase() &&
+                Number(
+                  cotisation.annee
+                ) === annee
+            ) || null;
+
+        } catch (error) {
+
+          console.warn(
+            "Impossible de rechercher la cotisation existante :",
+            error
+          );
+
+        }
+
+
+        // ------------------------------------------------------
+        // Créer une cotisation à 0 si elle n'existe pas.
+        // ------------------------------------------------------
+
+        if (!cotisationExistante) {
+
+          const response =
+            await api.post(
+              "/cotisations",
+              null,
+              {
+                params: {
+                  membre_id:
+                    membreId,
+
+                  montant: 0,
+
+                  mois_concerne:
+                    mois,
+
+                  annee,
+
+                  date_cotisation:
+                    dateVersement,
+                },
+              }
+            );
+
+
+          cotisationExistante =
+            response.data;
+
+        }
+
+
+        if (
+          !cotisationExistante?.id
+        ) {
+
+          throw new Error(
+            "Impossible de créer ou retrouver le versement du membre."
+          );
+
+        }
+
+
+        // ------------------------------------------------------
+        // Enregistrer le paiement réel.
+        // ------------------------------------------------------
+
+        await api.post(
+          `/cotisations/${cotisationExistante.id}/paiements`,
+          null,
+          {
+            params: {
+
+              montant:
+                Number(
+                  formAide.montant
+                ),
+
+              mode_paiement:
+                "espèce",
+
+              date_paiement:
+                dateVersement,
+
+              reference:
+                formAide.description.trim() ||
+                null,
+
+            },
+          }
+        );
+
+
+        setMessageSucces(
+          `Le versement de ${formaterMontant(
+            formAide.montant
+          )} FCFA de ${obtenirNomMembre(
+            membre
+          )} a été enregistré avec succès.`
+        );
+
+
+      } else {
+
+        // ======================================================
+        // CAS 2 :
+        // BARKELou EXTÉRIEURE
+        // ======================================================
+
+        await api.post(
+          "/aides-exterieures",
+          {
+
+            source:
+              formAide.source.trim(),
+
+            montant:
+              Number(formAide.montant),
+
+            description:
+              formAide.description.trim() ||
+              null,
+
+            date_aide:
+              formAide.date_aide,
+
+          }
+        );
+
+
+        setMessageSucces(
+          "La barkelou extérieure a été enregistrée avec succès."
+        );
+
+      }
 
 
       setFormAide({
@@ -734,6 +1124,8 @@ function Finances() {
             .toISOString()
             .split("T")[0],
 
+        membre_id: "",
+
       });
 
 
@@ -746,13 +1138,13 @@ function Finances() {
 
         setMessageSucces("");
 
-      }, 800);
+      }, 1000);
 
 
     } catch (error) {
 
       console.error(
-        "ERREUR AJOUT AIDE :",
+        "ERREUR AJOUT BARKELou / VERSEMENT :",
         error
       );
 
@@ -762,14 +1154,16 @@ function Finances() {
       ) {
 
         setErreurFormulaire(
-          "Vous n'avez pas la permission d'enregistrer une aide extérieure."
+          error.response?.data?.detail ||
+          "Vous n'avez pas la permission d'enregistrer ce versement."
         );
 
       } else {
 
         setErreurFormulaire(
           error.response?.data?.detail ||
-          "Impossible d'enregistrer l'aide extérieure."
+          error.message ||
+          "Impossible d'enregistrer la barkelou ou le versement."
         );
 
       }
@@ -852,7 +1246,8 @@ function Finances() {
     peutConsulterDepenses ||
     peutCreerDepense ||
     peutConsulterAides ||
-    peutCreerAide;
+    peutCreerAide ||
+    peutConsulterCotisations;
 
 
   if (!possedeUnePermissionFinance) {
@@ -975,7 +1370,7 @@ function Finances() {
 
 
   // ============================================================
-  // DONNÉES
+  // DONNÉES FINANCIÈRES
   // ============================================================
 
   const totalDepenses =
@@ -996,6 +1391,44 @@ function Finances() {
     );
 
 
+  const totalCotisationsPrevues =
+    cotisations.reduce(
+      (total, cotisation) =>
+        total +
+        Number(cotisation?.montant ?? 0),
+      0
+    );
+
+
+  const totalPaiementsCotisations =
+    cotisations.reduce(
+      (total, cotisation) =>
+        total +
+        Number(
+          cotisation?.montant_cotise ?? 0
+        ),
+      0
+    );
+
+
+  const totalRecettes =
+    totalPaiementsCotisations +
+    totalAides;
+
+
+  const totalResteAEncaisser =
+    Math.max(
+      0,
+      totalCotisationsPrevues -
+      totalPaiementsCotisations
+    );
+
+
+  const solde =
+    totalRecettes -
+    totalDepenses;
+
+
   // ============================================================
   // RENDU
   // ============================================================
@@ -1003,7 +1436,6 @@ function Finances() {
   return (
 
     <div className="space-y-8">
-
 
       {/* ======================================================
           EN-TÊTE
@@ -1032,8 +1464,9 @@ function Finances() {
 
 
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-            Suivez les sorties d'argent et les aides extérieures
-            enregistrées par le Dahira.
+            Suivez les recettes réellement encaissées,
+            les sorties d'argent et les barkelou enregistrées
+            par le Dahira.
           </p>
 
         </div>
@@ -1058,10 +1491,56 @@ function Finances() {
           STATISTIQUES
       ====================================================== */}
 
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+
+        {(peutConsulterCotisations ||
+          peutConsulterAides) && (
+
+          <div className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+
+            <div className="flex items-start justify-between">
+
+              <div>
+
+                <p className="text-sm font-medium text-slate-500">
+                  Recettes encaissées
+                </p>
+
+                <p className="mt-3 text-2xl font-bold text-slate-900">
+
+                  {formaterMontant(
+                    totalRecettes
+                  )}
+
+                  <span className="ml-1 text-sm font-semibold text-slate-400">
+                    FCFA
+                  </span>
+
+                </p>
+
+              </div>
 
 
-        {/* TOTAL SORTIES */}
+              <div className="rounded-xl bg-emerald-50 p-3">
+
+                <ArrowUpCircle
+                  size={21}
+                  className="text-emerald-600"
+                />
+
+              </div>
+
+            </div>
+
+
+            <div className="mt-5 text-xs text-slate-400">
+              Cotisations encaissées + barkelou
+            </div>
+
+          </div>
+
+        )}
+
 
         {peutConsulterDepenses && (
 
@@ -1118,8 +1597,6 @@ function Finances() {
         )}
 
 
-        {/* TOTAL AIDES */}
-
         {peutConsulterAides && (
 
           <div className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
@@ -1166,8 +1643,74 @@ function Finances() {
                 className="text-amber-500"
               />
 
-              Total des aides extérieures
+              Total des barkelou enregistrées
 
+            </div>
+
+          </div>
+
+        )}
+
+
+        {(peutConsulterDepenses ||
+          peutConsulterCotisations ||
+          peutConsulterAides) && (
+
+          <div className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+
+            <div className="flex items-start justify-between">
+
+              <div>
+
+                <p className="text-sm font-medium text-slate-500">
+                  Solde
+                </p>
+
+                <p
+                  className={`mt-3 text-2xl font-bold ${
+                    solde >= 0
+                      ? "text-emerald-600"
+                      : "text-red-600"
+                  }`}
+                >
+
+                  {formaterMontant(
+                    solde
+                  )}
+
+                  <span className="ml-1 text-sm font-semibold text-slate-400">
+                    FCFA
+                  </span>
+
+                </p>
+
+              </div>
+
+
+              <div
+                className={`rounded-xl p-3 ${
+                  solde >= 0
+                    ? "bg-emerald-50"
+                    : "bg-red-50"
+                }`}
+              >
+
+                <Wallet
+                  size={21}
+                  className={
+                    solde >= 0
+                      ? "text-emerald-600"
+                      : "text-red-600"
+                  }
+                />
+
+              </div>
+
+            </div>
+
+
+            <div className="mt-5 text-xs text-slate-400">
+              Recettes réelles − sorties d'argent
             </div>
 
           </div>
@@ -1178,15 +1721,117 @@ function Finances() {
 
 
       {/* ======================================================
+          DÉTAIL DES RECETTES
+      ====================================================== */}
+
+      {peutConsulterCotisations && (
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+
+            <div>
+
+              <h2 className="font-bold text-slate-900">
+                Situation des cotisations
+              </h2>
+
+              <p className="mt-1 text-xs text-slate-400">
+                Distinction entre les cotisations dues et
+                les paiements réellement encaissés.
+              </p>
+
+            </div>
+
+
+            <div className="rounded-xl bg-emerald-50 px-4 py-3">
+
+              <p className="text-xs font-medium text-emerald-700">
+                Paiements encaissés
+              </p>
+
+              <p className="mt-1 text-lg font-bold text-emerald-700">
+
+                {formaterMontant(
+                  totalPaiementsCotisations
+                )}{" "}
+
+                <span className="text-xs">
+                  FCFA
+                </span>
+
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+
+            <div className="rounded-xl bg-slate-50 p-4">
+
+              <p className="text-xs font-medium text-slate-500">
+                Cotisations prévues
+              </p>
+
+              <p className="mt-2 text-lg font-bold text-slate-800">
+
+                {formaterMontant(
+                  totalCotisationsPrevues
+                )}{" "}
+
+                <span className="text-xs font-semibold text-slate-400">
+                  FCFA
+                </span>
+
+              </p>
+
+              <p className="mt-1 text-xs text-slate-400">
+                Montant dû, pas encore considéré comme une recette.
+              </p>
+
+            </div>
+
+
+            <div className="rounded-xl bg-amber-50 p-4">
+
+              <p className="text-xs font-medium text-amber-700">
+                Reste à encaisser
+              </p>
+
+              <p className="mt-2 text-lg font-bold text-amber-700">
+
+                {formaterMontant(
+                  totalResteAEncaisser
+                )}{" "}
+
+                <span className="text-xs font-semibold text-amber-600">
+                  FCFA
+                </span>
+
+              </p>
+
+              <p className="mt-1 text-xs text-amber-600">
+                Cotisations dues mais non encore encaissées.
+              </p>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )}
+
+
+      {/* ======================================================
           ACTIONS
       ====================================================== */}
 
       {(peutCreerDepense || peutCreerAide) && (
 
         <div className="grid gap-5 md:grid-cols-2">
-
-
-          {/* SORTIE */}
 
           {peutCreerDepense && (
 
@@ -1199,7 +1844,6 @@ function Finances() {
             >
 
               <div className="absolute right-0 top-0 h-32 w-32 translate-x-12 -translate-y-12 rounded-full bg-red-50 transition group-hover:scale-125" />
-
 
               <div className="relative flex items-center justify-between">
 
@@ -1239,8 +1883,6 @@ function Finances() {
           )}
 
 
-          {/* AIDE */}
-
           {peutCreerAide && (
 
             <button
@@ -1252,7 +1894,6 @@ function Finances() {
             >
 
               <div className="absolute right-0 top-0 h-32 w-32 translate-x-12 -translate-y-12 rounded-full bg-amber-50 transition group-hover:scale-125" />
-
 
               <div className="relative flex items-center justify-between">
 
@@ -1274,7 +1915,7 @@ function Finances() {
 
 
                   <p className="mt-1 text-sm text-slate-500">
-                    Enregistrer une barkelou.
+                    Enregistrer une barkelou ou un versement membre.
                   </p>
 
                 </div>
@@ -1308,11 +1949,6 @@ function Finances() {
             : "xl:grid-cols-1"
         }`}
       >
-
-
-        {/* ====================================================
-            SORTIES D'ARGENT
-        ==================================================== */}
 
         {peutConsulterDepenses && (
 
@@ -1432,7 +2068,7 @@ function Finances() {
 
                           <UserRound size={13} />
 
-                          Remis à :{" "}
+                          Remis à:{" "}
 
                           <span className="font-semibold">
                             {depense.remis_a}
@@ -1474,10 +2110,6 @@ function Finances() {
 
         )}
 
-
-        {/* ====================================================
-            AIDES EXTÉRIEURES
-        ==================================================== */}
 
         {peutConsulterAides && (
 
@@ -1522,7 +2154,7 @@ function Finances() {
                   />
 
                   <p className="mt-3 text-sm text-slate-400">
-                    Aucune aide extérieure enregistrée.
+                    Aucune barkelou enregistrée.
                   </p>
 
                 </div>
@@ -1619,9 +2251,7 @@ function Finances() {
           <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
 
 
-            {/* =================================================
-                HEADER
-            ================================================= */}
+            {/* HEADER */}
 
             <div className="border-b border-slate-100 px-6 py-5">
 
@@ -1662,7 +2292,7 @@ function Finances() {
 
                       {modal === "depense"
                         ? "Ajouter une sortie d'argent"
-                        : "Ajouter une aide extérieure"}
+                        : "Ajouter une barkelou"}
 
                     </h2>
 
@@ -1703,15 +2333,11 @@ function Finances() {
                 className="max-h-[80vh] space-y-5 overflow-y-auto p-6"
               >
 
-
-                {/* MOTIF */}
-
                 <div>
 
                   <label className="mb-2 block text-sm font-semibold text-slate-700">
                     Motif
                   </label>
-
 
                   <div className="relative">
 
@@ -1719,7 +2345,6 @@ function Finances() {
                       size={18}
                       className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                     />
-
 
                     <input
                       type="text"
@@ -1740,19 +2365,13 @@ function Finances() {
                 </div>
 
 
-                {/* TYPE + REMIS À */}
-
                 <div className="grid gap-5 sm:grid-cols-2">
-
-
-                  {/* TYPE */}
 
                   <div>
 
                     <label className="mb-2 block text-sm font-semibold text-slate-700">
                       Type de sortie
                     </label>
-
 
                     <select
                       value={
@@ -1789,14 +2408,11 @@ function Finances() {
                   </div>
 
 
-                  {/* REMIS À */}
-
                   <div>
 
                     <label className="mb-2 block text-sm font-semibold text-slate-700">
                       Remis à
                     </label>
-
 
                     <div className="relative">
 
@@ -1804,7 +2420,6 @@ function Finances() {
                         size={18}
                         className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                       />
-
 
                       <input
                         type="text"
@@ -1827,12 +2442,7 @@ function Finances() {
                 </div>
 
 
-                {/* MONTANT + DATE */}
-
                 <div className="grid gap-5 sm:grid-cols-2">
-
-
-                  {/* MONTANT */}
 
                   <div>
 
@@ -1840,14 +2450,12 @@ function Finances() {
                       Montant
                     </label>
 
-
                     <div className="relative">
 
                       <Wallet
                         size={18}
                         className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                       />
-
 
                       <input
                         type="number"
@@ -1870,14 +2478,11 @@ function Finances() {
                   </div>
 
 
-                  {/* DATE */}
-
                   <div>
 
                     <label className="mb-2 block text-sm font-semibold text-slate-700">
                       Date
                     </label>
-
 
                     <div className="relative">
 
@@ -1885,7 +2490,6 @@ function Finances() {
                         size={18}
                         className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                       />
-
 
                       <input
                         type="date"
@@ -1909,20 +2513,14 @@ function Finances() {
                 </div>
 
 
-                {/* PIÈCE JOINTE */}
-
                 <div>
 
                   <label className="mb-2 block text-sm font-semibold text-slate-700">
-
                     Pièce jointe
-
                     <span className="ml-1 font-normal text-slate-400">
                       (facultatif)
                     </span>
-
                   </label>
-
 
                   <div className="relative">
 
@@ -1930,7 +2528,6 @@ function Finances() {
                       size={18}
                       className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                     />
-
 
                     <input
                       type="file"
@@ -1947,7 +2544,7 @@ function Finances() {
 
                     <p className="mt-2 text-xs text-slate-500">
 
-                      Fichier sélectionné :{" "}
+                      Fichier sélectionné:{" "}
 
                       <span className="font-semibold text-slate-700">
                         {formDepense.piece_jointe.name}
@@ -1965,8 +2562,6 @@ function Finances() {
                 </div>
 
 
-                {/* DESCRIPTION */}
-
                 <div>
 
                   <label className="mb-2 block text-sm font-semibold text-slate-700">
@@ -1979,14 +2574,12 @@ function Finances() {
 
                   </label>
 
-
                   <div className="relative">
 
                     <FileText
                       size={18}
                       className="absolute left-3 top-3 text-slate-400"
                     />
-
 
                     <textarea
                       value={
@@ -2009,8 +2602,6 @@ function Finances() {
                 </div>
 
 
-                {/* ERREUR */}
-
                 {erreurFormulaire && (
 
                   <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -2019,8 +2610,6 @@ function Finances() {
 
                 )}
 
-
-                {/* SUCCÈS */}
 
                 {messageSucces && (
 
@@ -2031,8 +2620,6 @@ function Finances() {
                 )}
 
 
-                {/* BOUTON */}
-
                 <button
                   type="submit"
                   disabled={enregistrement}
@@ -2042,24 +2629,20 @@ function Finances() {
                   {enregistrement ? (
 
                     <>
-
                       <RefreshCw
                         size={18}
                         className="animate-spin"
                       />
 
                       Enregistrement...
-
                     </>
 
                   ) : (
 
                     <>
-
                       <Plus size={18} />
 
                       Enregistrer la sortie d'argent
-
                     </>
 
                   )}
@@ -2072,47 +2655,196 @@ function Finances() {
             ) : (
 
               /* =================================================
-                 FORMULAIRE AIDE
+                 FORMULAIRE BARKELou / VERSEMENT
               ================================================= */
 
               <form
                 onSubmit={ajouterAide}
-                className="space-y-5 p-6"
+                className="max-h-[80vh] space-y-5 overflow-y-auto p-6"
               >
 
-                <div>
+                {/* ------------------------------------------------
+                    MEMBRE NON COTISANT
+                ------------------------------------------------- */}
 
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">
-                    Source de l'aide
-                  </label>
+                {peutCreerCotisation && (
+
+                  <div>
+
+                    <label className="mb-2 block text-sm font-semibold text-slate-700">
+                      Versement d'un membre non cotisant
+
+                      <span className="ml-1 font-normal text-slate-400">
+                        (facultatif)
+                      </span>
+                    </label>
 
 
-                  <div className="relative">
+                    <div className="relative">
 
-                    <Building2
-                      size={18}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    />
+                      <UserRound
+                        size={18}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                      />
 
 
-                    <input
-                      type="text"
-                      value={formAide.source}
-                      onChange={(event) =>
-                        modifierAide(
-                          "source",
-                          event.target.value
-                        )
-                      }
-                      placeholder="Ex : Partenaire, donateur..."
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100"
-                      disabled={enregistrement}
-                    />
+                      <select
+                        value={
+                          formAide.membre_id
+                        }
+                        onChange={(event) => {
+
+                          const membreId =
+                            event.target.value;
+
+                          modifierAide(
+                            "membre_id",
+                            membreId
+                          );
+
+
+                          if (membreId) {
+
+                            modifierAide(
+                              "source",
+                              ""
+                            );
+
+                          }
+
+                        }}
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100"
+                        disabled={enregistrement}
+                      >
+
+                        <option value="">
+                          Aucun membre — barkelou extérieure
+                        </option>
+
+
+                        {membresActifs
+                          .filter(
+                            (membre) =>
+                              Number(
+                                membre.montant_cotisation ?? 0
+                              ) === 0
+                          )
+                          .map((membre) => (
+
+                            <option
+                              key={membre.id}
+                              value={membre.id}
+                            >
+
+                              {obtenirNomMembre(
+                                membre
+                              )}
+
+                              {" — Non cotisant"}
+
+                            </option>
+
+                          ))}
+
+                      </select>
+
+                    </div>
+
+
+                    <p className="mt-2 text-xs text-slate-400">
+
+                      Les membres ayant une cotisation mensuelle
+                      supérieure à 0 ne sont pas proposés ici.
+                      Leurs paiements se font depuis les cotisations.
+
+                    </p>
 
                   </div>
 
-                </div>
+                )}
 
+
+                {/* ------------------------------------------------
+                    SOURCE EXTÉRIEURE
+                ------------------------------------------------- */}
+
+                {!formAide.membre_id && (
+
+                  <div>
+
+                    <label className="mb-2 block text-sm font-semibold text-slate-700">
+                      Source de la barkelou
+                    </label>
+
+
+                    <div className="relative">
+
+                      <Building2
+                        size={18}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                      />
+
+
+                      <input
+                        type="text"
+                        value={formAide.source}
+                        onChange={(event) =>
+                          modifierAide(
+                            "source",
+                            event.target.value
+                          )
+                        }
+                        placeholder="Ex : Partenaire, donateur..."
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100"
+                        disabled={enregistrement}
+                      />
+
+                    </div>
+
+                  </div>
+
+                )}
+
+
+                {/* ------------------------------------------------
+                    MEMBRE SÉLECTIONNÉ
+                ------------------------------------------------- */}
+
+                {formAide.membre_id && (
+
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+
+                    <p className="text-xs font-medium text-emerald-700">
+                      Versement volontaire
+                    </p>
+
+
+                    <p className="mt-1 text-sm font-semibold text-emerald-900">
+
+                      {obtenirNomMembre(
+                        membresActifs.find(
+                          (membre) =>
+                            Number(membre.id) ===
+                            Number(formAide.membre_id)
+                        )
+                      )}
+
+                    </p>
+
+
+                    <p className="mt-1 text-xs text-emerald-700">
+                      Ce membre n'a pas de cotisation mensuelle obligatoire.
+                      Son versement sera enregistré comme une entrée d'argent réelle.
+                    </p>
+
+                  </div>
+
+                )}
+
+
+                {/* ------------------------------------------------
+                    MONTANT + DATE
+                ------------------------------------------------- */}
 
                 <div className="grid gap-5 sm:grid-cols-2">
 
@@ -2186,6 +2918,10 @@ function Finances() {
 
                 </div>
 
+
+                {/* ------------------------------------------------
+                    DESCRIPTION
+                ------------------------------------------------- */}
 
                 <div>
 
@@ -2272,7 +3008,9 @@ function Finances() {
 
                       <Plus size={18} />
 
-                      Enregistrer l'aide extérieure
+                      {formAide.membre_id
+                        ? "Enregistrer le versement"
+                        : "Enregistrer la barkelou"}
 
                     </>
 

@@ -24,16 +24,86 @@ router = APIRouter(
 
 
 # ============================================================
+# CONSTANTES
+# ============================================================
+
+MOIS_ORDRE = {
+    "Janvier": 1,
+    "Février": 2,
+    "Mars": 3,
+    "Avril": 4,
+    "Mai": 5,
+    "Juin": 6,
+    "Juillet": 7,
+    "Août": 8,
+    "Septembre": 9,
+    "Octobre": 10,
+    "Novembre": 11,
+    "Décembre": 12,
+}
+
+
+# ============================================================
 # UTILITAIRES
 # ============================================================
+
+def normaliser_mois(mois: str) -> str:
+    """
+    Nettoie le nom du mois.
+    """
+
+    return (mois or "").strip()
+
+
+def obtenir_numero_mois(mois: str) -> int | None:
+    """
+    Retourne le numéro correspondant au mois.
+    """
+
+    mois_normalise = normaliser_mois(mois)
+
+    return MOIS_ORDRE.get(mois_normalise)
+
+
+def obtenir_mois_precedent(
+    mois: str,
+    annee: int,
+) -> tuple[str, int] | None:
+    """
+    Retourne le mois précédant le mois fourni.
+
+    Exemple :
+        Septembre 2026 -> Août 2026
+        Janvier 2026  -> Décembre 2025
+    """
+
+    numero_mois = obtenir_numero_mois(mois)
+
+    if numero_mois is None:
+        return None
+
+    if numero_mois == 1:
+        return "Décembre", annee - 1
+
+    mois_precedent_numero = numero_mois - 1
+
+    for nom_mois, numero in MOIS_ORDRE.items():
+        if numero == mois_precedent_numero:
+            return nom_mois, annee
+
+    return None
+
 
 def obtenir_montant_paye(
     cotisation_id: int,
     db: Session,
 ) -> float:
     """
-    Calcule le total réellement payé pour une cotisation
-    à partir des paiements associés.
+    Calcule le total réellement versé pour une cotisation
+    à partir des paiements actifs associés.
+
+    Important :
+    un paiement représente une entrée d'argent réelle.
     """
 
     paiements = (
@@ -57,11 +127,14 @@ def calculer_reste(
 ) -> float:
     """
     Calcule le reste à payer.
+
+    Pour une cotisation à 0 :
+        reste = 0
     """
 
     return max(
         0,
-        float(montant) - float(montant_paye),
+        float(montant or 0) - float(montant_paye or 0),
     )
 
 
@@ -71,10 +144,47 @@ def calculer_statut(
 ) -> str:
     """
     Détermine le statut d'une cotisation.
+
+    Cas particuliers :
+
+    montant = 0
+    paiement = 0
+        -> Sans cotisation
+
+    montant = 0
+    paiement > 0
+        -> Versement
+
+    montant > 0
+    paiement = 0
+        -> Impayée
+
+    montant > 0
+    paiement < montant
+        -> Partiellement payée
+
+    montant > 0
+    paiement >= montant
+        -> Payée
     """
 
     montant = float(montant or 0)
     montant_paye = float(montant_paye or 0)
+
+    # --------------------------------------------------------
+    # MEMBRE SANS COTISATION FIXE
+    # --------------------------------------------------------
+
+    if montant <= 0:
+
+        if montant_paye > 0:
+            return "Versement"
+
+        return "Sans cotisation"
+
+    # --------------------------------------------------------
+    # COTISATION NORMALE
+    # --------------------------------------------------------
 
     if montant_paye <= 0:
         return "Impayée"
@@ -164,6 +274,10 @@ def construire_cotisation(
             {
                 "id": paiement.id,
 
+                "membre_id": paiement.membre_id,
+
+                "cotisation_id": paiement.cotisation_id,
+
                 "montant": float(
                     paiement.montant or 0
                 ),
@@ -182,6 +296,43 @@ def construire_cotisation(
     }
 
 
+def obtenir_cotisation_precedente(
+    membre_id: int,
+    mois_concerne: str,
+    annee: int,
+    db: Session,
+):
+    """
+    Recherche la cotisation du mois immédiatement précédent.
+
+    Si elle n'existe pas, on retourne None.
+
+    Le premier mois enregistré pour un membre n'est donc pas
+    artificiellement bloqué.
+    """
+
+    precedent = obtenir_mois_precedent(
+        mois_concerne,
+        annee,
+    )
+
+    if precedent is None:
+        return None
+
+    mois_precedent, annee_precedente = precedent
+
+    return (
+        db.query(Cotisation)
+        .filter(
+            Cotisation.membre_id == membre_id,
+            Cotisation.mois_concerne == mois_precedent,
+            Cotisation.annee == annee_precedente,
+            Cotisation.actif.is_(True),
+        )
+        .first()
+    )
+
+
 # ============================================================
 # CRÉER UNE COTISATION
 # ============================================================
@@ -192,9 +343,9 @@ def construire_cotisation(
 )
 def creer_cotisation(
     membre_id: int,
-    montant: float,
-    mois_concerne: str,
-    annee: int,
+    montant: float | None = None,
+    mois_concerne: str = "",
+    annee: int = 0,
     date_cotisation: date | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(
@@ -203,28 +354,26 @@ def creer_cotisation(
 ):
 
     # --------------------------------------------------------
-    # VALIDATION MONTANT
-    # --------------------------------------------------------
-
-    if montant <= 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Le montant mensuel doit être "
-                "supérieur à zéro."
-            ),
-        )
-
-    # --------------------------------------------------------
     # VALIDATION MOIS
     # --------------------------------------------------------
 
-    mois_concerne = mois_concerne.strip()
+    mois_concerne = normaliser_mois(
+        mois_concerne
+    )
 
     if not mois_concerne:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Le mois concerné est obligatoire.",
+        )
+
+    if mois_concerne not in MOIS_ORDRE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Le mois concerné est invalide. "
+                "Utilisez un mois valide."
+            ),
         )
 
     # --------------------------------------------------------
@@ -257,6 +406,24 @@ def creer_cotisation(
         )
 
     # --------------------------------------------------------
+    # MONTANT FIXE DU MEMBRE
+    # --------------------------------------------------------
+    #
+    # Le frontend peut envoyer "montant", mais le backend
+    # n'en fait PAS une source de vérité.
+    #
+    # La vraie valeur est :
+    #
+    # membre.montant_cotisation
+    #
+    # Cela garantit la cohérence.
+    #
+
+    montant_fixe = float(
+        membre.montant_cotisation or 0
+    )
+
+    # --------------------------------------------------------
     # VÉRIFIER SI LA COTISATION EXISTE DÉJÀ
     # --------------------------------------------------------
 
@@ -272,6 +439,7 @@ def creer_cotisation(
     )
 
     if cotisation_existante:
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
@@ -284,29 +452,99 @@ def creer_cotisation(
         )
 
     # --------------------------------------------------------
-    # CRÉER LA COTISATION
+    # CAS PARTICULIER :
+    # MEMBRE AVEC COTISATION FIXE = 0
     # --------------------------------------------------------
     #
-    # Une cotisation représente le montant fixe dû.
+    # Il n'est jamais bloqué par la règle du mois précédent.
     #
-    # Aucun paiement n'est créé ici.
+    # Il peut avoir une cotisation mensuelle à 0 et effectuer
+    # des versements volontaires.
     #
-    # Exemple :
-    #
-    # Cotisation = 7 000 FCFA
-    # Paiement   = 0 FCFA
-    # Reste      = 7 000 FCFA
-    #
-    # Le paiement sera ajouté séparément avec
-    # POST /cotisations/{cotisation_id}/paiements
-    #
+
+    if montant_fixe <= 0:
+
+        montant_a_enregistrer = 0
+
+    else:
+
+        # ----------------------------------------------------
+        # VÉRIFIER LE MOIS PRÉCÉDENT
+        # ----------------------------------------------------
+
+        cotisation_precedente = (
+            obtenir_cotisation_precedente(
+                membre_id=membre_id,
+                mois_concerne=mois_concerne,
+                annee=annee,
+                db=db,
+            )
+        )
+
+        # ----------------------------------------------------
+        # SI LE MOIS PRÉCÉDENT EXISTE
+        # ----------------------------------------------------
+
+        if cotisation_precedente:
+
+            montant_precedent = float(
+                cotisation_precedente.montant or 0
+            )
+
+            montant_precedent_paye = (
+                obtenir_montant_paye(
+                    cotisation_precedente.id,
+                    db,
+                )
+            )
+
+            reste_precedent = calculer_reste(
+                montant_precedent,
+                montant_precedent_paye,
+            )
+
+            # ------------------------------------------------
+            # MOIS PRÉCÉDENT NON SOLDÉ
+            # ------------------------------------------------
+
+            if reste_precedent > 0:
+
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        f"La cotisation de "
+                        f"{cotisation_precedente.mois_concerne} "
+                        f"{cotisation_precedente.annee} "
+                        "n'est pas encore soldée. "
+                        f"Reste à payer : "
+                        f"{reste_precedent:g} FCFA. "
+                        "Vous devez d'abord solder cette "
+                        "cotisation avant de passer au mois "
+                        "suivant."
+                    ),
+                )
+
+        # ----------------------------------------------------
+        # LE MOIS PRÉCÉDENT EST SOLDÉ
+        # ----------------------------------------------------
+
+        montant_a_enregistrer = montant_fixe
+
+    # --------------------------------------------------------
+    # CRÉER LA COTISATION
+    # --------------------------------------------------------
 
     cotisation = Cotisation(
         membre_id=membre_id,
-        montant=montant,
-        montant_du=montant,
+
+        montant=montant_a_enregistrer,
+
+        montant_du=montant_a_enregistrer,
+
         mois_concerne=mois_concerne,
+
         annee=annee,
+
         date_cotisation=(
             date_cotisation or date.today()
         ),
@@ -319,7 +557,7 @@ def creer_cotisation(
         db.flush()
 
         # ----------------------------------------------------
-        # NOTIFICATION DU MEMBRE
+        # NOTIFICATION
         # ----------------------------------------------------
 
         utilisateur_membre = (
@@ -333,12 +571,26 @@ def creer_cotisation(
 
         if utilisateur_membre:
 
-            message_notification = (
-                f"Votre cotisation du mois de "
-                f"{mois_concerne} {annee} a été créée "
-                f"pour un montant de {montant:g} FCFA. "
-                "Aucun paiement n'a encore été enregistré."
-            )
+            if montant_a_enregistrer > 0:
+
+                message_notification = (
+                    f"Votre cotisation du mois de "
+                    f"{mois_concerne} {annee} a été créée "
+                    f"pour un montant de "
+                    f"{montant_a_enregistrer:g} FCFA. "
+                    "Aucun paiement n'a encore été enregistré."
+                )
+
+            else:
+
+                message_notification = (
+                    f"La période de cotisation "
+                    f"{mois_concerne} {annee} "
+                    "a été enregistrée. "
+                    "Votre cotisation fixe est de 0 FCFA. "
+                    "Vous pouvez néanmoins effectuer "
+                    "un versement volontaire."
+                )
 
             creer_notification(
                 db=db,
@@ -396,7 +648,7 @@ def creer_cotisation(
 
 
 # ============================================================
-# AJOUTER UN PAIEMENT À UNE COTISATION EXISTANTE
+# AJOUTER UN PAIEMENT
 # ============================================================
 
 @router.post(
@@ -475,32 +727,60 @@ def ajouter_paiement(
         montant_deja_paye,
     )
 
-    # --------------------------------------------------------
-    # EMPÊCHER UN PAIEMENT APRÈS PAIEMENT COMPLET
-    # --------------------------------------------------------
+    # ========================================================
+    # CAS 1 :
+    # COTISATION FIXE > 0
+    # ========================================================
 
-    if reste <= 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                "Cette cotisation est déjà "
-                "entièrement payée."
-            ),
-        )
+    if montant_fixe > 0:
 
-    # --------------------------------------------------------
-    # EMPÊCHER DE DÉPASSER LE RESTE
-    # --------------------------------------------------------
+        # ----------------------------------------------------
+        # EMPÊCHER PAIEMENT APRÈS PAIEMENT COMPLET
+        # ----------------------------------------------------
 
-    if montant > reste:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=(
-                f"Le paiement de {montant:g} FCFA "
-                f"dépasse le reste à payer de "
-                f"{reste:g} FCFA."
-            ),
-        )
+        if reste <= 0:
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Cette cotisation est déjà "
+                    "entièrement payée."
+                ),
+            )
+
+        # ----------------------------------------------------
+        # EMPÊCHER DE DÉPASSER LE RESTE
+        # ----------------------------------------------------
+
+        if montant > reste:
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"Le paiement de {montant:g} FCFA "
+                    f"dépasse le reste à payer de "
+                    f"{reste:g} FCFA."
+                ),
+            )
+
+    # ========================================================
+    # CAS 2 :
+    # COTISATION FIXE = 0
+    # ========================================================
+    #
+    # AUCUNE LIMITE DE RESTE.
+    #
+    # Le paiement est un versement volontaire.
+    #
+
+    nouveau_total_paye = (
+        montant_deja_paye + montant
+    )
+
+    nouveau_reste = calculer_reste(
+        montant_fixe,
+        nouveau_total_paye,
+    )
 
     # --------------------------------------------------------
     # CRÉER LE PAIEMENT
@@ -508,12 +788,17 @@ def ajouter_paiement(
 
     paiement = Paiement(
         membre_id=cotisation.membre_id,
+
         cotisation_id=cotisation.id,
+
         montant=montant,
+
         mode_paiement=mode_paiement,
+
         date_paiement=(
             date_paiement or date.today()
         ),
+
         reference=reference,
     )
 
@@ -524,22 +809,13 @@ def ajouter_paiement(
         db.flush()
 
         # ----------------------------------------------------
-        # NOUVEAU TOTAL PAYÉ
+        # METTRE À JOUR LE RESTE
         # ----------------------------------------------------
-
-        nouveau_total_paye = (
-            montant_deja_paye + montant
-        )
-
-        nouveau_reste = calculer_reste(
-            montant_fixe,
-            nouveau_total_paye,
-        )
 
         cotisation.montant_du = nouveau_reste
 
         # ----------------------------------------------------
-        # NOTIFICATION DU MEMBRE
+        # NOTIFICATION
         # ----------------------------------------------------
 
         utilisateur_membre = (
@@ -547,6 +823,7 @@ def ajouter_paiement(
             .filter(
                 Utilisateur.membre_id
                 == cotisation.membre_id,
+
                 Utilisateur.actif.is_(True),
             )
             .first()
@@ -554,34 +831,51 @@ def ajouter_paiement(
 
         if utilisateur_membre:
 
-            statut_apres_paiement = calculer_statut(
-                montant_fixe,
-                nouveau_total_paye,
-            )
-
-            if statut_apres_paiement == "Payée":
+            if montant_fixe <= 0:
 
                 message_notification = (
-                    f"Votre paiement de {montant:g} FCFA "
-                    f"a été enregistré pour votre cotisation "
-                    f"{cotisation.mois_concerne} "
+                    f"Votre versement de "
+                    f"{montant:g} FCFA a été enregistré "
+                    f"pour {cotisation.mois_concerne} "
                     f"{cotisation.annee}. "
-                    "Votre cotisation est maintenant "
-                    "entièrement payée."
+                    f"Total versé sur cette période : "
+                    f"{nouveau_total_paye:g} FCFA."
                 )
 
             else:
 
-                message_notification = (
-                    f"Votre paiement de {montant:g} FCFA "
-                    f"a été enregistré pour votre cotisation "
-                    f"{cotisation.mois_concerne} "
-                    f"{cotisation.annee}. "
-                    f"Total versé : "
-                    f"{nouveau_total_paye:g} FCFA. "
-                    f"Reste à payer : "
-                    f"{nouveau_reste:g} FCFA."
+                statut_apres_paiement = (
+                    calculer_statut(
+                        montant_fixe,
+                        nouveau_total_paye,
+                    )
                 )
+
+                if statut_apres_paiement == "Payée":
+
+                    message_notification = (
+                        f"Votre paiement de {montant:g} FCFA "
+                        f"a été enregistré pour votre "
+                        f"cotisation "
+                        f"{cotisation.mois_concerne} "
+                        f"{cotisation.annee}. "
+                        "Votre cotisation est maintenant "
+                        "entièrement payée."
+                    )
+
+                else:
+
+                    message_notification = (
+                        f"Votre paiement de {montant:g} FCFA "
+                        f"a été enregistré pour votre "
+                        f"cotisation "
+                        f"{cotisation.mois_concerne} "
+                        f"{cotisation.annee}. "
+                        f"Total versé : "
+                        f"{nouveau_total_paye:g} FCFA. "
+                        f"Reste à payer : "
+                        f"{nouveau_reste:g} FCFA."
+                    )
 
             creer_notification(
                 db=db,
@@ -660,7 +954,7 @@ def ajouter_paiement(
 
 
 # ============================================================
-# LISTER LES MEMBRES ACTIFS POUR LES COTISATIONS
+# MEMBRES ACTIFS POUR LA GESTION DES COTISATIONS
 # ============================================================
 
 @router.get("/membres-actifs")
@@ -671,13 +965,10 @@ def lister_membres_actifs_pour_cotisations(
     ),
 ):
     """
-    Retourne uniquement les informations nécessaires
-    à la gestion des cotisations.
+    Retourne les membres actifs nécessaires à la gestion
+    des cotisations.
 
-    Cette route est volontairement séparée de
-    GET /membres afin de ne pas donner la permission
-    MEMBRE_CONSULTER aux utilisateurs qui doivent
-    uniquement gérer les cotisations.
+    Cette route ne nécessite pas MEMBRE_CONSULTER.
     """
 
     membres = (
@@ -698,12 +989,17 @@ def lister_membres_actifs_pour_cotisations(
         "membres": [
             {
                 "id": membre.id,
+
                 "nom": membre.nom,
+
                 "prenom": membre.prenom,
+
                 "telephone": membre.telephone,
+
                 "montant_cotisation": float(
                     membre.montant_cotisation or 0
                 ),
+
                 "actif": membre.actif,
             }
             for membre in membres
@@ -742,6 +1038,7 @@ def lister_cotisations(
     # --------------------------------------------------------
 
     if membre_id is not None:
+
         query = query.filter(
             Cotisation.membre_id == membre_id
         )
@@ -751,11 +1048,13 @@ def lister_cotisations(
     # --------------------------------------------------------
 
     if date_debut is not None:
+
         query = query.filter(
             Cotisation.date_cotisation >= date_debut
         )
 
     if date_fin is not None:
+
         query = query.filter(
             Cotisation.date_cotisation <= date_fin
         )
@@ -765,6 +1064,7 @@ def lister_cotisations(
     # --------------------------------------------------------
 
     if mois_concerne is not None:
+
         query = query.filter(
             Cotisation.mois_concerne
             == mois_concerne.strip()
@@ -775,6 +1075,7 @@ def lister_cotisations(
     # --------------------------------------------------------
 
     if annee is not None:
+
         query = query.filter(
             Cotisation.annee == annee
         )
@@ -809,7 +1110,9 @@ def lister_cotisations(
         resultat.append(data)
 
         total += data["montant"]
+
         total_cotise += data["montant_cotise"]
+
         total_du += data["montant_du"]
 
     return {
@@ -857,6 +1160,7 @@ def obtenir_cotisation(
     )
 
     if not cotisation:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cotisation introuvable.",

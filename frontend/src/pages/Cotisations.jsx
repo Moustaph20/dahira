@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   ArrowDownCircle,
-  ArrowRight,
   CalendarDays,
   Check,
   ChevronDown,
@@ -60,6 +59,8 @@ const STATUTS = [
   { value: "payee", label: "Payées" },
   { value: "partielle", label: "Partielles" },
   { value: "impayee", label: "Impayées" },
+  { value: "sans_cotisation", label: "Sans cotisation" },
+  { value: "versement", label: "Versements" },
 ];
 
 const normaliserNombre = (value) => {
@@ -108,7 +109,12 @@ const getNomMembre = (membre) => {
 
   const complet = `${prenom} ${nom}`.trim();
 
-  return complet || membre.nom_complet || membre.telephone || `Membre #${membre.id}`;
+  return (
+    complet ||
+    membre.nom_complet ||
+    membre.telephone ||
+    `Membre #${membre.id}`
+  );
 };
 
 const getMembreIdDepuisUtilisateur = (utilisateur) => {
@@ -135,12 +141,30 @@ const getMembreDepuisCotisation = (cotisation) => {
   };
 };
 
+/*
+ * Statuts :
+ *
+ * Cotisation normale :
+ * - 0 payé      => Impayée
+ * - partielle   => Partielle
+ * - complète    => Payée
+ *
+ * Cotisation fixe à 0 :
+ * - 0 payé      => Sans cotisation
+ * - paiement >0 => Versement
+ */
 const calculerStatut = (montant, montantPaye) => {
   const fixe = normaliserNombre(montant);
   const paye = normaliserNombre(montantPaye);
 
+  if (fixe <= 0) {
+    return paye > 0 ? "versement" : "sans_cotisation";
+  }
+
   if (paye <= 0) return "impayee";
-  if (paye >= fixe && fixe > 0) return "payee";
+
+  if (paye >= fixe) return "payee";
+
   return "partielle";
 };
 
@@ -148,10 +172,19 @@ const statutLabel = (statut) => {
   switch (statut) {
     case "payee":
       return "Payée";
+
     case "partielle":
       return "Partielle";
+
     case "impayee":
       return "Impayée";
+
+    case "sans_cotisation":
+      return "Sans cotisation";
+
+    case "versement":
+      return "Versement";
+
     default:
       return "—";
   }
@@ -167,6 +200,12 @@ const getStatutClasses = (statut) => {
 
     case "impayee":
       return "bg-red-50 text-red-700 border-red-200";
+
+    case "versement":
+      return "bg-blue-50 text-blue-700 border-blue-200";
+
+    case "sans_cotisation":
+      return "bg-slate-50 text-slate-600 border-slate-200";
 
     default:
       return "bg-slate-50 text-slate-600 border-slate-200";
@@ -202,8 +241,6 @@ export default function Cotisations() {
   const { utilisateur, aPermission } = useAuth();
 
   /*
-   * RÈGLE D'ACCÈS :
-   *
    * COTISATION_CREER = accès aux cotisations du Dahira.
    *
    * MEMBRE_CONSULTER n'est volontairement PAS utilisé ici.
@@ -263,13 +300,8 @@ export default function Cotisations() {
   /*
    * Chargement des données.
    *
-   * IMPORTANT :
-   * On ne fait JAMAIS getMembres().
-   *
-   * Pour les cotisations du Dahira, on utilise :
+   * Pour les cotisations du Dahira :
    * GET /cotisations/membres-actifs
-   *
-   * Cette route doit être protégée par COTISATION_CREER.
    */
   const chargerDonnees = async () => {
     setChargement(true);
@@ -298,7 +330,10 @@ export default function Cotisations() {
       if (peutConsulterDahira) {
         const membresData = resultats[1]?.data ?? resultats[1];
 
-        const listeMembres = extraireListe(membresData, "membres");
+        const listeMembres = extraireListe(
+          membresData,
+          "membres"
+        );
 
         setMembresActifs(
           Array.isArray(listeMembres) ? listeMembres : []
@@ -307,7 +342,10 @@ export default function Cotisations() {
         setMembresActifs([]);
       }
     } catch (error) {
-      console.error("ERREUR CHARGEMENT COTISATIONS :", error);
+      console.error(
+        "ERREUR CHARGEMENT COTISATIONS :",
+        error
+      );
 
       const status = error?.response?.status;
 
@@ -331,8 +369,9 @@ export default function Cotisations() {
   }, [peutConsulterDahira]);
 
   /*
-   * Les mois disponibles sont UNIQUEMENT ceux pour lesquels
-   * au moins une cotisation a réellement été enregistrée.
+   * Mois disponibles :
+   * uniquement les mois pour lesquels au moins
+   * une cotisation existe réellement.
    */
   const moisDisponibles = useMemo(() => {
     const map = new Map();
@@ -369,10 +408,11 @@ export default function Cotisations() {
   /*
    * Sélection automatique :
    * 1. mois actuel s'il existe ;
-   * 2. sinon dernier mois réellement enregistré.
+   * 2. sinon dernier mois enregistré.
    */
   useEffect(() => {
     if (!peutConsulterDahira) return;
+
     if (!moisDisponibles.length) return;
 
     const moisActuel = getMoisActuel();
@@ -397,18 +437,15 @@ export default function Cotisations() {
 
   /*
    * Membre connecté.
-   *
-   * On essaie d'abord de le retrouver dans la liste des membres
-   * spécifique aux cotisations.
-   *
-   * Cela ne nécessite PAS MEMBRE_CONSULTER.
    */
   const membreConnecte = useMemo(() => {
-    const membreId = getMembreIdDepuisUtilisateur(utilisateur);
+    const membreId =
+      getMembreIdDepuisUtilisateur(utilisateur);
 
     if (membreId !== null && membreId !== undefined) {
       const membre = membresActifs.find(
-        (item) => Number(item.id) === Number(membreId)
+        (item) =>
+          Number(item.id) === Number(membreId)
       );
 
       if (membre) return membre;
@@ -442,20 +479,28 @@ export default function Cotisations() {
    * Cotisations du membre connecté.
    */
   const mesCotisations = useMemo(() => {
-    const membreId = getMembreIdDepuisUtilisateur(utilisateur);
+    const membreId =
+      getMembreIdDepuisUtilisateur(utilisateur);
 
-    if (membreId === null || membreId === undefined) {
+    if (
+      membreId === null ||
+      membreId === undefined
+    ) {
       return [];
     }
 
     return cotisations
       .filter(
         (cotisation) =>
-          Number(cotisation?.membre_id) === Number(membreId)
+          Number(cotisation?.membre_id) ===
+          Number(membreId)
       )
       .sort((a, b) => {
-        const anneeA = Number(a?.annee) || 0;
-        const anneeB = Number(b?.annee) || 0;
+        const anneeA =
+          Number(a?.annee) || 0;
+
+        const anneeB =
+          Number(b?.annee) || 0;
 
         if (anneeA !== anneeB) {
           return anneeB - anneeA;
@@ -471,56 +516,88 @@ export default function Cotisations() {
   /*
    * Situation complète du mois sélectionné.
    *
-   * IMPORTANT :
-   * Pour "Impayées", on construit une ligne même lorsqu'aucune
-   * cotisation n'existe encore pour le membre.
+   * Même si une cotisation n'existe pas encore,
+   * on affiche une ligne synthétique pour le membre.
    */
   const situationMensuelle = useMemo(() => {
     if (!peutConsulterDahira) return [];
 
-    if (!moisSelectionne || !anneeSelectionnee) return [];
+    if (
+      !moisSelectionne ||
+      !anneeSelectionnee
+    ) {
+      return [];
+    }
 
-    const membres = Array.isArray(membresActifs)
-      ? membresActifs.filter((membre) => membre?.actif !== false)
+    const membres = Array.isArray(
+      membresActifs
+    )
+      ? membresActifs.filter(
+          (membre) => membre?.actif !== false
+        )
       : [];
 
-    const cotisationsDuMois = cotisations.filter(
-      (cotisation) =>
-        normaliserTexte(cotisation?.mois_concerne) ===
-          normaliserTexte(moisSelectionne) &&
-        Number(cotisation?.annee) ===
-          Number(anneeSelectionnee)
-    );
-
-    return membres.map((membre) => {
-      const cotisationsMembre = cotisationsDuMois.filter(
+    const cotisationsDuMois =
+      cotisations.filter(
         (cotisation) =>
-          Number(cotisation?.membre_id) ===
-          Number(membre?.id)
+          normaliserTexte(
+            cotisation?.mois_concerne
+          ) ===
+            normaliserTexte(
+              moisSelectionne
+            ) &&
+          Number(cotisation?.annee) ===
+            Number(anneeSelectionnee)
       );
 
-      /*
-       * Une seule cotisation mensuelle est normalement attendue.
-       * Si plusieurs existent, on prend la première et on cumule
-       * quand même les paiements.
-       */
+    return membres.map((membre) => {
+      const cotisationsMembre =
+        cotisationsDuMois.filter(
+          (cotisation) =>
+            Number(cotisation?.membre_id) ===
+            Number(membre?.id)
+        );
+
       const cotisation =
         cotisationsMembre.length > 0
           ? cotisationsMembre[0]
           : null;
 
+      /*
+       * Pour une cotisation existante :
+       * on utilise le montant historique enregistré.
+       *
+       * Pour une cotisation absente :
+       * on utilise le montant fixe actuel du membre.
+       */
       const montantFixe = cotisation
-        ? normaliserNombre(cotisation.montant)
-        : normaliserNombre(membre.montant_cotisation);
+        ? normaliserNombre(
+            cotisation.montant
+          )
+        : normaliserNombre(
+            membre.montant_cotisation
+          );
 
       const montantPaye = cotisation
-        ? normaliserNombre(cotisation.montant_cotise)
+        ? normaliserNombre(
+            cotisation.montant_cotise
+          )
         : 0;
 
-      const montantDu = Math.max(
-        montantFixe - montantPaye,
-        0
-      );
+      /*
+       * Pour une cotisation à 0 :
+       * le reste reste toujours à 0.
+       *
+       * Les paiements éventuels sont des versements
+       * volontaires et ne créent pas une dette.
+       */
+      const montantDu =
+        montantFixe <= 0
+          ? 0
+          : Math.max(
+              montantFixe - montantPaye,
+              0
+            );
 
       const statut = calculerStatut(
         montantFixe,
@@ -560,8 +637,7 @@ export default function Cotisations() {
   /*
    * Lignes réellement enregistrées.
    *
-   * "Tous" ne doit PAS afficher les lignes synthétiques
-   * des membres sans cotisation.
+   * "Tous" n'affiche pas les lignes synthétiques.
    */
   const lignesToutes = useMemo(() => {
     return situationMensuelle.filter(
@@ -589,8 +665,12 @@ export default function Cotisations() {
         );
 
         return (
-          nom.includes(rechercheNormalisee) ||
-          telephone.includes(rechercheNormalisee)
+          nom.includes(
+            rechercheNormalisee
+          ) ||
+          telephone.includes(
+            rechercheNormalisee
+          )
         );
       });
     }
@@ -598,7 +678,8 @@ export default function Cotisations() {
     if (statutSelectionne !== "tous") {
       lignes = lignes.filter(
         (ligne) =>
-          ligne.statut === statutSelectionne
+          ligne.statut ===
+          statutSelectionne
       );
     }
 
@@ -612,6 +693,10 @@ export default function Cotisations() {
 
   /*
    * Statistiques mensuelles.
+   *
+   * Estimation = total des montants fixes.
+   * Total encaissé = paiements réellement reçus.
+   * Reste = estimation - encaissé.
    */
   const statistiques = useMemo(() => {
     if (!peutConsulterDahira) {
@@ -622,142 +707,244 @@ export default function Cotisations() {
         payees: 0,
         partielles: 0,
         impayees: 0,
+        sansCotisation: 0,
+        versements: 0,
       };
     }
 
-    const estimation = situationMensuelle.reduce(
-      (total, ligne) =>
-        total + normaliserNombre(ligne.montant),
-      0
-    );
+    const estimation =
+      situationMensuelle.reduce(
+        (total, ligne) =>
+          total +
+          normaliserNombre(
+            ligne.montant
+          ),
+        0
+      );
 
-    const totalPaye = situationMensuelle.reduce(
-      (total, ligne) =>
-        total +
-        normaliserNombre(ligne.montant_cotise),
-      0
-    );
+    const totalPaye =
+      situationMensuelle.reduce(
+        (total, ligne) =>
+          total +
+          normaliserNombre(
+            ligne.montant_cotise
+          ),
+        0
+      );
 
     return {
       estimation,
+
       totalPaye,
-      reste: Math.max(estimation - totalPaye, 0),
 
-      payees: situationMensuelle.filter(
-        (ligne) => ligne.statut === "payee"
-      ).length,
+      reste: Math.max(
+        estimation - totalPaye,
+        0
+      ),
 
-      partielles: situationMensuelle.filter(
-        (ligne) => ligne.statut === "partielle"
-      ).length,
+      payees:
+        situationMensuelle.filter(
+          (ligne) =>
+            ligne.statut === "payee"
+        ).length,
 
-      impayees: situationMensuelle.filter(
-        (ligne) => ligne.statut === "impayee"
-      ).length,
+      partielles:
+        situationMensuelle.filter(
+          (ligne) =>
+            ligne.statut === "partielle"
+        ).length,
+
+      impayees:
+        situationMensuelle.filter(
+          (ligne) =>
+            ligne.statut === "impayee"
+        ).length,
+
+      sansCotisation:
+        situationMensuelle.filter(
+          (ligne) =>
+            ligne.statut ===
+            "sans_cotisation"
+        ).length,
+
+      versements:
+        situationMensuelle.filter(
+          (ligne) =>
+            ligne.statut ===
+            "versement"
+        ).length,
     };
-  }, [situationMensuelle, peutConsulterDahira]);
+  }, [
+    situationMensuelle,
+    peutConsulterDahira,
+  ]);
 
   /*
    * Statistiques personnelles.
+   *
+   * IMPORTANT :
+   * On additionne les cotisations historiques réellement
+   * enregistrées au lieu d'utiliser uniquement le montant
+   * mensuel actuel du membre.
    */
- const statistiquesPersonnelles = useMemo(() => {
-  const montantMensuel = normaliserNombre(
-    membreConnecte?.montant_cotisation
-  );
+  const statistiquesPersonnelles =
+    useMemo(() => {
+      const totalDu =
+        mesCotisations.reduce(
+          (total, cotisation) =>
+            total +
+            normaliserNombre(
+              cotisation?.montant
+            ),
+          0
+        );
 
-  const totalPaye = mesCotisations.reduce(
-    (total, cotisation) =>
-      total + normaliserNombre(cotisation?.montant_cotise),
-    0
-  );
+      const totalPaye =
+        mesCotisations.reduce(
+          (total, cotisation) =>
+            total +
+            normaliserNombre(
+              cotisation?.montant_cotise
+            ),
+          0
+        );
 
-  const totalDu = montantMensuel;
+      const reste =
+        mesCotisations.reduce(
+          (total, cotisation) =>
+            total +
+            normaliserNombre(
+              cotisation?.montant_du
+            ),
+          0
+        );
 
-  const reste = Math.max(totalDu - totalPaye, 0);
+      return {
+        totalDu,
+        totalPaye,
+        reste,
+      };
+    }, [mesCotisations]);
 
-  return {
-    totalDu,
-    totalPaye,
-    reste,
-  };
-}, [mesCotisations, membreConnecte]);
+  const ouvrirNouvelleCotisation =
+    () => {
+      setErreurAction("");
+      setMessageAction("");
 
+      const premierMembre =
+        peutConsulterDahira &&
+        membresActifs.length
+          ? membresActifs[0]
+          : membreConnecte;
 
-  const ouvrirNouvelleCotisation = () => {
-    setErreurAction("");
-    setMessageAction("");
+      const montantFixe =
+        normaliserNombre(
+          premierMembre?.montant_cotisation
+        );
 
-    const premierMembre =
-      peutConsulterDahira && membresActifs.length
-        ? membresActifs[0]
-        : membreConnecte;
+      setFormCotisation({
+        id: null,
 
-    setFormCotisation({
-      id: null,
-      membre_id: premierMembre?.id ?? "",
-      montant:
-        premierMembre?.montant_cotisation ??
-        "",
-      mois_concerne:
-        moisSelectionne ||
-        getMoisActuel(),
-      annee:
-        anneeSelectionnee ||
-        getAnneeActuelle(),
-      date_cotisation: "",
-    });
+        membre_id:
+          premierMembre?.id ?? "",
 
-    setCotisationSelectionnee(null);
-    setModalCotisation(true);
-  };
+        montant:
+          montantFixe,
 
-  const ouvrirModificationCotisation = (
-    ligne
-  ) => {
-    if (!ligne?.cotisation) return;
+        mois_concerne:
+          moisSelectionne ||
+          getMoisActuel(),
 
-    const cotisation = ligne.cotisation;
+        annee:
+          anneeSelectionnee ||
+          getAnneeActuelle(),
 
-    setErreurAction("");
-    setMessageAction("");
+        date_cotisation: "",
+      });
 
-    setFormCotisation({
-      id: cotisation.id,
-      membre_id: cotisation.membre_id ?? "",
-      montant: cotisation.montant ?? "",
-      mois_concerne:
-        cotisation.mois_concerne ??
-        getMoisActuel(),
-      annee:
-        cotisation.annee ??
-        getAnneeActuelle(),
-      date_cotisation:
-        cotisation.date_cotisation
-          ? String(cotisation.date_cotisation).slice(
-              0,
-              10
-            )
-          : "",
-    });
+      setCotisationSelectionnee(null);
+      setModalCotisation(true);
+    };
 
-    setCotisationSelectionnee(cotisation);
-    setModalCotisation(true);
-  };
+  const ouvrirModificationCotisation =
+    (ligne) => {
+      if (!ligne?.cotisation) return;
+
+      const cotisation =
+        ligne.cotisation;
+
+      setErreurAction("");
+      setMessageAction("");
+
+      setFormCotisation({
+        id: cotisation.id,
+
+        membre_id:
+          cotisation.membre_id ?? "",
+
+        montant:
+          cotisation.montant ?? "",
+
+        mois_concerne:
+          cotisation.mois_concerne ??
+          getMoisActuel(),
+
+        annee:
+          cotisation.annee ??
+          getAnneeActuelle(),
+
+        date_cotisation:
+          cotisation.date_cotisation
+            ? String(
+                cotisation.date_cotisation
+              ).slice(0, 10)
+            : "",
+      });
+
+      setCotisationSelectionnee(
+        cotisation
+      );
+
+      setModalCotisation(true);
+    };
 
   const ouvrirPaiement = (ligne) => {
     if (!ligne?.cotisation) return;
 
+    const montantFixe =
+      normaliserNombre(
+        ligne.cotisation.montant
+      );
+
+    const reste =
+      normaliserNombre(
+        ligne.montant_du
+      );
+
+    /*
+     * Pour une cotisation normale :
+     * on propose le reste.
+     *
+     * Pour une cotisation à 0 :
+     * aucun montant n'est pré-rempli,
+     * car il s'agit d'un versement volontaire.
+     */
     setCotisationSelectionnee(
       ligne.cotisation
     );
 
     setFormPaiement({
       montant:
-        ligne.montant_du > 0
-          ? ligne.montant_du
+        montantFixe <= 0
+          ? ""
+          : reste > 0
+          ? reste
           : "",
+
       mode_paiement: "espèce",
+
       date_paiement: "",
+
       reference: "",
     });
 
@@ -767,12 +954,14 @@ export default function Cotisations() {
     setModalPaiement(true);
   };
 
-  const ouvrirHistoriquePaiements = (
-    cotisation
-  ) => {
-    setCotisationSelectionnee(cotisation);
-    setModalPaiements(true);
-  };
+  const ouvrirHistoriquePaiements =
+    (cotisation) => {
+      setCotisationSelectionnee(
+        cotisation
+      );
+
+      setModalPaiements(true);
+    };
 
   const fermerModals = () => {
     if (chargementAction) return;
@@ -780,194 +969,284 @@ export default function Cotisations() {
     setModalCotisation(false);
     setModalPaiement(false);
     setModalPaiements(false);
+
     setCotisationSelectionnee(null);
+
     setErreurAction("");
     setMessageAction("");
   };
 
-  const handleMembreChange = (event) => {
-    const membreId = event.target.value;
-
-    const membre = membresActifs.find(
-      (item) =>
-        Number(item.id) ===
-        Number(membreId)
-    );
-
-    setFormCotisation((ancien) => ({
-      ...ancien,
-      membre_id: membreId,
-      montant:
-        membre?.montant_cotisation ??
-        ancien.montant,
-    }));
-  };
-
-  const enregistrerCotisation = async (
+  const handleMembreChange = (
     event
   ) => {
-    event.preventDefault();
+    const membreId =
+      event.target.value;
 
-    setErreurAction("");
-    setMessageAction("");
-
-    if (!formCotisation.membre_id) {
-      setErreurAction(
-        "Veuillez sélectionner un membre."
+    const membre =
+      membresActifs.find(
+        (item) =>
+          Number(item.id) ===
+          Number(membreId)
       );
-      return;
-    }
 
-    if (
-      !formCotisation.montant ||
-      Number(formCotisation.montant) <= 0
-    ) {
-      setErreurAction(
-        "Le montant de la cotisation doit être supérieur à 0."
+    const montantFixe =
+      normaliserNombre(
+        membre?.montant_cotisation
       );
-      return;
-    }
 
-    setChargementAction(true);
+    setFormCotisation(
+      (ancien) => ({
+        ...ancien,
 
-    try {
-      if (formCotisation.id) {
-        await modifierCotisation(
-          formCotisation.id,
-          {
+        membre_id: membreId,
+
+        montant: montantFixe,
+      })
+    );
+  };
+
+  const enregistrerCotisation =
+    async (event) => {
+      event.preventDefault();
+
+      setErreurAction("");
+      setMessageAction("");
+
+      if (!formCotisation.membre_id) {
+        setErreurAction(
+          "Veuillez sélectionner un membre."
+        );
+        return;
+      }
+
+      /*
+       * Le montant peut être égal à 0.
+       *
+       * Pour une nouvelle cotisation, le backend
+       * utilise de toute façon le montant fixe du membre.
+       */
+      if (
+        formCotisation.montant === "" ||
+        Number(
+          formCotisation.montant
+        ) < 0
+      ) {
+        setErreurAction(
+          "Le montant de la cotisation doit être supérieur ou égal à 0."
+        );
+        return;
+      }
+
+      if (
+        !formCotisation.mois_concerne
+      ) {
+        setErreurAction(
+          "Veuillez sélectionner un mois."
+        );
+        return;
+      }
+
+      if (
+        !formCotisation.annee ||
+        Number(formCotisation.annee) < 2000
+      ) {
+        setErreurAction(
+          "Veuillez sélectionner une année valide."
+        );
+        return;
+      }
+
+      setChargementAction(true);
+
+      try {
+        if (formCotisation.id) {
+          await modifierCotisation(
+            formCotisation.id,
+            {
+              membre_id:
+                formCotisation.membre_id,
+
+              montant:
+                formCotisation.montant,
+
+              mois_concerne:
+                formCotisation.mois_concerne,
+
+              annee:
+                formCotisation.annee,
+
+              date_cotisation:
+                formCotisation.date_cotisation ||
+                null,
+            }
+          );
+
+          setMessageAction(
+            "Cotisation modifiée avec succès."
+          );
+        } else {
+          await creerCotisation({
             membre_id:
               formCotisation.membre_id,
+
             montant:
               formCotisation.montant,
+
             mois_concerne:
               formCotisation.mois_concerne,
+
             annee:
               formCotisation.annee,
+
             date_cotisation:
               formCotisation.date_cotisation ||
+              null,
+          });
+
+          setMessageAction(
+            "Cotisation enregistrée avec succès."
+          );
+        }
+
+        await chargerDonnees();
+
+        setTimeout(() => {
+          setModalCotisation(false);
+          setCotisationSelectionnee(null);
+          setMessageAction("");
+        }, 700);
+      } catch (error) {
+        console.error(
+          "ERREUR ENREGISTREMENT COTISATION :",
+          error
+        );
+
+        setErreurAction(
+          error?.response?.data?.detail ||
+            "Impossible d'enregistrer la cotisation."
+        );
+      } finally {
+        setChargementAction(false);
+      }
+    };
+
+  const enregistrerPaiement =
+    async (event) => {
+      event.preventDefault();
+
+      setErreurAction("");
+      setMessageAction("");
+
+      if (
+        !cotisationSelectionnee?.id
+      ) {
+        setErreurAction(
+          "Cotisation introuvable."
+        );
+        return;
+      }
+
+      const montant =
+        Number(formPaiement.montant);
+
+      if (
+        !Number.isFinite(montant) ||
+        montant <= 0
+      ) {
+        setErreurAction(
+          "Le montant du paiement doit être supérieur à 0."
+        );
+        return;
+      }
+
+      const montantCotisation =
+        normaliserNombre(
+          cotisationSelectionnee.montant
+        );
+
+      const montantDu =
+        normaliserNombre(
+          cotisationSelectionnee.montant_du
+        );
+
+      /*
+       * Pour une cotisation normale,
+       * le frontend évite un paiement supérieur au reste.
+       *
+       * Pour une cotisation fixe à 0,
+       * le montant est volontaire et peut être libre.
+       */
+      if (
+        montantCotisation > 0 &&
+        montant > montantDu
+      ) {
+        setErreurAction(
+          `Le paiement ne peut pas dépasser le reste à payer de ${formatMontant(
+            montantDu
+          )} FCFA.`
+        );
+        return;
+      }
+
+      setChargementAction(true);
+
+      try {
+        await ajouterPaiement(
+          cotisationSelectionnee.id,
+          {
+            montant,
+
+            mode_paiement:
+              formPaiement.mode_paiement,
+
+            date_paiement:
+              formPaiement.date_paiement ||
+              null,
+
+            reference:
+              formPaiement.reference ||
               null,
           }
         );
 
         setMessageAction(
-          "Cotisation modifiée avec succès."
+          montantCotisation <= 0
+            ? "Versement enregistré avec succès."
+            : "Paiement enregistré avec succès."
         );
-      } else {
-        await creerCotisation({
-          membre_id:
-            formCotisation.membre_id,
-          montant:
-            formCotisation.montant,
-          mois_concerne:
-            formCotisation.mois_concerne,
-          annee:
-            formCotisation.annee,
-          date_cotisation:
-            formCotisation.date_cotisation ||
-            null,
-        });
 
-        setMessageAction(
-          "Cotisation enregistrée avec succès."
+        await chargerDonnees();
+
+        setTimeout(() => {
+          setModalPaiement(false);
+          setCotisationSelectionnee(null);
+          setMessageAction("");
+        }, 700);
+      } catch (error) {
+        console.error(
+          "ERREUR ENREGISTREMENT PAIEMENT :",
+          error
         );
+
+        setErreurAction(
+          error?.response?.data?.detail ||
+            "Impossible d'enregistrer le paiement."
+        );
+      } finally {
+        setChargementAction(false);
       }
+    };
 
-      await chargerDonnees();
-
-      setTimeout(() => {
-        setModalCotisation(false);
-        setCotisationSelectionnee(null);
-        setMessageAction("");
-      }, 700);
-    } catch (error) {
-      console.error(
-        "ERREUR ENREGISTREMENT COTISATION :",
-        error
-      );
-
-      setErreurAction(
-        error?.response?.data?.detail ||
-          "Impossible d'enregistrer la cotisation."
-      );
-    } finally {
-      setChargementAction(false);
-    }
-  };
-
-  const enregistrerPaiement = async (
-    event
+  const getPaiements = (
+    cotisation
   ) => {
-    event.preventDefault();
-
-    setErreurAction("");
-    setMessageAction("");
-
-    if (!cotisationSelectionnee?.id) {
-      setErreurAction(
-        "Cotisation introuvable."
-      );
-      return;
-    }
-
-    const montant = Number(
-      formPaiement.montant
-    );
-
-    if (!Number.isFinite(montant) || montant <= 0) {
-      setErreurAction(
-        "Le montant du paiement doit être supérieur à 0."
-      );
-      return;
-    }
-
-    setChargementAction(true);
-
-    try {
-      await ajouterPaiement(
-        cotisationSelectionnee.id,
-        {
-          montant,
-          mode_paiement:
-            formPaiement.mode_paiement,
-          date_paiement:
-            formPaiement.date_paiement ||
-            null,
-          reference:
-            formPaiement.reference ||
-            null,
-        }
-      );
-
-      setMessageAction(
-        "Paiement enregistré avec succès."
-      );
-
-      await chargerDonnees();
-
-      setTimeout(() => {
-        setModalPaiement(false);
-        setCotisationSelectionnee(null);
-        setMessageAction("");
-      }, 700);
-    } catch (error) {
-      console.error(
-        "ERREUR ENREGISTREMENT PAIEMENT :",
-        error
-      );
-
-      setErreurAction(
-        error?.response?.data?.detail ||
-          "Impossible d'enregistrer le paiement."
-      );
-    } finally {
-      setChargementAction(false);
-    }
-  };
-
-  const getPaiements = (cotisation) => {
     if (!cotisation) return [];
 
-    if (Array.isArray(cotisation.paiements)) {
+    if (
+      Array.isArray(
+        cotisation.paiements
+      )
+    ) {
       return cotisation.paiements;
     }
 
@@ -979,6 +1258,7 @@ export default function Cotisations() {
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-6 py-4 shadow-sm">
           <Loader2 className="h-5 w-5 animate-spin text-slate-600" />
+
           <span className="text-sm font-medium text-slate-600">
             Chargement des cotisations...
           </span>
@@ -1005,7 +1285,9 @@ export default function Cotisations() {
 
               <button
                 type="button"
-                onClick={chargerDonnees}
+                onClick={
+                  chargerDonnees
+                }
                 className="mt-4 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
               >
                 Réessayer
@@ -1044,7 +1326,9 @@ export default function Cotisations() {
         {peutCreerCotisation && (
           <button
             type="button"
-            onClick={ouvrirNouvelleCotisation}
+            onClick={
+              ouvrirNouvelleCotisation
+            }
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
           >
             <Plus className="h-4 w-4" />
@@ -1159,58 +1443,64 @@ export default function Cotisations() {
                 </thead>
 
                 <tbody className="divide-y divide-slate-100">
-                  {mesCotisations.map((cotisation) => (
-                    <tr
-                      key={cotisation.id}
-                      className="hover:bg-slate-50"
-                    >
-                      <td className="px-5 py-4">
-                        <div className="font-semibold text-slate-900">
-                          {cotisation.mois_concerne}{" "}
-                          {cotisation.annee}
-                        </div>
+                  {mesCotisations.map(
+                    (cotisation) => (
+                      <tr
+                        key={cotisation.id}
+                        className="hover:bg-slate-50"
+                      >
+                        <td className="px-5 py-4">
+                          <div className="font-semibold text-slate-900">
+                            {
+                              cotisation.mois_concerne
+                            }{" "}
+                            {
+                              cotisation.annee
+                            }
+                          </div>
 
-                        <div className="mt-1 text-xs text-slate-500">
-                          {formatDate(
-                            cotisation.date_cotisation
-                          )}
-                        </div>
-                      </td>
+                          <div className="mt-1 text-xs text-slate-500">
+                            {formatDate(
+                              cotisation.date_cotisation
+                            )}
+                          </div>
+                        </td>
 
-                      <td className="px-5 py-4 font-medium text-slate-900">
-                        {formatMontant(
-                          cotisation.montant
-                        )}{" "}
-                        FCFA
-                      </td>
+                        <td className="px-5 py-4 font-medium text-slate-900">
+                          {formatMontant(
+                            cotisation.montant
+                          )}{" "}
+                          FCFA
+                        </td>
 
-                      <td className="px-5 py-4 font-medium text-emerald-700">
-                        {formatMontant(
-                          cotisation.montant_cotise
-                        )}{" "}
-                        FCFA
-                      </td>
+                        <td className="px-5 py-4 font-medium text-emerald-700">
+                          {formatMontant(
+                            cotisation.montant_cotise
+                          )}{" "}
+                          FCFA
+                        </td>
 
-                      <td className="px-5 py-4 font-medium text-amber-700">
-                        {formatMontant(
-                          cotisation.montant_du
-                        )}{" "}
-                        FCFA
-                      </td>
+                        <td className="px-5 py-4 font-medium text-amber-700">
+                          {formatMontant(
+                            cotisation.montant_du
+                          )}{" "}
+                          FCFA
+                        </td>
 
-                      <td className="px-5 py-4">
-                        <span
-                          className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatutClasses(
-                            cotisation.statut
-                          )}`}
-                        >
-                          {statutLabel(
-                            cotisation.statut
-                          )}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                        <td className="px-5 py-4">
+                          <span
+                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatutClasses(
+                              cotisation.statut
+                            )}`}
+                          >
+                            {statutLabel(
+                              cotisation.statut
+                            )}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1220,7 +1510,6 @@ export default function Cotisations() {
 
       {/* =========================================================
           COTISATIONS DU DAHIRA
-          UNIQUEMENT COTISATION_CREER
       ========================================================= */}
       {peutConsulterDahira && (
         <section className="space-y-5">
@@ -1354,7 +1643,9 @@ export default function Cotisations() {
                   type="text"
                   value={recherche}
                   onChange={(event) =>
-                    setRecherche(event.target.value)
+                    setRecherche(
+                      event.target.value
+                    )
                   }
                   placeholder="Rechercher un membre..."
                   className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
@@ -1365,7 +1656,9 @@ export default function Cotisations() {
                 <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
                 <select
-                  value={moisSelectionne}
+                  value={
+                    moisSelectionne
+                  }
                   onChange={(event) =>
                     setMoisSelectionne(
                       event.target.value
@@ -1377,25 +1670,32 @@ export default function Cotisations() {
                     Mois
                   </option>
 
-                  {moisDisponibles.map((item) => (
-                    <option
-                      key={item.cle}
-                      value={item.mois}
-                    >
-                      {item.mois} {item.annee}
-                    </option>
-                  ))}
+                  {moisDisponibles.map(
+                    (item) => (
+                      <option
+                        key={item.cle}
+                        value={item.mois}
+                      >
+                        {item.mois}{" "}
+                        {item.annee}
+                      </option>
+                    )
+                  )}
                 </select>
 
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               </div>
 
               <select
-                value={anneeSelectionnee}
+                value={
+                  anneeSelectionnee
+                }
                 onChange={(event) =>
                   setAnneeSelectionnee(
                     event.target.value
-                      ? Number(event.target.value)
+                      ? Number(
+                          event.target.value
+                        )
                       : ""
                   )
                 }
@@ -1408,7 +1708,8 @@ export default function Cotisations() {
                 {[
                   ...new Set(
                     moisDisponibles.map(
-                      (item) => item.annee
+                      (item) =>
+                        item.annee
                     )
                   ),
                 ].map((annee) => (
@@ -1422,7 +1723,9 @@ export default function Cotisations() {
               </select>
 
               <select
-                value={statutSelectionne}
+                value={
+                  statutSelectionne
+                }
                 onChange={(event) =>
                   setStatutSelectionne(
                     event.target.value
@@ -1430,37 +1733,43 @@ export default function Cotisations() {
                 }
                 className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
               >
-                {STATUTS.map((statut) => (
-                  <option
-                    key={statut.value}
-                    value={statut.value}
-                  >
-                    {statut.label}
-                  </option>
-                ))}
+                {STATUTS.map(
+                  (statut) => (
+                    <option
+                      key={statut.value}
+                      value={
+                        statut.value
+                      }
+                    >
+                      {statut.label}
+                    </option>
+                  )
+                )}
               </select>
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
-              {STATUTS.map((statut) => (
-                <button
-                  key={statut.value}
-                  type="button"
-                  onClick={() =>
-                    setStatutSelectionne(
+              {STATUTS.map(
+                (statut) => (
+                  <button
+                    key={statut.value}
+                    type="button"
+                    onClick={() =>
+                      setStatutSelectionne(
+                        statut.value
+                      )
+                    }
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                      statutSelectionne ===
                       statut.value
-                    )
-                  }
-                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                    statutSelectionne ===
-                    statut.value
-                      ? "border-slate-900 bg-slate-900 text-white"
-                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {statut.label}
-                </button>
-              ))}
+                        ? "border-slate-900 bg-slate-900 text-white"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {statut.label}
+                  </button>
+                )
+              )}
             </div>
           </div>
 
@@ -1477,8 +1786,12 @@ export default function Cotisations() {
                 </h3>
 
                 <p className="mt-1 text-xs text-slate-500">
-                  {lignesFiltrees.length} membre
-                  {lignesFiltrees.length > 1
+                  {
+                    lignesFiltrees.length
+                  }{" "}
+                  membre
+                  {lignesFiltrees.length >
+                  1
                     ? "s"
                     : ""}
                 </p>
@@ -1492,7 +1805,8 @@ export default function Cotisations() {
               </div>
             </div>
 
-            {lignesFiltrees.length === 0 ? (
+            {lignesFiltrees.length ===
+            0 ? (
               <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
                 <FileText className="h-10 w-10 text-slate-300" />
 
@@ -1536,134 +1850,151 @@ export default function Cotisations() {
                   </thead>
 
                   <tbody className="divide-y divide-slate-100">
-                    {lignesFiltrees.map((ligne) => {
-                      const cotisation =
-                        ligne.cotisation;
+                    {lignesFiltrees.map(
+                      (ligne) => {
+                        const cotisation =
+                          ligne.cotisation;
 
-                      return (
-                        <tr
-                          key={ligne.id}
-                          className="transition hover:bg-slate-50"
-                        >
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
-                                <User className="h-4 w-4" />
-                              </div>
+                        const montantFixe =
+                          normaliserNombre(
+                            ligne.montant
+                          );
 
-                              <div>
-                                <div className="font-semibold text-slate-900">
-                                  {getNomMembre(
-                                    ligne.membre
-                                  )}
+                        const peutVerser =
+                          ligne.existe &&
+                          peutCreerPaiement &&
+                          (ligne.montant_du >
+                            0 ||
+                            montantFixe <=
+                              0);
+
+                        return (
+                          <tr
+                            key={ligne.id}
+                            className="transition hover:bg-slate-50"
+                          >
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                                  <User className="h-4 w-4" />
                                 </div>
 
-                                {ligne.membre
-                                  ?.telephone && (
-                                  <div className="mt-0.5 text-xs text-slate-500">
-                                    {
+                                <div>
+                                  <div className="font-semibold text-slate-900">
+                                    {getNomMembre(
                                       ligne.membre
-                                        .telephone
-                                    }
+                                    )}
                                   </div>
-                                )}
-                              </div>
-                            </div>
-                          </td>
 
-                          <td className="px-5 py-4">
-                            <div className="font-semibold text-slate-900">
-                              {formatMontant(
-                                ligne.montant
-                              )}{" "}
-                              FCFA
-                            </div>
-
-                            {!ligne.existe && (
-                              <div className="mt-1 text-xs text-slate-400">
-                                Cotisation non enregistrée
-                              </div>
-                            )}
-                          </td>
-
-                          <td className="px-5 py-4">
-                            <span className="font-semibold text-emerald-700">
-                              {formatMontant(
-                                ligne.montant_cotise
-                              )}{" "}
-                              FCFA
-                            </span>
-                          </td>
-
-                          <td className="px-5 py-4">
-                            <span
-                              className={`font-semibold ${
-                                ligne.montant_du >
-                                0
-                                  ? "text-amber-700"
-                                  : "text-emerald-700"
-                              }`}
-                            >
-                              {formatMontant(
-                                ligne.montant_du
-                              )}{" "}
-                              FCFA
-                            </span>
-                          </td>
-
-                          <td className="px-5 py-4">
-                            <span
-                              className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatutClasses(
-                                ligne.statut
-                              )}`}
-                            >
-                              {statutLabel(
-                                ligne.statut
-                              )}
-                            </span>
-                          </td>
-
-                          <td className="px-5 py-4">
-                            <div className="flex justify-end gap-2">
-                              {ligne.existe &&
-                                peutConsulterPaiements && (
-                                  <button
-                                    type="button"
-                                    title="Voir les paiements"
-                                    onClick={() =>
-                                      ouvrirHistoriquePaiements(
-                                        cotisation
-                                      )
-                                    }
-                                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                                  >
-                                    <Eye className="h-4 w-4" />
-                                  </button>
-                                )}
-
-                              {ligne.existe &&
-                                peutModifierCotisation && (
-                                  <button
-                                    type="button"
-                                    title="Modifier"
-                                    onClick={() =>
-                                      ouvrirModificationCotisation(
+                                  {ligne.membre
+                                    ?.telephone && (
+                                    <div className="mt-0.5 text-xs text-slate-500">
+                                      {
                                         ligne
-                                      )
-                                    }
-                                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                                  >
-                                    <Edit3 className="h-4 w-4" />
-                                  </button>
-                                )}
+                                          .membre
+                                          .telephone
+                                      }
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
 
-                              {ligne.existe &&
-                                peutCreerPaiement &&
-                                ligne.montant_du >
-                                  0 && (
+                            <td className="px-5 py-4">
+                              <div className="font-semibold text-slate-900">
+                                {formatMontant(
+                                  ligne.montant
+                                )}{" "}
+                                FCFA
+                              </div>
+
+                              {!ligne.existe && (
+                                <div className="mt-1 text-xs text-slate-400">
+                                  Cotisation non enregistrée
+                                </div>
+                              )}
+                            </td>
+
+                            <td className="px-5 py-4">
+                              <span className="font-semibold text-emerald-700">
+                                {formatMontant(
+                                  ligne.montant_cotise
+                                )}{" "}
+                                FCFA
+                              </span>
+                            </td>
+
+                            <td className="px-5 py-4">
+                              <span
+                                className={`font-semibold ${
+                                  ligne.montant_du >
+                                  0
+                                    ? "text-amber-700"
+                                    : "text-emerald-700"
+                                }`}
+                              >
+                                {formatMontant(
+                                  ligne.montant_du
+                                )}{" "}
+                                FCFA
+                              </span>
+                            </td>
+
+                            <td className="px-5 py-4">
+                              <span
+                                className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatutClasses(
+                                  ligne.statut
+                                )}`}
+                              >
+                                {statutLabel(
+                                  ligne.statut
+                                )}
+                              </span>
+                            </td>
+
+                            <td className="px-5 py-4">
+                              <div className="flex justify-end gap-2">
+                                {ligne.existe &&
+                                  peutConsulterPaiements && (
+                                    <button
+                                      type="button"
+                                      title="Voir les paiements"
+                                      onClick={() =>
+                                        ouvrirHistoriquePaiements(
+                                          cotisation
+                                        )
+                                      }
+                                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </button>
+                                  )}
+
+                                {ligne.existe &&
+                                  peutModifierCotisation && (
+                                    <button
+                                      type="button"
+                                      title="Modifier"
+                                      onClick={() =>
+                                        ouvrirModificationCotisation(
+                                          ligne
+                                        )
+                                      }
+                                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                                    >
+                                      <Edit3 className="h-4 w-4" />
+                                    </button>
+                                  )}
+
+                                {peutVerser && (
                                   <button
                                     type="button"
-                                    title="Enregistrer un paiement"
+                                    title={
+                                      montantFixe <=
+                                      0
+                                        ? "Enregistrer un versement volontaire"
+                                        : "Enregistrer un paiement"
+                                    }
                                     onClick={() =>
                                       ouvrirPaiement(
                                         ligne
@@ -1672,60 +2003,75 @@ export default function Cotisations() {
                                     className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xs font-semibold text-white transition hover:bg-slate-800"
                                   >
                                     <CreditCard className="h-4 w-4" />
-                                    Payer
+
+                                    {montantFixe <=
+                                    0
+                                      ? "Verser"
+                                      : "Payer"}
                                   </button>
                                 )}
 
-                              {!ligne.existe &&
-                                peutCreerCotisation && (
-                                  <button
-                                    type="button"
-                                    title="Enregistrer la cotisation"
-                                    onClick={() => {
-                                      setFormCotisation({
-                                        id: null,
-                                        membre_id:
-                                          ligne.membre_id,
-                                        montant:
-                                          ligne.montant ||
-                                          ligne.membre
-                                            ?.montant_cotisation ||
-                                          "",
-                                        mois_concerne:
-                                          moisSelectionne,
-                                        annee:
-                                          anneeSelectionnee,
-                                        date_cotisation:
-                                          "",
-                                      });
+                                {!ligne.existe &&
+                                  peutCreerCotisation && (
+                                    <button
+                                      type="button"
+                                      title="Enregistrer la cotisation"
+                                      onClick={() => {
+                                        const montant =
+                                          normaliserNombre(
+                                            ligne
+                                              .membre
+                                              ?.montant_cotisation
+                                          );
 
-                                      setCotisationSelectionnee(
-                                        null
-                                      );
+                                        setFormCotisation(
+                                          {
+                                            id: null,
 
-                                      setErreurAction(
-                                        ""
-                                      );
+                                            membre_id:
+                                              ligne.membre_id,
 
-                                      setMessageAction(
-                                        ""
-                                      );
+                                            montant,
 
-                                      setModalCotisation(
-                                        true
-                                      );
-                                    }}
-                                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xs font-semibold text-white transition hover:bg-slate-800"
-                                  >
-                                    <Plus className="h-4 w-4" />
-                                    Enregistrer
-                                  </button>
-                                )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                                            mois_concerne:
+                                              moisSelectionne,
+
+                                            annee:
+                                              anneeSelectionnee,
+
+                                            date_cotisation:
+                                              "",
+                                          }
+                                        );
+
+                                        setCotisationSelectionnee(
+                                          null
+                                        );
+
+                                        setErreurAction(
+                                          ""
+                                        );
+
+                                        setMessageAction(
+                                          ""
+                                        );
+
+                                        setModalCotisation(
+                                          true
+                                        );
+                                      }}
+                                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-slate-900 px-3 text-xs font-semibold text-white transition hover:bg-slate-800"
+                                    >
+                                      <Plus className="h-4 w-4" />
+                                      Enregistrer
+                                    </button>
+                                  )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1755,7 +2101,9 @@ export default function Cotisations() {
 
               <button
                 type="button"
-                onClick={fermerModals}
+                onClick={
+                  fermerModals
+                }
                 className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
               >
                 <X className="h-5 w-5" />
@@ -1763,7 +2111,9 @@ export default function Cotisations() {
             </div>
 
             <form
-              onSubmit={enregistrerCotisation}
+              onSubmit={
+                enregistrerCotisation
+              }
               className="space-y-5 p-5"
             >
               {erreurAction && (
@@ -1788,7 +2138,9 @@ export default function Cotisations() {
                     value={
                       formCotisation.membre_id
                     }
-                    onChange={handleMembreChange}
+                    onChange={
+                      handleMembreChange
+                    }
                     disabled={Boolean(
                       formCotisation.id
                     )}
@@ -1804,7 +2156,9 @@ export default function Cotisations() {
                           key={membre.id}
                           value={membre.id}
                         >
-                          {getNomMembre(membre)}
+                          {getNomMembre(
+                            membre
+                          )}
                         </option>
                       )
                     )}
@@ -1833,20 +2187,23 @@ export default function Cotisations() {
                         (ancien) => ({
                           ...ancien,
                           mois_concerne:
-                            event.target.value,
+                            event.target
+                              .value,
                         })
                       )
                     }
                     className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
                   >
-                    {MOIS.map((mois) => (
-                      <option
-                        key={mois}
-                        value={mois}
-                      >
-                        {mois}
-                      </option>
-                    ))}
+                    {MOIS.map(
+                      (mois) => (
+                        <option
+                          key={mois}
+                          value={mois}
+                        >
+                          {mois}
+                        </option>
+                      )
+                    )}
                   </select>
                 </div>
 
@@ -1866,7 +2223,8 @@ export default function Cotisations() {
                           ...ancien,
                           annee:
                             Number(
-                              event.target.value
+                              event.target
+                                .value
                             ),
                         })
                       )
@@ -1894,7 +2252,8 @@ export default function Cotisations() {
                         (ancien) => ({
                           ...ancien,
                           montant:
-                            event.target.value,
+                            event.target
+                              .value,
                         })
                       )
                     }
@@ -1907,7 +2266,7 @@ export default function Cotisations() {
                 </div>
 
                 <p className="mt-1.5 text-xs text-slate-500">
-                  Ce montant représente la cotisation due. Le paiement réel est enregistré séparément.
+                  Ce montant représente la cotisation due. Un montant de 0 FCFA signifie qu'aucune cotisation fixe n'est due, mais un versement volontaire reste possible.
                 </p>
               </div>
 
@@ -1926,7 +2285,8 @@ export default function Cotisations() {
                       (ancien) => ({
                         ...ancien,
                         date_cotisation:
-                          event.target.value,
+                          event.target
+                            .value,
                       })
                     )
                   }
@@ -1937,8 +2297,12 @@ export default function Cotisations() {
               <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
                 <button
                   type="button"
-                  onClick={fermerModals}
-                  disabled={chargementAction}
+                  onClick={
+                    fermerModals
+                  }
+                  disabled={
+                    chargementAction
+                  }
                   className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                 >
                   Annuler
@@ -1946,7 +2310,9 @@ export default function Cotisations() {
 
                 <button
                   type="submit"
-                  disabled={chargementAction}
+                  disabled={
+                    chargementAction
+                  }
                   className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
                 >
                   {chargementAction && (
@@ -1972,18 +2338,28 @@ export default function Cotisations() {
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
-                  Enregistrer un paiement
+                  {normaliserNombre(
+                    cotisationSelectionnee?.montant
+                  ) <= 0
+                    ? "Enregistrer un versement"
+                    : "Enregistrer un paiement"}
                 </h2>
 
                 <p className="mt-1 text-xs text-slate-500">
-                  {cotisationSelectionnee?.mois_concerne}{" "}
-                  {cotisationSelectionnee?.annee}
+                  {
+                    cotisationSelectionnee?.mois_concerne
+                  }{" "}
+                  {
+                    cotisationSelectionnee?.annee
+                  }
                 </p>
               </div>
 
               <button
                 type="button"
-                onClick={fermerModals}
+                onClick={
+                  fermerModals
+                }
                 className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
               >
                 <X className="h-5 w-5" />
@@ -1991,7 +2367,9 @@ export default function Cotisations() {
             </div>
 
             <form
-              onSubmit={enregistrerPaiement}
+              onSubmit={
+                enregistrerPaiement
+              }
               className="space-y-5 p-5"
             >
               {erreurAction && (
@@ -2045,11 +2423,23 @@ export default function Cotisations() {
                     FCFA
                   </span>
                 </div>
+
+                {normaliserNombre(
+                  cotisationSelectionnee?.montant
+                ) <= 0 && (
+                  <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700">
+                    Aucune cotisation fixe n'est due pour ce membre. Le montant saisi sera enregistré comme un versement volontaire et comptera comme une recette réelle.
+                  </div>
+                )}
               </div>
 
               <div>
                 <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                  Montant payé
+                  {normaliserNombre(
+                    cotisationSelectionnee?.montant
+                  ) <= 0
+                    ? "Montant du versement"
+                    : "Montant payé"}
                 </label>
 
                 <div className="relative">
@@ -2065,7 +2455,8 @@ export default function Cotisations() {
                         (ancien) => ({
                           ...ancien,
                           montant:
-                            event.target.value,
+                            event.target
+                              .value,
                         })
                       )
                     }
@@ -2092,7 +2483,8 @@ export default function Cotisations() {
                       (ancien) => ({
                         ...ancien,
                         mode_paiement:
-                          event.target.value,
+                          event.target
+                            .value,
                       })
                     )
                   }
@@ -2102,7 +2494,9 @@ export default function Cotisations() {
                     (mode) => (
                       <option
                         key={mode.value}
-                        value={mode.value}
+                        value={
+                          mode.value
+                        }
                       >
                         {mode.label}
                       </option>
@@ -2127,7 +2521,8 @@ export default function Cotisations() {
                         (ancien) => ({
                           ...ancien,
                           date_paiement:
-                            event.target.value,
+                            event.target
+                              .value,
                         })
                       )
                     }
@@ -2150,7 +2545,8 @@ export default function Cotisations() {
                         (ancien) => ({
                           ...ancien,
                           reference:
-                            event.target.value,
+                            event.target
+                              .value,
                         })
                       )
                     }
@@ -2163,8 +2559,12 @@ export default function Cotisations() {
               <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
                 <button
                   type="button"
-                  onClick={fermerModals}
-                  disabled={chargementAction}
+                  onClick={
+                    fermerModals
+                  }
+                  disabled={
+                    chargementAction
+                  }
                   className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                 >
                   Annuler
@@ -2172,14 +2572,20 @@ export default function Cotisations() {
 
                 <button
                   type="submit"
-                  disabled={chargementAction}
+                  disabled={
+                    chargementAction
+                  }
                   className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
                 >
                   {chargementAction && (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   )}
 
-                  Enregistrer le paiement
+                  {normaliserNombre(
+                    cotisationSelectionnee?.montant
+                  ) <= 0
+                    ? "Enregistrer le versement"
+                    : "Enregistrer le paiement"}
                 </button>
               </div>
             </form>
@@ -2200,15 +2606,20 @@ export default function Cotisations() {
                 </h2>
 
                 <p className="mt-1 text-xs text-slate-500">
-                  {cotisationSelectionnee
-                    ?.mois_concerne}{" "}
-                  {cotisationSelectionnee?.annee}
+                  {
+                    cotisationSelectionnee?.mois_concerne
+                  }{" "}
+                  {
+                    cotisationSelectionnee?.annee
+                  }
                 </p>
               </div>
 
               <button
                 type="button"
-                onClick={fermerModals}
+                onClick={
+                  fermerModals
+                }
                 className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
               >
                 <X className="h-5 w-5" />
@@ -2294,7 +2705,9 @@ export default function Cotisations() {
               <div className="mt-5 flex justify-end">
                 <button
                   type="button"
-                  onClick={fermerModals}
+                  onClick={
+                    fermerModals
+                  }
                   className="rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
                 >
                   Fermer

@@ -32,11 +32,26 @@ class MembreCreate(BaseModel):
         max_length=150,
     )
 
+    # ============================================================
+    # COTISATION
+    # ============================================================
+    #
+    # 0 = membre non cotisant
+    #
+    # > 0 = membre cotisant avec une cotisation mensuelle fixe
+    #
+    # Aucun montant négatif n'est autorisé.
+    # ============================================================
+
     montant_cotisation: Decimal = Field(
         ...,
-        gt=0,
+        ge=0,
         max_digits=12,
         decimal_places=2,
+        description=(
+            "Montant mensuel de cotisation. "
+            "0 signifie que le membre n'est pas cotisant."
+        ),
     )
 
     # ============================================================
@@ -128,9 +143,17 @@ class MembreCreate(BaseModel):
         value: Decimal,
     ) -> Decimal:
 
-        if value <= 0:
+        # --------------------------------------------------------
+        # 0 est autorisé.
+        #
+        # 0 = membre non cotisant.
+        #
+        # Un montant strictement négatif reste interdit.
+        # --------------------------------------------------------
+
+        if value < 0:
             raise ValueError(
-                "Le montant de cotisation doit être supérieur à 0."
+                "Le montant de cotisation ne peut pas être négatif."
             )
 
         return value

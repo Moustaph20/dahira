@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 
 import {
@@ -384,7 +383,7 @@ function Membres() {
     ).trim();
 
     const montantCotisation = String(
-      formulaire.montant_cotisation || ""
+      formulaire.montant_cotisation ?? ""
     ).trim();
 
     console.log(
@@ -456,10 +455,19 @@ function Membres() {
     // ==========================================================
     // COTISATION
     // ==========================================================
+    //
+    // 0 FCFA est maintenant autorisé.
+    //
+    // 0 signifie :
+    // "aucune cotisation mensuelle fixe".
+    //
+    // Le membre pourra malgré tout effectuer des
+    // versements volontaires depuis la page Cotisations.
+    // ==========================================================
 
     if (!montantCotisation) {
       erreurs.montant_cotisation =
-        "Le montant de cotisation mensuelle est obligatoire.";
+        "Le montant de cotisation mensuelle est obligatoire. Indiquez 0 si aucune cotisation fixe n'est prévue.";
     } else if (
       !/^\d+(\.\d{1,2})?$/.test(
         montantCotisation
@@ -468,10 +476,10 @@ function Membres() {
       erreurs.montant_cotisation =
         "Le montant doit être un nombre valide.";
     } else if (
-      Number(montantCotisation) <= 0
+      Number(montantCotisation) < 0
     ) {
       erreurs.montant_cotisation =
-        "Le montant doit être supérieur à 0.";
+        "Le montant ne peut pas être négatif.";
     }
 
     // ==========================================================
@@ -750,6 +758,11 @@ function Membres() {
       console.log(
         "TELEPHONE ENVOYE :",
         donnees.telephone
+      );
+
+      console.log(
+        "MONTANT COTISATION ENVOYE :",
+        donnees.montant_cotisation
       );
 
       console.log(
@@ -2321,7 +2334,7 @@ function Membres() {
                       id="montant_cotisation"
                       name="montant_cotisation"
                       type="number"
-                      min="1"
+                      min="0"
                       step="1"
                       value={
                         formulaire.montant_cotisation
@@ -2343,7 +2356,10 @@ function Membres() {
                   </div>
 
                   <p className="mt-1.5 text-xs text-gray-400">
-                    Montant que le membre doit cotiser chaque mois.
+                    Montant fixe que le membre doit cotiser chaque mois.
+                    Indiquez <strong>0 FCFA</strong> si aucune cotisation
+                    fixe n'est prévue. Le membre pourra toujours effectuer
+                    des versements volontaires.
                   </p>
 
                   {erreursFormulaire.montant_cotisation && (
