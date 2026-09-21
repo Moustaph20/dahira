@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-
+import { useEffect, useMemo, useState } from "react";
 import {
   Wallet,
   TrendingDown,
@@ -22,3017 +21,1204 @@ import {
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
 
+export default function Finances() {
+  const { aPermission } = useAuth();
 
-function Finances() {
+  const peutConsulterDepenses = aPermission("DEPENSE_CONSULTER");
+  const peutCreerDepense = aPermission("DEPENSE_CREER");
 
-  // ============================================================
-  // AUTHENTIFICATION / PERMISSIONS
-  // ============================================================
+  const peutConsulterAides = aPermission("AIDE_EXTERIEURE_CONSULTER");
+  const peutCreerAide = aPermission("AIDE_EXTERIEURE_CREER");
 
-  const {
-    utilisateur,
-    aPermission,
-  } = useAuth();
+  const peutConsulterCotisations = aPermission("COTISATION_CONSULTER");
 
-
-  const peutConsulterDepenses =
-    aPermission("DEPENSE_CONSULTER");
-
-  const peutCreerDepense =
-    aPermission("DEPENSE_CREER");
-
-  const peutConsulterAides =
-    aPermission("AIDE_EXTERIEURE_CONSULTER");
-
-  const peutCreerAide =
-    aPermission("AIDE_EXTERIEURE_CREER");
-
-  const peutConsulterCotisations =
-    aPermission("COTISATION_CONSULTER");
-
-  const peutCreerCotisation =
+  const peutCreerPaiement =
+    aPermission("PAIEMENT_CREER") ||
+    aPermission("PAIEMENT_ENREGISTRER") ||
     aPermission("COTISATION_CREER");
 
-
-  // ============================================================
-  // ÉTATS
-  // ============================================================
-
   const [depenses, setDepenses] = useState([]);
-
   const [aides, setAides] = useState([]);
-
   const [cotisations, setCotisations] = useState([]);
-
-  const [membresActifs, setMembresActifs] = useState([]);
+  const [membresNonCotisants, setMembresNonCotisants] = useState([]);
 
   const [chargement, setChargement] = useState(true);
+  const [chargementMembres, setChargementMembres] = useState(false);
 
   const [erreur, setErreur] = useState("");
-
   const [modal, setModal] = useState(null);
 
-  const [enregistrement, setEnregistrement] =
-    useState(false);
+  const [enregistrement, setEnregistrement] = useState(false);
+  const [messageSucces, setMessageSucces] = useState("");
+  const [erreurFormulaire, setErreurFormulaire] = useState("");
 
-  const [messageSucces, setMessageSucces] =
-    useState("");
-
-  const [erreurFormulaire, setErreurFormulaire] =
-    useState("");
-
-
-  // ============================================================
-  // FORMULAIRE SORTIE D'ARGENT
-  // ============================================================
+  const aujourdHui = new Date().toISOString().slice(0, 10);
 
   const [formDepense, setFormDepense] = useState({
-
     motif: "",
-
     type_sortie: "",
-
     remis_a: "",
-
     piece_jointe: null,
-
     montant: "",
-
-    date_depense:
-      new Date()
-        .toISOString()
-        .split("T")[0],
-
+    date_depense: aujourdHui,
     description: "",
   });
-
-
-  // ============================================================
-  // FORMULAIRE BARKELou / VERSEMENT
-  // ============================================================
 
   const [formAide, setFormAide] = useState({
-
-    source: "",
-
-    montant: "",
-
-    description: "",
-
-    date_aide:
-      new Date()
-        .toISOString()
-        .split("T")[0],
-
     membre_id: "",
+    source: "",
+    montant: "",
+    description: "",
+    date_aide: aujourdHui,
   });
 
-
-  // ============================================================
-  // FORMATAGE MONTANT
-  // ============================================================
-
-  function formaterMontant(montant) {
-
-    return new Intl.NumberFormat("fr-FR", {
-
-      maximumFractionDigits: 0,
-
-    }).format(
-      Number(montant ?? 0)
-    );
-
-  }
-
-
-  // ============================================================
-  // NOM DU MEMBRE
-  // ============================================================
-
-  function obtenirNomMembre(membre) {
-
-    if (!membre) {
-      return "";
-    }
-
-    return [
-      membre.prenom,
-      membre.nom,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .trim();
-
-  }
-
-
-  // ============================================================
-  // CHARGER LES MEMBRES ACTIFS
-  // ============================================================
-
-  async function chargerMembresActifs() {
-
-    if (!peutCreerCotisation) {
-
-      setMembresActifs([]);
-
-      return;
-
-    }
-
+  const chargerDonnees = async () => {
+    setChargement(true);
+    setErreur("");
 
     try {
-
-      const response =
-        await api.get(
-          "/cotisations/membres-actifs"
-        );
-
-
-      const membres =
-        Array.isArray(response.data)
-          ? response.data
-          : [];
-
-
-      setMembresActifs(membres);
-
-    } catch (error) {
-
-      console.error(
-        "ERREUR CHARGEMENT MEMBRES ACTIFS :",
-        error
-      );
-
-
-      setMembresActifs([]);
-
-    }
-
-  }
-
-
-  // ============================================================
-  // CHARGEMENT
-  // ============================================================
-
-  async function chargerDonnees() {
-
-    try {
-
-      setChargement(true);
-
-      setErreur("");
-
-
       const requetes = [];
 
-
-      // --------------------------------------------------------
-      // DÉPENSES
-      // --------------------------------------------------------
-
       if (peutConsulterDepenses) {
-
         requetes.push(
-          api
-            .get("/depenses")
-            .then((response) => {
-
-              console.log(
-                "SORTIES D'ARGENT :",
-                response.data
-              );
-
-              setDepenses(
-                Array.isArray(response.data)
-                  ? response.data
-                  : []
-              );
-
-            })
+          api.get("/depenses").catch(() => ({ data: [] }))
         );
-
       } else {
-
-        setDepenses([]);
-
+        requetes.push({ data: [] });
       }
-
-
-      // --------------------------------------------------------
-      // BARKELou / AIDES EXTÉRIEURES
-      // --------------------------------------------------------
 
       if (peutConsulterAides) {
-
         requetes.push(
-          api
-            .get("/aides-exterieures")
-            .then((response) => {
-
-              console.log(
-                "AIDES EXTÉRIEURES :",
-                response.data
-              );
-
-              setAides(
-                Array.isArray(response.data)
-                  ? response.data
-                  : []
-              );
-
-            })
+          api.get("/aides-exterieures").catch(() => ({ data: [] }))
         );
-
       } else {
-
-        setAides([]);
-
+        requetes.push({ data: [] });
       }
-
-
-      // --------------------------------------------------------
-      // COTISATIONS / PAIEMENTS RÉELS
-      // --------------------------------------------------------
 
       if (peutConsulterCotisations) {
-
         requetes.push(
-          api
-            .get("/cotisations")
-            .then((response) => {
-
-              console.log(
-                "COTISATIONS / PAIEMENTS :",
-                response.data
-              );
-
-              setCotisations(
-                Array.isArray(
-                  response.data?.cotisations
-                )
-                  ? response.data.cotisations
-                  : []
-              );
-
-            })
+          api.get("/cotisations").catch(() => ({ data: [] }))
         );
-
       } else {
-
-        setCotisations([]);
-
+        requetes.push({ data: [] });
       }
 
+      const [responseDepenses, responseAides, responseCotisations] =
+        await Promise.all(requetes);
 
-      // --------------------------------------------------------
-      // MEMBRES ACTIFS
-      // --------------------------------------------------------
+      setDepenses(
+        Array.isArray(responseDepenses.data)
+          ? responseDepenses.data
+          : responseDepenses.data?.depenses || []
+      );
 
-      if (peutCreerCotisation) {
+      setAides(
+        Array.isArray(responseAides.data)
+          ? responseAides.data
+          : responseAides.data?.aides || []
+      );
 
-        requetes.push(
-          api
-            .get("/cotisations/membres-actifs")
-            .then((response) => {
-
-              console.log(
-                "MEMBRES ACTIFS :",
-                response.data
-              );
-
-              setMembresActifs(
-                Array.isArray(response.data)
-                  ? response.data
-                  : []
-              );
-
-            })
-            .catch((error) => {
-
-              console.error(
-                "ERREUR MEMBRES ACTIFS :",
-                error
-              );
-
-              setMembresActifs([]);
-
-            })
-        );
-
-      } else {
-
-        setMembresActifs([]);
-
-      }
-
-
-      await Promise.all(requetes);
-
+      setCotisations(
+        Array.isArray(responseCotisations.data)
+          ? responseCotisations.data
+          : responseCotisations.data?.cotisations || []
+      );
     } catch (error) {
+      console.error("Erreur chargement finances :", error);
+      setErreur(
+        error?.response?.data?.detail ||
+          "Impossible de charger les données financières."
+      );
+    } finally {
+      setChargement(false);
+    }
+  };
 
+  const chargerMembresNonCotisants = async () => {
+    if (!peutCreerPaiement) {
+      setMembresNonCotisants([]);
+      return;
+    }
+
+    setChargementMembres(true);
+
+    try {
+      const response = await api.get("/cotisations/membres-actifs");
+
+      /*
+       * IMPORTANT :
+       * L'API retourne :
+       *
+       * {
+       *   "membres": [...]
+       * }
+       *
+       * et non directement [...]
+       */
+      const membres = Array.isArray(response.data)
+        ? response.data
+        : response.data?.membres || [];
+
+      const nonCotisants = membres.filter(
+        (membre) =>
+          membre?.actif === true &&
+          Number(membre?.montant_cotisation ?? 0) === 0
+      );
+
+      setMembresNonCotisants(nonCotisants);
+    } catch (error) {
       console.error(
-        "ERREUR FINANCES :",
+        "Erreur chargement membres non cotisants :",
         error
       );
 
-
-      if (
-        error.response?.status === 401
-      ) {
-
-        setErreur(
-          "Votre session a expiré. Veuillez vous reconnecter."
-        );
-
-      } else if (
-        error.response?.status === 403
-      ) {
-
-        setErreur(
-          "Vous n'avez pas la permission d'accéder à cette partie de la gestion financière."
-        );
-
-      } else {
-
-        setErreur(
-          error.response?.data?.detail ||
-          "Impossible de charger les données financières."
-        );
-
-      }
-
+      setMembresNonCotisants([]);
     } finally {
-
-      setChargement(false);
-
+      setChargementMembres(false);
     }
-
-  }
-
-
-  // ============================================================
-  // CHARGEMENT INITIAL
-  // ============================================================
+  };
 
   useEffect(() => {
-
-    if (!utilisateur) {
-      return;
-    }
-
     chargerDonnees();
+  }, []);
 
-  }, [
-    utilisateur,
-    peutConsulterDepenses,
-    peutCreerDepense,
-    peutConsulterAides,
-    peutCreerAide,
-    peutConsulterCotisations,
-    peutCreerCotisation,
-  ]);
-
-
-  // ============================================================
-  // OUVRIR MODAL
-  // ============================================================
-
-  async function ouvrirModal(type) {
-
-    setErreurFormulaire("");
-
-    setMessageSucces("");
-
-    setModal(type);
-
-
-    if (
-      type === "aide" &&
-      peutCreerCotisation
-    ) {
-
-      await chargerMembresActifs();
-
+  useEffect(() => {
+    if (modal === "aide") {
+      chargerMembresNonCotisants();
     }
+  }, [modal]);
 
-  }
+  const totalDepenses = useMemo(
+    () =>
+      depenses.reduce(
+        (total, depense) => total + Number(depense?.montant || 0),
+        0
+      ),
+    [depenses]
+  );
 
+  const totalAides = useMemo(
+    () =>
+      aides.reduce(
+        (total, aide) => total + Number(aide?.montant || 0),
+        0
+      ),
+    [aides]
+  );
 
-  // ============================================================
-  // FERMER MODAL
-  // ============================================================
+  const totalCotisationsPrevues = useMemo(
+    () =>
+      cotisations.reduce(
+        (total, cotisation) => total + Number(cotisation?.montant || 0),
+        0
+      ),
+    [cotisations]
+  );
 
-  function fermerModal() {
+  const totalPaiementsCotisations = useMemo(
+    () =>
+      cotisations.reduce(
+        (total, cotisation) =>
+          total + Number(cotisation?.montant_cotise || 0),
+        0
+      ),
+    [cotisations]
+  );
 
-    if (enregistrement) {
+  const totalRecettes = totalPaiementsCotisations + totalAides;
 
-      return;
+  const totalResteAEncaisser = Math.max(
+    0,
+    totalCotisationsPrevues - totalPaiementsCotisations
+  );
 
-    }
+  const solde = totalRecettes - totalDepenses;
+
+  const fermerModal = () => {
+    if (enregistrement) return;
 
     setModal(null);
-
     setErreurFormulaire("");
-
     setMessageSucces("");
+  };
 
-  }
-
-
-  // ============================================================
-  // MODIFIER SORTIE
-  // ============================================================
-
-  function modifierDepense(
-    champ,
-    valeur
-  ) {
-
-    setFormDepense(
-      (ancien) => ({
-
-        ...ancien,
-
-        [champ]: valeur,
-
-      })
-    );
-
-  }
-
-
-  // ============================================================
-  // MODIFIER PIÈCE JOINTE
-  // ============================================================
-
-  function modifierPieceJointe(event) {
-
-    const fichier =
-      event.target.files?.[0] || null;
-
-    modifierDepense(
-      "piece_jointe",
-      fichier
-    );
-
-  }
-
-
-  // ============================================================
-  // MODIFIER BARKELou
-  // ============================================================
-
-  function modifierAide(
-    champ,
-    valeur
-  ) {
-
-    setFormAide(
-      (ancien) => ({
-
-        ...ancien,
-
-        [champ]: valeur,
-
-      })
-    );
-
-  }
-
-
-  // ============================================================
-  // AJOUTER SORTIE D'ARGENT
-  // ============================================================
-
-  async function ajouterDepense(event) {
-
+  const ajouterDepense = async (event) => {
     event.preventDefault();
 
     setErreurFormulaire("");
-
     setMessageSucces("");
 
-
-    if (!peutCreerDepense) {
-
-      setErreurFormulaire(
-        "Vous n'avez pas la permission d'enregistrer une sortie d'argent."
-      );
-
-      return;
-
-    }
-
-
     if (!formDepense.motif.trim()) {
-
-      setErreurFormulaire(
-        "Veuillez saisir le motif de la sortie d'argent."
-      );
-
+      setErreurFormulaire("Le motif est obligatoire.");
       return;
-
     }
-
-
-    if (!formDepense.type_sortie) {
-
-      setErreurFormulaire(
-        "Veuillez sélectionner le type de sortie."
-      );
-
-      return;
-
-    }
-
-
-    if (!formDepense.remis_a.trim()) {
-
-      setErreurFormulaire(
-        "Veuillez préciser à qui l'argent a été remis."
-      );
-
-      return;
-
-    }
-
 
     if (
       !formDepense.montant ||
       Number(formDepense.montant) <= 0
     ) {
-
-      setErreurFormulaire(
-        "Le montant doit être supérieur à zéro."
-      );
-
+      setErreurFormulaire("Le montant doit être supérieur à 0.");
       return;
-
     }
-
-
-    if (!formDepense.date_depense) {
-
-      setErreurFormulaire(
-        "Veuillez sélectionner une date."
-      );
-
-      return;
-
-    }
-
 
     try {
-
       setEnregistrement(true);
 
+      const formData = new FormData();
 
-      const donnees =
-        new FormData();
-
-
-      donnees.append(
-        "motif",
-        formDepense.motif.trim()
-      );
-
-
-      donnees.append(
-        "type_sortie",
-        formDepense.type_sortie
-      );
-
-
-      donnees.append(
-        "remis_a",
-        formDepense.remis_a.trim()
-      );
-
-
-      donnees.append(
+      formData.append("motif", formDepense.motif.trim());
+      formData.append(
         "montant",
-        String(
-          Number(formDepense.montant)
-        )
+        Number(formDepense.montant)
       );
-
-
-      donnees.append(
+      formData.append(
         "date_depense",
         formDepense.date_depense
       );
 
+      if (formDepense.type_sortie.trim()) {
+        formData.append(
+          "type_sortie",
+          formDepense.type_sortie.trim()
+        );
+      }
 
-      if (
-        formDepense.description.trim()
-      ) {
+      if (formDepense.remis_a.trim()) {
+        formData.append(
+          "remis_a",
+          formDepense.remis_a.trim()
+        );
+      }
 
-        donnees.append(
+      if (formDepense.description.trim()) {
+        formData.append(
           "description",
           formDepense.description.trim()
         );
-
       }
 
-
-      if (
-        formDepense.piece_jointe
-      ) {
-
-        donnees.append(
+      if (formDepense.piece_jointe) {
+        formData.append(
           "piece_jointe",
           formDepense.piece_jointe
         );
-
       }
 
+      await api.post("/depenses", formData);
 
-      await api.post(
-        "/depenses",
-        donnees,
-        {
-          headers: {
-            "Content-Type":
-              "multipart/form-data",
-          },
-        }
-      );
-
-
-      setMessageSucces(
-        "La sortie d'argent a été enregistrée avec succès."
-      );
-
+      setMessageSucces("Dépense enregistrée avec succès.");
 
       setFormDepense({
-
         motif: "",
-
         type_sortie: "",
-
         remis_a: "",
-
         piece_jointe: null,
-
         montant: "",
-
-        date_depense:
-          new Date()
-            .toISOString()
-            .split("T")[0],
-
+        date_depense: aujourdHui,
         description: "",
-
       });
-
 
       await chargerDonnees();
 
-
       setTimeout(() => {
-
         setModal(null);
-
         setMessageSucces("");
-
-      }, 800);
-
-
+      }, 1000);
     } catch (error) {
+      console.error("Erreur ajout dépense :", error);
 
-      console.error(
-        "ERREUR AJOUT SORTIE :",
-        error
+      setErreurFormulaire(
+        error?.response?.data?.detail ||
+          "Impossible d'enregistrer la dépense."
       );
-
-
-      if (
-        error.response?.status === 403
-      ) {
-
-        setErreurFormulaire(
-          "Vous n'avez pas la permission d'enregistrer une sortie d'argent."
-        );
-
-      } else {
-
-        setErreurFormulaire(
-          error.response?.data?.detail ||
-          "Impossible d'enregistrer la sortie d'argent."
-        );
-
-      }
-
     } finally {
-
       setEnregistrement(false);
-
     }
+  };
 
-  }
-
-
-  // ============================================================
-  // AJOUTER BARKELou / VERSEMENT
-  // ============================================================
-
-  async function ajouterAide(event) {
-
+  const ajouterAide = async (event) => {
     event.preventDefault();
 
     setErreurFormulaire("");
-
     setMessageSucces("");
-
-
-    if (!peutCreerAide) {
-
-      setErreurFormulaire(
-        "Vous n'avez pas la permission d'enregistrer une aide extérieure."
-      );
-
-      return;
-
-    }
-
-
-    if (
-      !formAide.membre_id &&
-      !formAide.source.trim()
-    ) {
-
-      setErreurFormulaire(
-        "Veuillez sélectionner un membre ou saisir la source de la barkelou."
-      );
-
-      return;
-
-    }
-
-
-    if (
-      formAide.membre_id &&
-      !peutCreerCotisation
-    ) {
-
-      setErreurFormulaire(
-        "Vous n'avez pas la permission d'enregistrer le versement d'un membre."
-      );
-
-      return;
-
-    }
-
 
     if (
       !formAide.montant ||
       Number(formAide.montant) <= 0
     ) {
-
-      setErreurFormulaire(
-        "Le montant doit être supérieur à zéro."
-      );
-
+      setErreurFormulaire("Le montant doit être supérieur à 0.");
       return;
-
     }
-
-
-    if (!formAide.date_aide) {
-
-      setErreurFormulaire(
-        "Veuillez sélectionner une date."
-      );
-
-      return;
-
-    }
-
 
     try {
-
       setEnregistrement(true);
 
-
-      // ========================================================
-      // CAS 1 :
-      // VERSEMENT D'UN MEMBRE NON COTISANT
-      // ========================================================
-
+      /*
+       * CAS 1 :
+       * Versement volontaire d'un membre non cotisant.
+       *
+       * On crée/récupère une cotisation à 0 FCFA,
+       * puis on enregistre le versement comme Paiement.
+       */
       if (formAide.membre_id) {
-
-        const membreId =
-          Number(formAide.membre_id);
-
-
-        const membre =
-          membresActifs.find(
-            (item) =>
-              Number(item.id) === membreId
+        if (!peutCreerPaiement) {
+          setErreurFormulaire(
+            "Vous n'avez pas la permission d'enregistrer un versement."
           );
+          return;
+        }
 
+        const membreId = Number(formAide.membre_id);
+
+        const membre = membresNonCotisants.find(
+          (item) => Number(item.id) === membreId
+        );
 
         if (!membre) {
-
-          throw new Error(
+          setErreurFormulaire(
             "Le membre sélectionné est introuvable."
           );
-
-        }
-
-
-        const montantCotisation =
-          Number(
-            membre.montant_cotisation ?? 0
-          );
-
-
-        // ------------------------------------------------------
-        // Un membre sélectionné ici doit être non cotisant.
-        // ------------------------------------------------------
-
-        if (montantCotisation > 0) {
-
-          setErreurFormulaire(
-            "Ce membre possède une cotisation mensuelle. Son versement doit être enregistré depuis la gestion des cotisations."
-          );
-
           return;
-
         }
 
+        const maintenant = new Date();
+        const moisActuel = maintenant.toLocaleDateString(
+          "fr-FR",
+          { month: "long" }
+        );
 
-        const dateVersement =
-          formAide.date_aide;
+        const moisNormalise = moisActuel
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "");
 
+        const anneeActuelle = maintenant.getFullYear();
 
-        const dateObjet =
-          new Date(
-            `${dateVersement}T12:00:00`
+        let cotisation = cotisations.find(
+          (item) =>
+            Number(item?.membre_id) === membreId &&
+            String(item?.annee) === String(anneeActuelle) &&
+            String(item?.mois_concerne || "")
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "") ===
+              moisNormalise
+        );
+
+        /*
+         * Si aucune cotisation du mois n'existe,
+         * on en crée une avec montant = 0.
+         */
+        if (!cotisation) {
+          const responseCotisation = await api.post(
+            "/cotisations",
+            null,
+            {
+              params: {
+                membre_id: membreId,
+                montant: 0,
+                mois_concerne: moisActuel,
+                annee: anneeActuelle,
+              },
+            }
           );
 
-
-        const mois = [
-          "Janvier",
-          "Février",
-          "Mars",
-          "Avril",
-          "Mai",
-          "Juin",
-          "Juillet",
-          "Août",
-          "Septembre",
-          "Octobre",
-          "Novembre",
-          "Décembre",
-        ][
-          dateObjet.getMonth()
-        ];
-
-
-        const annee =
-          dateObjet.getFullYear();
-
-
-        // ------------------------------------------------------
-        // Chercher une cotisation 0 existante pour ce mois.
-        // ------------------------------------------------------
-
-        let cotisationExistante = null;
-
-
-        try {
-
-          const response =
-            await api.get(
-              "/cotisations",
-              {
-                params: {
-                  membre_id: membreId,
-                  mois_concerne: mois,
-                  annee,
-                },
-              }
-            );
-
-
-          const liste =
-            Array.isArray(
-              response.data?.cotisations
-            )
-              ? response.data.cotisations
-              : [];
-
-
-          cotisationExistante =
-            liste.find(
-              (cotisation) =>
-                Number(
-                  cotisation.membre_id
-                ) === membreId &&
-                String(
-                  cotisation.mois_concerne
-                ).toLowerCase() ===
-                  mois.toLowerCase() &&
-                Number(
-                  cotisation.annee
-                ) === annee
-            ) || null;
-
-        } catch (error) {
-
-          console.warn(
-            "Impossible de rechercher la cotisation existante :",
-            error
-          );
-
+          cotisation = responseCotisation.data;
         }
 
-
-        // ------------------------------------------------------
-        // Créer une cotisation à 0 si elle n'existe pas.
-        // ------------------------------------------------------
-
-        if (!cotisationExistante) {
-
-          const response =
-            await api.post(
-              "/cotisations",
-              null,
-              {
-                params: {
-                  membre_id:
-                    membreId,
-
-                  montant: 0,
-
-                  mois_concerne:
-                    mois,
-
-                  annee,
-
-                  date_cotisation:
-                    dateVersement,
-                },
-              }
-            );
-
-
-          cotisationExistante =
-            response.data;
-
-        }
-
-
-        if (
-          !cotisationExistante?.id
-        ) {
-
-          throw new Error(
-            "Impossible de créer ou retrouver le versement du membre."
-          );
-
-        }
-
-
-        // ------------------------------------------------------
-        // Enregistrer le paiement réel.
-        // ------------------------------------------------------
-
+        /*
+         * Le versement réel est enregistré comme Paiement.
+         */
         await api.post(
-          `/cotisations/${cotisationExistante.id}/paiements`,
+          `/cotisations/${cotisation.id}/paiements`,
           null,
           {
             params: {
-
-              montant:
-                Number(
-                  formAide.montant
-                ),
-
-              mode_paiement:
-                "espèce",
-
+              montant: Number(formAide.montant),
+              mode_paiement: "espèce",
               date_paiement:
-                dateVersement,
-
-              reference:
-                formAide.description.trim() ||
-                null,
-
+                formAide.date_aide || aujourdHui,
+              reference: null,
             },
           }
         );
 
-
         setMessageSucces(
-          `Le versement de ${formaterMontant(
+          `Versement de ${Number(
             formAide.montant
-          )} FCFA de ${obtenirNomMembre(
-            membre
-          )} a été enregistré avec succès.`
+          ).toLocaleString("fr-FR")} FCFA enregistré pour ${membre.prenom} ${membre.nom}.`
         );
 
+        setFormAide({
+          membre_id: "",
+          source: "",
+          montant: "",
+          description: "",
+          date_aide: aujourdHui,
+        });
 
-      } else {
+        await chargerDonnees();
 
-        // ======================================================
-        // CAS 2 :
-        // BARKELou EXTÉRIEURE
-        // ======================================================
+        setTimeout(() => {
+          setModal(null);
+          setMessageSucces("");
+        }, 1200);
 
-        await api.post(
-          "/aides-exterieures",
-          {
-
-            source:
-              formAide.source.trim(),
-
-            montant:
-              Number(formAide.montant),
-
-            description:
-              formAide.description.trim() ||
-              null,
-
-            date_aide:
-              formAide.date_aide,
-
-          }
-        );
-
-
-        setMessageSucces(
-          "La barkelou extérieure a été enregistrée avec succès."
-        );
-
+        return;
       }
 
+      /*
+       * CAS 2 :
+       * Barkelou provenant d'une source extérieure.
+       */
+      if (!formAide.source.trim()) {
+        setErreurFormulaire(
+          "Indiquez la source du Barkelou extérieur."
+        );
+        return;
+      }
 
-      setFormAide({
-
-        source: "",
-
-        montant: "",
-
-        description: "",
-
-        date_aide:
-          new Date()
-            .toISOString()
-            .split("T")[0],
-
-        membre_id: "",
-
+      await api.post("/aides-exterieures", {
+        source: formAide.source.trim(),
+        montant: Number(formAide.montant),
+        description:
+          formAide.description.trim() || null,
+        date_aide: formAide.date_aide || aujourdHui,
       });
 
+      setMessageSucces(
+        "Barkelou extérieur enregistré avec succès."
+      );
+
+      setFormAide({
+        membre_id: "",
+        source: "",
+        montant: "",
+        description: "",
+        date_aide: aujourdHui,
+      });
 
       await chargerDonnees();
 
-
       setTimeout(() => {
-
         setModal(null);
-
         setMessageSucces("");
-
       }, 1000);
-
-
     } catch (error) {
+      console.error("Erreur ajout Barkelou :", error);
 
-      console.error(
-        "ERREUR AJOUT BARKELou / VERSEMENT :",
-        error
+      const detail = error?.response?.data?.detail;
+
+      setErreurFormulaire(
+        typeof detail === "string"
+          ? detail
+          : "Impossible d'enregistrer le Barkelou."
       );
-
-
-      if (
-        error.response?.status === 403
-      ) {
-
-        setErreurFormulaire(
-          error.response?.data?.detail ||
-          "Vous n'avez pas la permission d'enregistrer ce versement."
-        );
-
-      } else {
-
-        setErreurFormulaire(
-          error.response?.data?.detail ||
-          error.message ||
-          "Impossible d'enregistrer la barkelou ou le versement."
-        );
-
-      }
-
     } finally {
-
       setEnregistrement(false);
-
     }
+  };
 
-  }
+  const formatMontant = (montant) =>
+    Number(montant || 0).toLocaleString("fr-FR");
 
+  const formatDate = (date) => {
+    if (!date) return "—";
 
-  // ============================================================
-  // LABEL TYPE SORTIE
-  // ============================================================
+    const d = new Date(date);
 
-  function obtenirLabelTypeSortie(
-    type
-  ) {
+    if (Number.isNaN(d.getTime())) return date;
 
-    switch (type) {
+    return d.toLocaleDateString("fr-FR");
+  };
 
-      case "DEPENSE_SOCIALE":
-        return "Dépense sociale";
+  const nomMembre = (membre) =>
+    `${membre?.prenom || ""} ${membre?.nom || ""}`.trim();
 
-      case "LOCATION_MATERIEL":
-        return "Location matériel";
+  const dernieresDepenses = [...depenses]
+    .sort(
+      (a, b) =>
+        new Date(b?.date_depense || 0) -
+        new Date(a?.date_depense || 0)
+    )
+    .slice(0, 5);
 
-      case "AUTRE":
-        return "Autre";
-
-      default:
-        return type || "Non précisé";
-
-    }
-
-  }
-
-
-  // ============================================================
-  // CHARGEMENT
-  // ============================================================
+  const derniersAides = [...aides]
+    .sort(
+      (a, b) =>
+        new Date(b?.date_aide || 0) -
+        new Date(a?.date_aide || 0)
+    )
+    .slice(0, 5);
 
   if (chargement) {
-
     return (
-
-      <div className="flex min-h-[60vh] items-center justify-center">
-
-        <div className="text-center">
-
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100">
-
-            <RefreshCw
-              size={26}
-              className="animate-spin text-emerald-700"
-            />
-
-          </div>
-
-          <p className="mt-4 text-sm font-medium text-slate-500">
-            Chargement de la situation financière...
-          </p>
-
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="flex items-center gap-3 text-slate-500">
+          <RefreshCw className="h-5 w-5 animate-spin" />
+          Chargement des finances...
         </div>
-
       </div>
-
     );
-
   }
-
-
-  // ============================================================
-  // AUCUNE PERMISSION FINANCIÈRE
-  // ============================================================
-
-  const possedeUnePermissionFinance =
-    peutConsulterDepenses ||
-    peutCreerDepense ||
-    peutConsulterAides ||
-    peutCreerAide ||
-    peutConsulterCotisations;
-
-
-  if (!possedeUnePermissionFinance) {
-
-    return (
-
-      <div className="space-y-5">
-
-        <div>
-
-          <p className="text-sm font-medium text-emerald-700">
-            Administration
-          </p>
-
-          <h1 className="mt-1 text-3xl font-bold text-slate-900">
-            Gestion financière
-          </h1>
-
-        </div>
-
-
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6">
-
-          <div className="flex items-start gap-3">
-
-            <AlertCircle
-              className="mt-0.5 shrink-0 text-amber-600"
-              size={22}
-            />
-
-            <div>
-
-              <p className="font-semibold text-amber-800">
-                Accès limité
-              </p>
-
-              <p className="mt-1 text-sm text-amber-700">
-                Vous ne disposez d'aucune permission permettant
-                d'accéder à cette partie de la gestion financière.
-              </p>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    );
-
-  }
-
-
-  // ============================================================
-  // ERREUR
-  // ============================================================
-
-  if (erreur) {
-
-    return (
-
-      <div className="space-y-5">
-
-        <div>
-
-          <p className="text-sm font-medium text-emerald-700">
-            Administration
-          </p>
-
-          <h1 className="mt-1 text-3xl font-bold text-slate-900">
-            Gestion financière
-          </h1>
-
-        </div>
-
-
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
-
-          <div className="flex items-start gap-3">
-
-            <AlertCircle
-              className="mt-0.5 shrink-0 text-red-600"
-              size={22}
-            />
-
-            <div>
-
-              <p className="font-semibold text-red-800">
-                Impossible de charger les finances
-              </p>
-
-              <p className="mt-1 text-sm text-red-700">
-                {erreur}
-              </p>
-
-            </div>
-
-          </div>
-
-
-          <button
-            onClick={chargerDonnees}
-            className="mt-5 flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
-          >
-
-            <RefreshCw size={17} />
-
-            Réessayer
-
-          </button>
-
-        </div>
-
-      </div>
-
-    );
-
-  }
-
-
-  // ============================================================
-  // DONNÉES FINANCIÈRES
-  // ============================================================
-
-  const totalDepenses =
-    depenses.reduce(
-      (total, depense) =>
-        total +
-        Number(depense?.montant ?? 0),
-      0
-    );
-
-
-  const totalAides =
-    aides.reduce(
-      (total, aide) =>
-        total +
-        Number(aide?.montant ?? 0),
-      0
-    );
-
-
-  const totalCotisationsPrevues =
-    cotisations.reduce(
-      (total, cotisation) =>
-        total +
-        Number(cotisation?.montant ?? 0),
-      0
-    );
-
-
-  const totalPaiementsCotisations =
-    cotisations.reduce(
-      (total, cotisation) =>
-        total +
-        Number(
-          cotisation?.montant_cotise ?? 0
-        ),
-      0
-    );
-
-
-  const totalRecettes =
-    totalPaiementsCotisations +
-    totalAides;
-
-
-  const totalResteAEncaisser =
-    Math.max(
-      0,
-      totalCotisationsPrevues -
-      totalPaiementsCotisations
-    );
-
-
-  const solde =
-    totalRecettes -
-    totalDepenses;
-
-
-  // ============================================================
-  // RENDU
-  // ============================================================
 
   return (
-
-    <div className="space-y-8">
-
-      {/* ======================================================
-          EN-TÊTE
-      ====================================================== */}
-
-      <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
-
+    <div className="space-y-6">
+      {/* EN-TÊTE */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-
-          <div className="mb-2 flex items-center gap-2">
-
-            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-700">
-              Administration
-            </span>
-
-            <span className="text-xs text-slate-400">
-              Gestion financière
-            </span>
-
-          </div>
-
-
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+          <h1 className="text-2xl font-bold text-slate-900">
             Situation financière
           </h1>
 
-
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-            Suivez les recettes réellement encaissées,
-            les sorties d'argent et les barkelou enregistrées
-            par le Dahira.
+          <p className="mt-1 text-sm text-slate-500">
+            Suivi des recettes, versements, Barkelou et dépenses.
           </p>
-
         </div>
-
 
         <button
           type="button"
           onClick={chargerDonnees}
-          className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
         >
-
-          <RefreshCw size={17} />
-
+          <RefreshCw className="h-4 w-4" />
           Actualiser
-
         </button>
-
       </div>
 
-
-      {/* ======================================================
-          STATISTIQUES
-      ====================================================== */}
-
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-
-        {(peutConsulterCotisations ||
-          peutConsulterAides) && (
-
-          <div className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-
-            <div className="flex items-start justify-between">
-
-              <div>
-
-                <p className="text-sm font-medium text-slate-500">
-                  Recettes encaissées
-                </p>
-
-                <p className="mt-3 text-2xl font-bold text-slate-900">
-
-                  {formaterMontant(
-                    totalRecettes
-                  )}
-
-                  <span className="ml-1 text-sm font-semibold text-slate-400">
-                    FCFA
-                  </span>
-
-                </p>
-
-              </div>
-
-
-              <div className="rounded-xl bg-emerald-50 p-3">
-
-                <ArrowUpCircle
-                  size={21}
-                  className="text-emerald-600"
-                />
-
-              </div>
-
-            </div>
-
-
-            <div className="mt-5 text-xs text-slate-400">
-              Cotisations encaissées + barkelou
-            </div>
-
-          </div>
-
-        )}
-
-
-        {peutConsulterDepenses && (
-
-          <div className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-
-            <div className="flex items-start justify-between">
-
-              <div>
-
-                <p className="text-sm font-medium text-slate-500">
-                  Sorties d'argent
-                </p>
-
-                <p className="mt-3 text-2xl font-bold text-slate-900">
-
-                  {formaterMontant(
-                    totalDepenses
-                  )}
-
-                  <span className="ml-1 text-sm font-semibold text-slate-400">
-                    FCFA
-                  </span>
-
-                </p>
-
-              </div>
-
-
-              <div className="rounded-xl bg-red-50 p-3">
-
-                <TrendingDown
-                  size={21}
-                  className="text-red-600"
-                />
-
-              </div>
-
-            </div>
-
-
-            <div className="mt-5 flex items-center gap-2 text-xs text-slate-400">
-
-              <ArrowDownCircle
-                size={15}
-                className="text-red-500"
-              />
-
-              Total des sorties enregistrées
-
-            </div>
-
-          </div>
-
-        )}
-
-
-        {peutConsulterAides && (
-
-          <div className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-
-            <div className="flex items-start justify-between">
-
-              <div>
-
-                <p className="text-sm font-medium text-slate-500">
-                  Barkelou
-                </p>
-
-                <p className="mt-3 text-2xl font-bold text-slate-900">
-
-                  {formaterMontant(
-                    totalAides
-                  )}
-
-                  <span className="ml-1 text-sm font-semibold text-slate-400">
-                    FCFA
-                  </span>
-
-                </p>
-
-              </div>
-
-
-              <div className="rounded-xl bg-amber-50 p-3">
-
-                <HandCoins
-                  size={21}
-                  className="text-amber-600"
-                />
-
-              </div>
-
-            </div>
-
-
-            <div className="mt-5 flex items-center gap-2 text-xs text-slate-400">
-
-              <ArrowUpCircle
-                size={15}
-                className="text-amber-500"
-              />
-
-              Total des barkelou enregistrées
-
-            </div>
-
-          </div>
-
-        )}
-
-
-        {(peutConsulterDepenses ||
-          peutConsulterCotisations ||
-          peutConsulterAides) && (
-
-          <div className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-
-            <div className="flex items-start justify-between">
-
-              <div>
-
-                <p className="text-sm font-medium text-slate-500">
-                  Solde
-                </p>
-
-                <p
-                  className={`mt-3 text-2xl font-bold ${
-                    solde >= 0
-                      ? "text-emerald-600"
-                      : "text-red-600"
-                  }`}
-                >
-
-                  {formaterMontant(
-                    solde
-                  )}
-
-                  <span className="ml-1 text-sm font-semibold text-slate-400">
-                    FCFA
-                  </span>
-
-                </p>
-
-              </div>
-
-
-              <div
-                className={`rounded-xl p-3 ${
-                  solde >= 0
-                    ? "bg-emerald-50"
-                    : "bg-red-50"
-                }`}
-              >
-
-                <Wallet
-                  size={21}
-                  className={
-                    solde >= 0
-                      ? "text-emerald-600"
-                      : "text-red-600"
-                  }
-                />
-
-              </div>
-
-            </div>
-
-
-            <div className="mt-5 text-xs text-slate-400">
-              Recettes réelles − sorties d'argent
-            </div>
-
-          </div>
-
-        )}
-
-      </div>
-
-
-      {/* ======================================================
-          DÉTAIL DES RECETTES
-      ====================================================== */}
-
-      {peutConsulterCotisations && (
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-
+      {erreur && (
+        <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+          <span>{erreur}</span>
+        </div>
+      )}
+
+      {/* KPI */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
             <div>
+              <p className="text-sm text-slate-500">
+                Recettes encaissées
+              </p>
+              <p className="mt-2 text-2xl font-bold text-slate-900">
+                {formatMontant(totalRecettes)} FCFA
+              </p>
+            </div>
 
-              <h2 className="font-bold text-slate-900">
-                Situation des cotisations
+            <div className="rounded-xl bg-emerald-50 p-3 text-emerald-600">
+              <ArrowUpCircle className="h-6 w-6" />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-500">
+                Sorties d'argent
+              </p>
+              <p className="mt-2 text-2xl font-bold text-slate-900">
+                {formatMontant(totalDepenses)} FCFA
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-red-50 p-3 text-red-600">
+              <ArrowDownCircle className="h-6 w-6" />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-500">
+                Barkelou extérieur
+              </p>
+              <p className="mt-2 text-2xl font-bold text-slate-900">
+                {formatMontant(totalAides)} FCFA
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-blue-50 p-3 text-blue-600">
+              <HandCoins className="h-6 w-6" />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-500">
+                Solde disponible
+              </p>
+              <p className="mt-2 text-2xl font-bold text-slate-900">
+                {formatMontant(solde)} FCFA
+              </p>
+            </div>
+
+            <div className="rounded-xl bg-amber-50 p-3 text-amber-600">
+              <Wallet className="h-6 w-6" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* COTISATIONS */}
+      {peutConsulterCotisations && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">
+                Cotisations et versements des membres
               </h2>
 
-              <p className="mt-1 text-xs text-slate-400">
-                Distinction entre les cotisations dues et
-                les paiements réellement encaissés.
+              <p className="mt-1 text-sm text-slate-500">
+                Les montants encaissés correspondent uniquement à
+                l'argent réellement reçu.
               </p>
-
             </div>
 
-
-            <div className="rounded-xl bg-emerald-50 px-4 py-3">
-
-              <p className="text-xs font-medium text-emerald-700">
-                Paiements encaissés
-              </p>
-
-              <p className="mt-1 text-lg font-bold text-emerald-700">
-
-                {formaterMontant(
-                  totalPaiementsCotisations
-                )}{" "}
-
-                <span className="text-xs">
-                  FCFA
-                </span>
-
-              </p>
-
-            </div>
-
+            <Receipt className="h-6 w-6 text-slate-400" />
           </div>
 
-
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="rounded-xl bg-slate-50 p-4">
-
-              <p className="text-xs font-medium text-slate-500">
+              <p className="text-sm text-slate-500">
                 Cotisations prévues
               </p>
-
-              <p className="mt-2 text-lg font-bold text-slate-800">
-
-                {formaterMontant(
-                  totalCotisationsPrevues
-                )}{" "}
-
-                <span className="text-xs font-semibold text-slate-400">
-                  FCFA
-                </span>
-
+              <p className="mt-1 text-xl font-bold text-slate-900">
+                {formatMontant(totalCotisationsPrevues)} FCFA
               </p>
-
-              <p className="mt-1 text-xs text-slate-400">
-                Montant dû, pas encore considéré comme une recette.
-              </p>
-
             </div>
 
+            <div className="rounded-xl bg-emerald-50 p-4">
+              <p className="text-sm text-emerald-700">
+                Cotisations et versements encaissés
+              </p>
+              <p className="mt-1 text-xl font-bold text-emerald-800">
+                {formatMontant(totalPaiementsCotisations)} FCFA
+              </p>
+            </div>
 
             <div className="rounded-xl bg-amber-50 p-4">
-
-              <p className="text-xs font-medium text-amber-700">
+              <p className="text-sm text-amber-700">
                 Reste à encaisser
               </p>
-
-              <p className="mt-2 text-lg font-bold text-amber-700">
-
-                {formaterMontant(
-                  totalResteAEncaisser
-                )}{" "}
-
-                <span className="text-xs font-semibold text-amber-600">
-                  FCFA
-                </span>
-
+              <p className="mt-1 text-xl font-bold text-amber-800">
+                {formatMontant(totalResteAEncaisser)} FCFA
               </p>
-
-              <p className="mt-1 text-xs text-amber-600">
-                Cotisations dues mais non encore encaissées.
-              </p>
-
             </div>
-
           </div>
-
         </div>
-
       )}
 
-
-      {/* ======================================================
-          ACTIONS
-      ====================================================== */}
-
+      {/* ACTIONS */}
       {(peutCreerDepense || peutCreerAide) && (
-
-        <div className="grid gap-5 md:grid-cols-2">
-
+        <div className="flex flex-wrap gap-3">
           {peutCreerDepense && (
-
             <button
               type="button"
-              onClick={() =>
-                ouvrirModal("depense")
-              }
-              className="group relative overflow-hidden rounded-2xl border border-red-100 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:border-red-200 hover:shadow-lg"
+              onClick={() => {
+                setErreurFormulaire("");
+                setMessageSucces("");
+                setModal("depense");
+              }}
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
             >
-
-              <div className="absolute right-0 top-0 h-32 w-32 translate-x-12 -translate-y-12 rounded-full bg-red-50 transition group-hover:scale-125" />
-
-              <div className="relative flex items-center justify-between">
-
-                <div>
-
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-red-50">
-
-                    <Plus
-                      size={23}
-                      className="text-red-600"
-                    />
-
-                  </div>
-
-
-                  <h2 className="mt-5 text-lg font-bold text-slate-900">
-                    Ajouter une sortie d'argent
-                  </h2>
-
-
-                  <p className="mt-1 text-sm text-slate-500">
-                    Enregistrer une nouvelle sortie de caisse.
-                  </p>
-
-                </div>
-
-
-                <ArrowDownCircle
-                  size={30}
-                  className="text-red-200 transition group-hover:text-red-400"
-                />
-
-              </div>
-
+              <Plus className="h-4 w-4" />
+              Ajouter une dépense
             </button>
-
           )}
-
 
           {peutCreerAide && (
-
             <button
               type="button"
-              onClick={() =>
-                ouvrirModal("aide")
-              }
-              className="group relative overflow-hidden rounded-2xl border border-amber-100 bg-white p-6 text-left shadow-sm transition hover:-translate-y-1 hover:border-amber-200 hover:shadow-lg"
+              onClick={() => {
+                setErreurFormulaire("");
+                setMessageSucces("");
+                setModal("aide");
+              }}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
             >
-
-              <div className="absolute right-0 top-0 h-32 w-32 translate-x-12 -translate-y-12 rounded-full bg-amber-50 transition group-hover:scale-125" />
-
-              <div className="relative flex items-center justify-between">
-
-                <div>
-
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-50">
-
-                    <Plus
-                      size={23}
-                      className="text-amber-600"
-                    />
-
-                  </div>
-
-
-                  <h2 className="mt-5 text-lg font-bold text-slate-900">
-                    Ajouter une barkelou
-                  </h2>
-
-
-                  <p className="mt-1 text-sm text-slate-500">
-                    Enregistrer une barkelou ou un versement membre.
-                  </p>
-
-                </div>
-
-
-                <HandCoins
-                  size={30}
-                  className="text-amber-200 transition group-hover:text-amber-400"
-                />
-
-              </div>
-
+              <HandCoins className="h-4 w-4" />
+              Ajouter un Barkelou
             </button>
-
           )}
-
         </div>
-
       )}
 
-
-      {/* ======================================================
-          DERNIÈRES OPÉRATIONS
-      ====================================================== */}
-
-      <div
-        className={`grid gap-6 ${
-          peutConsulterDepenses &&
-          peutConsulterAides
-            ? "xl:grid-cols-2"
-            : "xl:grid-cols-1"
-        }`}
-      >
-
+      {/* LISTES */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        {/* DEPENSES */}
         {peutConsulterDepenses && (
-
           <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-
-            <div className="flex items-center justify-between border-b border-slate-100 p-6">
-
+            <div className="flex items-center justify-between border-b border-slate-100 p-5">
               <div>
-
                 <h2 className="font-bold text-slate-900">
-                  Dernières sorties d'argent
+                  Dernières dépenses
                 </h2>
-
-                <p className="mt-1 text-xs text-slate-400">
-                  Les dernières sorties enregistrées.
+                <p className="mt-1 text-xs text-slate-500">
+                  Les dernières sorties d'argent enregistrées.
                 </p>
-
               </div>
 
-
-              <div className="rounded-xl bg-red-50 p-2.5">
-
-                <Receipt
-                  size={19}
-                  className="text-red-600"
-                />
-
-              </div>
-
+              <TrendingDown className="h-5 w-5 text-red-500" />
             </div>
-
 
             <div className="divide-y divide-slate-100">
-
-              {depenses.length === 0 ? (
-
-                <div className="p-8 text-center">
-
-                  <Receipt
-                    size={30}
-                    className="mx-auto text-slate-300"
-                  />
-
-                  <p className="mt-3 text-sm text-slate-400">
-                    Aucune sortie d'argent enregistrée.
-                  </p>
-
+              {dernieresDepenses.length === 0 ? (
+                <div className="p-6 text-center text-sm text-slate-500">
+                  Aucune dépense enregistrée.
                 </div>
-
               ) : (
-
-                depenses
-                  .slice(0, 5)
-                  .map((depense) => (
-
-                    <div
-                      key={depense.id}
-                      className="px-6 py-4"
-                    >
-
-                      <div className="flex items-start justify-between gap-4">
-
-                        <div className="flex min-w-0 items-center gap-3">
-
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50">
-
-                            <ArrowDownCircle
-                              size={18}
-                              className="text-red-500"
-                            />
-
-                          </div>
-
-
-                          <div className="min-w-0">
-
-                            <p className="truncate text-sm font-semibold text-slate-800">
-                              {depense.motif}
-                            </p>
-
-
-                            <p className="mt-1 text-xs text-slate-400">
-
-                              {obtenirLabelTypeSortie(
-                                depense.type_sortie
-                              )}
-
-                              {" · "}
-
-                              {depense.date_depense}
-
-                            </p>
-
-                          </div>
-
-                        </div>
-
-
-                        <p className="shrink-0 text-sm font-bold text-red-600">
-
-                          -{" "}
-
-                          {formaterMontant(
-                            depense.montant
-                          )}{" "}
-
-                          FCFA
-
-                        </p>
-
-                      </div>
-
-
-                      <div className="ml-[52px] mt-2 flex flex-wrap items-center gap-3 text-xs">
-
-                        <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">
-
-                          <UserRound size={13} />
-
-                          Remis à:{" "}
-
-                          <span className="font-semibold">
-                            {depense.remis_a}
-                          </span>
-
-                        </span>
-
-
-                        {depense.piece_jointe_nom && (
-
-                          <a
-                            href={`${api.defaults.baseURL}/depenses/${depense.id}/piece-jointe`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 font-medium text-blue-600 transition hover:bg-blue-100"
-                          >
-
-                            <Paperclip size={13} />
-
-                            Pièce jointe
-
-                            <ExternalLink size={12} />
-
-                          </a>
-
-                        )}
-
-                      </div>
-
-                    </div>
-
-                  ))
-
-              )}
-
-            </div>
-
-          </div>
-
-        )}
-
-
-        {peutConsulterAides && (
-
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-
-            <div className="flex items-center justify-between border-b border-slate-100 p-6">
-
-              <div>
-
-                <h2 className="font-bold text-slate-900">
-                  Dernières barkelou
-                </h2>
-
-                <p className="mt-1 text-xs text-slate-400">
-                  Les dernières recettes extérieures.
-                </p>
-
-              </div>
-
-
-              <div className="rounded-xl bg-amber-50 p-2.5">
-
-                <HandCoins
-                  size={19}
-                  className="text-amber-600"
-                />
-
-              </div>
-
-            </div>
-
-
-            <div className="divide-y divide-slate-100">
-
-              {aides.length === 0 ? (
-
-                <div className="p-8 text-center">
-
-                  <HandCoins
-                    size={30}
-                    className="mx-auto text-slate-300"
-                  />
-
-                  <p className="mt-3 text-sm text-slate-400">
-                    Aucune barkelou enregistrée.
-                  </p>
-
-                </div>
-
-              ) : (
-
-                aides
-                  .slice(0, 5)
-                  .map((aide) => (
-
-                    <div
-                      key={aide.id}
-                      className="flex items-center justify-between gap-4 px-6 py-4"
-                    >
-
-                      <div className="flex min-w-0 items-center gap-3">
-
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50">
-
-                          <ArrowUpCircle
-                            size={18}
-                            className="text-amber-500"
-                          />
-
-                        </div>
-
-
-                        <div className="min-w-0">
-
-                          <p className="truncate text-sm font-semibold text-slate-800">
-                            {aide.source}
-                          </p>
-
-
-                          <p className="mt-1 text-xs text-slate-400">
-                            {aide.date_aide}
-                          </p>
-
-                        </div>
-
-                      </div>
-
-
-                      <p className="shrink-0 text-sm font-bold text-emerald-600">
-
-                        +{" "}
-
-                        {formaterMontant(
-                          aide.montant
-                        )}{" "}
-
-                        FCFA
-
+                dernieresDepenses.map((depense) => (
+                  <div
+                    key={depense.id}
+                    className="flex items-center justify-between gap-4 p-4"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-slate-900">
+                        {depense.motif || "Dépense"}
                       </p>
 
+                      <p className="mt-1 text-xs text-slate-500">
+                        {formatDate(depense.date_depense)}
+                        {depense.remis_a
+                          ? ` • ${depense.remis_a}`
+                          : ""}
+                      </p>
                     </div>
 
-                  ))
-
+                    <p className="shrink-0 font-bold text-red-600">
+                      - {formatMontant(depense.montant)} FCFA
+                    </p>
+                  </div>
+                ))
               )}
-
             </div>
-
           </div>
-
         )}
 
-      </div>
-
-
-      {/* ======================================================
-          MODAL
-      ====================================================== */}
-
-      {modal && (
-
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm"
-
-          onMouseDown={(event) => {
-
-            if (
-              event.target === event.currentTarget &&
-              !enregistrement
-            ) {
-
-              fermerModal();
-
-            }
-
-          }}
-        >
-
-          <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
-
-
-            {/* HEADER */}
-
-            <div className="border-b border-slate-100 px-6 py-5">
-
-              <div className="flex items-center justify-between">
-
-                <div className="flex items-center gap-3">
-
-                  <div
-                    className={`flex h-11 w-11 items-center justify-center rounded-xl ${
-                      modal === "depense"
-                        ? "bg-red-50"
-                        : "bg-amber-50"
-                    }`}
-                  >
-
-                    {modal === "depense" ? (
-
-                      <TrendingDown
-                        size={21}
-                        className="text-red-600"
-                      />
-
-                    ) : (
-
-                      <HandCoins
-                        size={21}
-                        className="text-amber-600"
-                      />
-
-                    )}
-
-                  </div>
-
-
-                  <div>
-
-                    <h2 className="font-bold text-slate-900">
-
-                      {modal === "depense"
-                        ? "Ajouter une sortie d'argent"
-                        : "Ajouter une barkelou"}
-
-                    </h2>
-
-
-                    <p className="text-xs text-slate-400">
-                      Les données seront enregistrées immédiatement.
-                    </p>
-
-                  </div>
-
-                </div>
-
-
-                <button
-                  type="button"
-                  onClick={fermerModal}
-                  disabled={enregistrement}
-                  className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40"
-                >
-
-                  <X size={20} />
-
-                </button>
-
+        {/* AIDES */}
+        {peutConsulterAides && (
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 p-5">
+              <div>
+                <h2 className="font-bold text-slate-900">
+                  Derniers Barkelou extérieurs
+                </h2>
+                <p className="mt-1 text-xs text-slate-500">
+                  Les aides reçues de sources extérieures.
+                </p>
               </div>
 
+              <HandCoins className="h-5 w-5 text-emerald-500" />
             </div>
 
+            <div className="divide-y divide-slate-100">
+              {derniersAides.length === 0 ? (
+                <div className="p-6 text-center text-sm text-slate-500">
+                  Aucun Barkelou extérieur enregistré.
+                </div>
+              ) : (
+                derniersAides.map((aide) => (
+                  <div
+                    key={aide.id}
+                    className="flex items-center justify-between gap-4 p-4"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-slate-900">
+                        {aide.source || "Source extérieure"}
+                      </p>
 
-            {/* =================================================
-                FORMULAIRE SORTIE
-            ================================================= */}
+                      <p className="mt-1 text-xs text-slate-500">
+                        {formatDate(aide.date_aide)}
+                        {aide.description
+                          ? ` • ${aide.description}`
+                          : ""}
+                      </p>
+                    </div>
+
+                    <p className="shrink-0 font-bold text-emerald-600">
+                      + {formatMontant(aide.montant)} FCFA
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* MODAL */}
+      {modal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 p-5">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">
+                  {modal === "depense"
+                    ? "Ajouter une dépense"
+                    : "Ajouter un Barkelou"}
+                </h2>
+
+                <p className="mt-1 text-xs text-slate-500">
+                  {modal === "depense"
+                    ? "Enregistrer une sortie d'argent."
+                    : "Enregistrer un versement d'un membre ou un Barkelou extérieur."}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={fermerModal}
+                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
 
             {modal === "depense" ? (
-
               <form
                 onSubmit={ajouterDepense}
-                className="max-h-[80vh] space-y-5 overflow-y-auto p-6"
+                className="space-y-5 p-5"
               >
+                {erreurFormulaire && (
+                  <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    {erreurFormulaire}
+                  </div>
+                )}
+
+                {messageSucces && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                    {messageSucces}
+                  </div>
+                )}
 
                 <div>
-
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">
-                    Motif
+                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                    Motif *
                   </label>
 
-                  <div className="relative">
-
-                    <Receipt
-                      size={18}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    />
-
-                    <input
-                      type="text"
-                      value={formDepense.motif}
-                      onChange={(event) =>
-                        modifierDepense(
-                          "motif",
-                          event.target.value
-                        )
-                      }
-                      placeholder="Ex : Aide à un membre"
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-red-400 focus:bg-white focus:ring-4 focus:ring-red-100"
-                      disabled={enregistrement}
-                    />
-
-                  </div>
-
+                  <input
+                    type="text"
+                    value={formDepense.motif}
+                    onChange={(e) =>
+                      setFormDepense((prev) => ({
+                        ...prev,
+                        motif: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
+                    placeholder="Ex. Achat de matériel"
+                  />
                 </div>
 
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                      Montant *
+                    </label>
 
-                <div className="grid gap-5 sm:grid-cols-2">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formDepense.montant}
+                      onChange={(e) =>
+                        setFormDepense((prev) => ({
+                          ...prev,
+                          montant: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
+                      placeholder="0"
+                    />
+                  </div>
 
                   <div>
+                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                      Date *
+                    </label>
 
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">
-                      Type de sortie
+                    <input
+                      type="date"
+                      value={formDepense.date_depense}
+                      onChange={(e) =>
+                        setFormDepense((prev) => ({
+                          ...prev,
+                          date_depense: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                    Type de sortie
+                  </label>
+
+                  <input
+                    type="text"
+                    value={formDepense.type_sortie}
+                    onChange={(e) =>
+                      setFormDepense((prev) => ({
+                        ...prev,
+                        type_sortie: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
+                    placeholder="Ex. Achat, transport..."
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                    Remis à
+                  </label>
+
+                  <input
+                    type="text"
+                    value={formDepense.remis_a}
+                    onChange={(e) =>
+                      setFormDepense((prev) => ({
+                        ...prev,
+                        remis_a: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
+                    placeholder="Nom du bénéficiaire"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                    Description
+                  </label>
+
+                  <textarea
+                    rows={3}
+                    value={formDepense.description}
+                    onChange={(e) =>
+                      setFormDepense((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
+                    placeholder="Informations complémentaires..."
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1.5 flex items-center gap-2 text-sm font-semibold text-slate-700">
+                    <Paperclip className="h-4 w-4" />
+                    Pièce jointe
+                  </label>
+
+                  <input
+                    type="file"
+                    onChange={(e) =>
+                      setFormDepense((prev) => ({
+                        ...prev,
+                        piece_jointe:
+                          e.target.files?.[0] || null,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={enregistrement}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {enregistrement && (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  )}
+                  Enregistrer la dépense
+                </button>
+              </form>
+            ) : (
+              <form
+                onSubmit={ajouterAide}
+                className="space-y-5 p-5"
+              >
+                {erreurFormulaire && (
+                  <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    {erreurFormulaire}
+                  </div>
+                )}
+
+                {messageSucces && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                    {messageSucces}
+                  </div>
+                )}
+
+                {/* MEMBRE NON COTISANT */}
+                {peutCreerPaiement && (
+                  <div>
+                    <label className="mb-1.5 flex items-center gap-2 text-sm font-semibold text-slate-700">
+                      <UserRound className="h-4 w-4" />
+                      Membre non cotisant
                     </label>
 
                     <select
-                      value={
-                        formDepense.type_sortie
+                      value={formAide.membre_id}
+                      onChange={(e) =>
+                        setFormAide((prev) => ({
+                          ...prev,
+                          membre_id: e.target.value,
+                          source: "",
+                        }))
                       }
-                      onChange={(event) =>
-                        modifierDepense(
-                          "type_sortie",
-                          event.target.value
-                        )
-                      }
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none transition focus:border-red-400 focus:bg-white focus:ring-4 focus:ring-red-100"
-                      disabled={enregistrement}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-slate-400"
                     >
-
                       <option value="">
-                        Sélectionner
+                        — Barkelou extérieur —
                       </option>
 
-                      <option value="DEPENSE_SOCIALE">
-                        Dépense sociale
-                      </option>
-
-                      <option value="LOCATION_MATERIEL">
-                        Location matériel
-                      </option>
-
-                      <option value="AUTRE">
-                        Autre
-                      </option>
-
+                      {membresNonCotisants.map((membre) => (
+                        <option
+                          key={membre.id}
+                          value={membre.id}
+                        >
+                          {nomMembre(membre)} — 0 FCFA
+                        </option>
+                      ))}
                     </select>
 
-                  </div>
-
-
-                  <div>
-
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">
-                      Remis à
-                    </label>
-
-                    <div className="relative">
-
-                      <UserRound
-                        size={18}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                      />
-
-                      <input
-                        type="text"
-                        value={formDepense.remis_a}
-                        onChange={(event) =>
-                          modifierDepense(
-                            "remis_a",
-                            event.target.value
-                          )
-                        }
-                        placeholder="Nom de la personne"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-red-400 focus:bg-white focus:ring-4 focus:ring-red-100"
-                        disabled={enregistrement}
-                      />
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-
-                <div className="grid gap-5 sm:grid-cols-2">
-
-                  <div>
-
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">
-                      Montant
-                    </label>
-
-                    <div className="relative">
-
-                      <Wallet
-                        size={18}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                      />
-
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={formDepense.montant}
-                        onChange={(event) =>
-                          modifierDepense(
-                            "montant",
-                            event.target.value
-                          )
-                        }
-                        placeholder="0"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-red-400 focus:bg-white focus:ring-4 focus:ring-red-100"
-                        disabled={enregistrement}
-                      />
-
-                    </div>
-
-                  </div>
-
-
-                  <div>
-
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">
-                      Date
-                    </label>
-
-                    <div className="relative">
-
-                      <CalendarDays
-                        size={18}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                      />
-
-                      <input
-                        type="date"
-                        value={
-                          formDepense.date_depense
-                        }
-                        onChange={(event) =>
-                          modifierDepense(
-                            "date_depense",
-                            event.target.value
-                          )
-                        }
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-red-400 focus:bg-white focus:ring-4 focus:ring-red-100"
-                        disabled={enregistrement}
-                      />
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-
-                <div>
-
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">
-                    Pièce jointe
-                    <span className="ml-1 font-normal text-slate-400">
-                      (facultatif)
-                    </span>
-                  </label>
-
-                  <div className="relative">
-
-                    <Paperclip
-                      size={18}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                    />
-
-                    <input
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx"
-                      onChange={modifierPieceJointe}
-                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition file:mr-4 file:rounded-lg file:border-0 file:bg-red-50 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-red-600 hover:file:bg-red-100 focus:border-red-400 focus:bg-white focus:ring-4 focus:ring-red-100"
-                      disabled={enregistrement}
-                    />
-
-                  </div>
-
-
-                  {formDepense.piece_jointe && (
-
-                    <p className="mt-2 text-xs text-slate-500">
-
-                      Fichier sélectionné:{" "}
-
-                      <span className="font-semibold text-slate-700">
-                        {formDepense.piece_jointe.name}
-                      </span>
-
-                    </p>
-
-                  )}
-
-
-                  <p className="mt-1 text-xs text-slate-400">
-                    PDF, image ou document — 10 Mo maximum.
-                  </p>
-
-                </div>
-
-
-                <div>
-
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">
-
-                    Description
-
-                    <span className="ml-1 font-normal text-slate-400">
-                      (facultatif)
-                    </span>
-
-                  </label>
-
-                  <div className="relative">
-
-                    <FileText
-                      size={18}
-                      className="absolute left-3 top-3 text-slate-400"
-                    />
-
-                    <textarea
-                      value={
-                        formDepense.description
-                      }
-                      onChange={(event) =>
-                        modifierDepense(
-                          "description",
-                          event.target.value
-                        )
-                      }
-                      placeholder="Informations complémentaires..."
-                      rows={3}
-                      className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-red-400 focus:bg-white focus:ring-4 focus:ring-red-100"
-                      disabled={enregistrement}
-                    />
-
-                  </div>
-
-                </div>
-
-
-                {erreurFormulaire && (
-
-                  <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    {erreurFormulaire}
-                  </div>
-
-                )}
-
-
-                {messageSucces && (
-
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-                    {messageSucces}
-                  </div>
-
-                )}
-
-
-                <button
-                  type="submit"
-                  disabled={enregistrement}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-red-600/20 transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-
-                  {enregistrement ? (
-
-                    <>
-                      <RefreshCw
-                        size={18}
-                        className="animate-spin"
-                      />
-
-                      Enregistrement...
-                    </>
-
-                  ) : (
-
-                    <>
-                      <Plus size={18} />
-
-                      Enregistrer la sortie d'argent
-                    </>
-
-                  )}
-
-                </button>
-
-              </form>
-
-
-            ) : (
-
-              /* =================================================
-                 FORMULAIRE BARKELou / VERSEMENT
-              ================================================= */
-
-              <form
-                onSubmit={ajouterAide}
-                className="max-h-[80vh] space-y-5 overflow-y-auto p-6"
-              >
-
-                {/* ------------------------------------------------
-                    MEMBRE NON COTISANT
-                ------------------------------------------------- */}
-
-                {peutCreerCotisation && (
-
-                  <div>
-
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">
-                      Versement d'un membre non cotisant
-
-                      <span className="ml-1 font-normal text-slate-400">
-                        (facultatif)
-                      </span>
-                    </label>
-
-
-                    <div className="relative">
-
-                      <UserRound
-                        size={18}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                      />
-
-
-                      <select
-                        value={
-                          formAide.membre_id
-                        }
-                        onChange={(event) => {
-
-                          const membreId =
-                            event.target.value;
-
-                          modifierAide(
-                            "membre_id",
-                            membreId
-                          );
-
-
-                          if (membreId) {
-
-                            modifierAide(
-                              "source",
-                              ""
-                            );
-
-                          }
-
-                        }}
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100"
-                        disabled={enregistrement}
-                      >
-
-                        <option value="">
-                          Aucun membre — barkelou extérieure
-                        </option>
-
-
-                        {membresActifs
-                          .filter(
-                            (membre) =>
-                              Number(
-                                membre.montant_cotisation ?? 0
-                              ) === 0
-                          )
-                          .map((membre) => (
-
-                            <option
-                              key={membre.id}
-                              value={membre.id}
-                            >
-
-                              {obtenirNomMembre(
-                                membre
-                              )}
-
-                              {" — Non cotisant"}
-
-                            </option>
-
-                          ))}
-
-                      </select>
-
-                    </div>
-
-
-                    <p className="mt-2 text-xs text-slate-400">
-
-                      Les membres ayant une cotisation mensuelle
-                      supérieure à 0 ne sont pas proposés ici.
-                      Leurs paiements se font depuis les cotisations.
-
-                    </p>
-
-                  </div>
-
-                )}
-
-
-                {/* ------------------------------------------------
-                    SOURCE EXTÉRIEURE
-                ------------------------------------------------- */}
-
-                {!formAide.membre_id && (
-
-                  <div>
-
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">
-                      Source de la barkelou
-                    </label>
-
-
-                    <div className="relative">
-
-                      <Building2
-                        size={18}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                      />
-
-
-                      <input
-                        type="text"
-                        value={formAide.source}
-                        onChange={(event) =>
-                          modifierAide(
-                            "source",
-                            event.target.value
-                          )
-                        }
-                        placeholder="Ex : Partenaire, donateur..."
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100"
-                        disabled={enregistrement}
-                      />
-
-                    </div>
-
-                  </div>
-
-                )}
-
-
-                {/* ------------------------------------------------
-                    MEMBRE SÉLECTIONNÉ
-                ------------------------------------------------- */}
-
-                {formAide.membre_id && (
-
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-
-                    <p className="text-xs font-medium text-emerald-700">
-                      Versement volontaire
-                    </p>
-
-
-                    <p className="mt-1 text-sm font-semibold text-emerald-900">
-
-                      {obtenirNomMembre(
-                        membresActifs.find(
-                          (membre) =>
-                            Number(membre.id) ===
-                            Number(formAide.membre_id)
-                        )
+                    {chargementMembres && (
+                      <p className="mt-2 text-xs text-slate-500">
+                        Chargement des membres...
+                      </p>
+                    )}
+
+                    {!chargementMembres &&
+                      membresNonCotisants.length === 0 && (
+                        <p className="mt-2 text-xs text-slate-500">
+                          Aucun membre non cotisant disponible.
+                        </p>
                       )}
 
-                    </p>
-
-
-                    <p className="mt-1 text-xs text-emerald-700">
-                      Ce membre n'a pas de cotisation mensuelle obligatoire.
-                      Son versement sera enregistré comme une entrée d'argent réelle.
-                    </p>
-
+                    {formAide.membre_id && (
+                      <div className="mt-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700">
+                        Ce montant sera enregistré comme{" "}
+                        <strong>versement du membre</strong> et
+                        apparaîtra dans ses versements. Il ne sera
+                        pas enregistré comme Barkelou extérieur.
+                      </div>
+                    )}
                   </div>
-
                 )}
 
-
-                {/* ------------------------------------------------
-                    MONTANT + DATE
-                ------------------------------------------------- */}
-
-                <div className="grid gap-5 sm:grid-cols-2">
-
+                {/* SOURCE EXTÉRIEURE */}
+                {!formAide.membre_id && (
                   <div>
-
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">
-                      Montant
+                    <label className="mb-1.5 flex items-center gap-2 text-sm font-semibold text-slate-700">
+                      <Building2 className="h-4 w-4" />
+                      Source extérieure *
                     </label>
 
-
-                    <div className="relative">
-
-                      <Wallet
-                        size={18}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                      />
-
-
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={formAide.montant}
-                        onChange={(event) =>
-                          modifierAide(
-                            "montant",
-                            event.target.value
-                          )
-                        }
-                        placeholder="0"
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100"
-                        disabled={enregistrement}
-                      />
-
-                    </div>
-
+                    <input
+                      type="text"
+                      value={formAide.source}
+                      onChange={(e) =>
+                        setFormAide((prev) => ({
+                          ...prev,
+                          source: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
+                      placeholder="Ex. Donateur, partenaire..."
+                    />
                   </div>
+                )}
 
-
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">
-                      Date
+                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                      Montant *
                     </label>
 
-
-                    <div className="relative">
-
-                      <CalendarDays
-                        size={18}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
-                      />
-
-
-                      <input
-                        type="date"
-                        value={formAide.date_aide}
-                        onChange={(event) =>
-                          modifierAide(
-                            "date_aide",
-                            event.target.value
-                          )
-                        }
-                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100"
-                        disabled={enregistrement}
-                      />
-
-                    </div>
-
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={formAide.montant}
+                      onChange={(e) =>
+                        setFormAide((prev) => ({
+                          ...prev,
+                          montant: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
+                      placeholder="0"
+                    />
                   </div>
 
+                  <div>
+                    <label className="mb-1.5 flex items-center gap-2 text-sm font-semibold text-slate-700">
+                      <CalendarDays className="h-4 w-4" />
+                      Date *
+                    </label>
+
+                    <input
+                      type="date"
+                      value={formAide.date_aide}
+                      onChange={(e) =>
+                        setFormAide((prev) => ({
+                          ...prev,
+                          date_aide: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
+                    />
+                  </div>
                 </div>
-
-
-                {/* ------------------------------------------------
-                    DESCRIPTION
-                ------------------------------------------------- */}
 
                 <div>
-
-                  <label className="mb-2 block text-sm font-semibold text-slate-700">
-
+                  <label className="mb-1.5 flex items-center gap-2 text-sm font-semibold text-slate-700">
+                    <FileText className="h-4 w-4" />
                     Description
-
-                    <span className="ml-1 font-normal text-slate-400">
-                      (facultatif)
-                    </span>
-
                   </label>
 
-
-                  <div className="relative">
-
-                    <FileText
-                      size={18}
-                      className="absolute left-3 top-3 text-slate-400"
-                    />
-
-
-                    <textarea
-                      value={
-                        formAide.description
-                      }
-                      onChange={(event) =>
-                        modifierAide(
-                          "description",
-                          event.target.value
-                        )
-                      }
-                      placeholder="Informations complémentaires..."
-                      rows={3}
-                      className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none transition focus:border-amber-400 focus:bg-white focus:ring-4 focus:ring-amber-100"
-                      disabled={enregistrement}
-                    />
-
-                  </div>
-
+                  <textarea
+                    rows={3}
+                    value={formAide.description}
+                    onChange={(e) =>
+                      setFormAide((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-slate-400"
+                    placeholder="Informations complémentaires..."
+                  />
                 </div>
-
-
-                {erreurFormulaire && (
-
-                  <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    {erreurFormulaire}
-                  </div>
-
-                )}
-
-
-                {messageSucces && (
-
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-                    {messageSucces}
-                  </div>
-
-                )}
-
 
                 <button
                   type="submit"
                   disabled={enregistrement}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 py-3.5 text-sm font-bold text-emerald-950 shadow-lg shadow-amber-500/20 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-
-                  {enregistrement ? (
-
-                    <>
-
-                      <RefreshCw
-                        size={18}
-                        className="animate-spin"
-                      />
-
-                      Enregistrement...
-
-                    </>
-
-                  ) : (
-
-                    <>
-
-                      <Plus size={18} />
-
-                      {formAide.membre_id
-                        ? "Enregistrer le versement"
-                        : "Enregistrer la barkelou"}
-
-                    </>
-
+                  {enregistrement && (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
                   )}
-
+                  Enregistrer
                 </button>
-
               </form>
-
             )}
-
           </div>
-
         </div>
-
       )}
-
     </div>
-
   );
-
 }
-
-
-export default Finances;
