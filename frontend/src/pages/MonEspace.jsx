@@ -13,21 +13,18 @@ import {
   Clock3,
   Compass,
   Heart,
-  Info,
   Landmark,
   MapPin,
   Megaphone,
   Menu,
   Moon,
   RefreshCw,
-  Settings,
   Sparkles,
   Sun,
   Sunrise,
   Sunset,
   Users,
   Wallet,
-  HandCoins,
   Volume2,
   X,
 } from "lucide-react";
@@ -37,14 +34,12 @@ import { getCommunications } from "../services/communications";
 import api from "../api/client";
 import { demanderTokenNotification } from "../firebase-messaging";
 
-
 // ============================================================
 // CONFIGURATION
 // ============================================================
 
 const VILLE = "Dakar";
 const PAYS = "Sénégal";
-
 
 // ============================================================
 // DUAS DE LA SEMAINE
@@ -62,8 +57,7 @@ const DUAS = [
   {
     arabe: "رَبِّ زِدْنِي عِلْمًا",
     transliteration: "Rabbi zidni 'ilma.",
-    traduction:
-      "Seigneur, augmente-moi en connaissance.",
+    traduction: "Seigneur, augmente-moi en connaissance.",
   },
   {
     arabe:
@@ -107,7 +101,6 @@ const DUAS = [
   },
 ];
 
-
 // ============================================================
 // RAPPELS
 // ============================================================
@@ -145,7 +138,6 @@ const RAPPELS = [
   },
 ];
 
-
 // ============================================================
 // KHASSIDA DU JOUR
 // ============================================================
@@ -172,7 +164,6 @@ const KHASSIDAS_DU_JOUR = [
       "Quelques minutes de rappel peuvent transformer l'ambiance de toute une journée.",
   },
 ];
-
 
 // ============================================================
 // RUBRIQUES DU MENU
@@ -203,7 +194,6 @@ const RUBRIQUES = [
     permission: "COTISATION_CONSULTER",
     icon: Wallet,
   },
-  
   {
     id: "finances",
     nom: "Finances",
@@ -236,7 +226,6 @@ const RUBRIQUES = [
     permission: "COMMUNICATION_CONSULTER",
     icon: Megaphone,
   },
-
   {
     id: "khassidas",
     nom: "Khassidas",
@@ -253,10 +242,7 @@ const RUBRIQUES = [
     permission: "NOTIFICATION_CONSULTER",
     icon: Bell,
   },
-  
-
 ];
-
 
 // ============================================================
 // OUTILS
@@ -272,7 +258,6 @@ const obtenirCleJour = () => {
   );
 };
 
-
 const obtenirIndexDuJour = (longueur) => {
   if (!longueur) {
     return 0;
@@ -280,7 +265,6 @@ const obtenirIndexDuJour = (longueur) => {
 
   return obtenirCleJour() % longueur;
 };
-
 
 const formaterHeure = (heure) => {
   if (!heure) {
@@ -290,11 +274,7 @@ const formaterHeure = (heure) => {
   return heure.substring(0, 5);
 };
 
-
-const convertirHeureEnDate = (
-  heure,
-  date = new Date()
-) => {
+const convertirHeureEnDate = (heure, date = new Date()) => {
   if (!heure) {
     return null;
   }
@@ -304,10 +284,7 @@ const convertirHeureEnDate = (
     .split(":")
     .map(Number);
 
-  if (
-    Number.isNaN(h) ||
-    Number.isNaN(m)
-  ) {
+  if (Number.isNaN(h) || Number.isNaN(m)) {
     return null;
   }
 
@@ -318,31 +295,22 @@ const convertirHeureEnDate = (
   return resultat;
 };
 
-
 const formaterDateComplete = (date) => {
-  return new Intl.DateTimeFormat(
-    "fr-FR",
-    {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }
-  ).format(date);
+  return new Intl.DateTimeFormat("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
 };
-
 
 const formaterDateCourte = (date) => {
-  return new Intl.DateTimeFormat(
-    "fr-FR",
-    {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }
-  ).format(date);
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
 };
-
 
 const obtenirPrenom = (utilisateur) => {
   return (
@@ -354,10 +322,8 @@ const obtenirPrenom = (utilisateur) => {
   );
 };
 
-
 const obtenirMessageErreur = (erreur) => {
-  const detail =
-    erreur?.response?.data?.detail;
+  const detail = erreur?.response?.data?.detail;
 
   if (typeof detail === "string") {
     return detail;
@@ -365,20 +331,12 @@ const obtenirMessageErreur = (erreur) => {
 
   if (Array.isArray(detail)) {
     return detail
-      .map(
-        (item) =>
-          item?.msg ||
-          "Erreur de validation."
-      )
+      .map((item) => item?.msg || "Erreur de validation.")
       .join(" ");
   }
 
-  return (
-    erreur?.message ||
-    "Une erreur est survenue."
-  );
+  return erreur?.message || "Une erreur est survenue.";
 };
-
 
 // ============================================================
 // COMPOSANT
@@ -393,25 +351,20 @@ function MonEspace() {
     aPermission,
   } = useAuth();
 
-
   // ==========================================================
   // ETATS
   // ==========================================================
 
-  const [maintenant, setMaintenant] =
-    useState(new Date());
+  const [maintenant, setMaintenant] = useState(new Date());
 
-  const [horaires, setHoraires] =
-    useState(null);
+  const [horaires, setHoraires] = useState(null);
 
   const [chargementHoraires, setChargementHoraires] =
     useState(true);
 
-  const [erreurHoraires, setErreurHoraires] =
-    useState("");
+  const [erreurHoraires, setErreurHoraires] = useState("");
 
-  const [communications, setCommunications] =
-    useState([]);
+  const [communications, setCommunications] = useState([]);
 
   const [chargementCommunications, setChargementCommunications] =
     useState(false);
@@ -419,13 +372,11 @@ function MonEspace() {
   const [erreurCommunications, setErreurCommunications] =
     useState("");
 
-  const [duaIndex, setDuaIndex] =
-    useState(
-      obtenirIndexDuJour(DUAS.length)
-    );
+  const [duaIndex, setDuaIndex] = useState(
+    obtenirIndexDuJour(DUAS.length)
+  );
 
-  const [menuOuvert, setMenuOuvert] =
-    useState(false);
+  const [menuOuvert, setMenuOuvert] = useState(false);
 
   const [
     activationNotifications,
@@ -437,11 +388,8 @@ function MonEspace() {
     setNotificationsActivees,
   ] = useState(false);
 
-  const [
-    erreurNotifications,
-    setErreurNotifications,
-  ] = useState("");
-
+  const [erreurNotifications, setErreurNotifications] =
+    useState("");
 
   // ==========================================================
   // MENU SELON LES PERMISSIONS
@@ -455,11 +403,7 @@ function MonEspace() {
     return RUBRIQUES.filter((rubrique) =>
       aPermission(rubrique.permission)
     );
-  }, [
-    utilisateur,
-    aPermission,
-  ]);
-
+  }, [utilisateur, aPermission]);
 
   // ==========================================================
   // HORLOGE
@@ -473,19 +417,16 @@ function MonEspace() {
     return () => clearInterval(interval);
   }, []);
 
-
   // ==========================================================
   // DU'A
   // ==========================================================
 
   useEffect(() => {
     const index =
-      Math.floor(obtenirCleJour() / 7) %
-      DUAS.length;
+      Math.floor(obtenirCleJour() / 7) % DUAS.length;
 
     setDuaIndex(index);
   }, []);
-
 
   // ==========================================================
   // HORAIRES DE PRIERE
@@ -498,22 +439,15 @@ function MonEspace() {
     try {
       const date = new Date();
 
-      const jour = String(
-        date.getDate()
-      ).padStart(2, "0");
-
-      const mois = String(
-        date.getMonth() + 1
-      ).padStart(2, "0");
-
+      const jour = String(date.getDate()).padStart(2, "0");
+      const mois = String(date.getMonth() + 1).padStart(2, "0");
       const annee = date.getFullYear();
 
-      const params =
-        new URLSearchParams({
-          city: VILLE,
-          country: PAYS,
-          method: "3",
-        });
+      const params = new URLSearchParams({
+        city: VILLE,
+        country: PAYS,
+        method: "3",
+      });
 
       const url =
         `https://api.aladhan.com/v1/timingsByCity/${jour}-${mois}-${annee}?${params.toString()}`;
@@ -526,8 +460,7 @@ function MonEspace() {
         );
       }
 
-      const donnees =
-        await response.json();
+      const donnees = await response.json();
 
       if (
         donnees?.code !== 200 ||
@@ -556,61 +489,51 @@ function MonEspace() {
     }
   };
 
-
   useEffect(() => {
     chargerHoraires();
   }, []);
-
 
   // ==========================================================
   // COMMUNICATIONS
   // ==========================================================
 
-  const chargerCommunications =
-    async () => {
-      if (
-        !aPermission(
-          "COMMUNICATION_CONSULTER"
-        )
-      ) {
-        return;
-      }
+  const chargerCommunications = async () => {
+    if (!aPermission("COMMUNICATION_CONSULTER")) {
+      return;
+    }
 
-      setChargementCommunications(true);
-      setErreurCommunications("");
+    setChargementCommunications(true);
+    setErreurCommunications("");
 
-      try {
-        const donnees =
-          await getCommunications({
-            actif: true,
-          });
+    try {
+      const donnees = await getCommunications({
+        actif: true,
+      });
 
-        setCommunications(
-          Array.isArray(donnees)
-            ? donnees.slice(0, 3)
-            : []
-        );
-      } catch (err) {
-        console.error(
-          "Erreur communications :",
-          err
-        );
+      setCommunications(
+        Array.isArray(donnees)
+          ? donnees.slice(0, 3)
+          : []
+      );
+    } catch (err) {
+      console.error(
+        "Erreur communications :",
+        err
+      );
 
-        setErreurCommunications(
-          obtenirMessageErreur(err)
-        );
-      } finally {
-        setChargementCommunications(false);
-      }
-    };
-
+      setErreurCommunications(
+        obtenirMessageErreur(err)
+      );
+    } finally {
+      setChargementCommunications(false);
+    }
+  };
 
   useEffect(() => {
     if (utilisateur) {
       chargerCommunications();
     }
   }, [utilisateur]);
-
 
   // ==========================================================
   // NOTIFICATIONS PUSH
@@ -632,14 +555,13 @@ function MonEspace() {
         return;
       }
 
-      const response =
-        await api.post(
-          "/notifications/appareil",
-          {
-            token,
-            plateforme: "web",
-          }
-        );
+      const response = await api.post(
+        "/notifications/appareil",
+        {
+          token,
+          plateforme: "web",
+        }
+      );
 
       console.log(
         "APPAREIL FCM ENREGISTRÉ :",
@@ -665,7 +587,6 @@ function MonEspace() {
       setActivationNotifications(false);
     }
   };
-
 
   // ==========================================================
   // PRIERES
@@ -707,41 +628,35 @@ function MonEspace() {
     ];
   }, [horaires]);
 
-
   // ==========================================================
   // PROCHAINE PRIERE
   // ==========================================================
 
-  const prochainePriere =
-    useMemo(() => {
-      if (!prieres.length) {
-        return null;
-      }
-
-      for (const priere of prieres) {
-        const datePriere =
-          convertirHeureEnDate(
-            priere.heure,
-            maintenant
-          );
-
-        if (
-          datePriere &&
-          datePriere > maintenant
-        ) {
-          return {
-            ...priere,
-            date: datePriere,
-          };
-        }
-      }
-
+  const prochainePriere = useMemo(() => {
+    if (!prieres.length) {
       return null;
-    }, [
-      prieres,
-      maintenant,
-    ]);
+    }
 
+    for (const priere of prieres) {
+      const datePriere =
+        convertirHeureEnDate(
+          priere.heure,
+          maintenant
+        );
+
+      if (
+        datePriere &&
+        datePriere > maintenant
+      ) {
+        return {
+          ...priere,
+          date: datePriere,
+        };
+      }
+    }
+
+    return null;
+  }, [prieres, maintenant]);
 
   const prochainePriereFinale =
     prochainePriere ||
@@ -749,8 +664,7 @@ function MonEspace() {
       ? {
           ...prieres[0],
           date: (() => {
-            const demain =
-              new Date(maintenant);
+            const demain = new Date(maintenant);
 
             demain.setDate(
               demain.getDate() + 1
@@ -764,55 +678,43 @@ function MonEspace() {
         }
       : null);
 
-
   // ==========================================================
   // COMPTE A REBOURS
   // ==========================================================
 
-  const compteARebours =
-    useMemo(() => {
-      if (
-        !prochainePriereFinale?.date
-      ) {
-        return "--:--:--";
-      }
+  const compteARebours = useMemo(() => {
+    if (!prochainePriereFinale?.date) {
+      return "--:--:--";
+    }
 
-      let difference =
-        prochainePriereFinale.date.getTime() -
-        maintenant.getTime();
+    let difference =
+      prochainePriereFinale.date.getTime() -
+      maintenant.getTime();
 
-      if (difference < 0) {
-        difference = 0;
-      }
+    if (difference < 0) {
+      difference = 0;
+    }
 
-      const totalSecondes =
-        Math.floor(
-          difference / 1000
-        );
+    const totalSecondes = Math.floor(
+      difference / 1000
+    );
 
-      const heures =
-        Math.floor(
-          totalSecondes / 3600
-        );
+    const heures = Math.floor(
+      totalSecondes / 3600
+    );
 
-      const minutes =
-        Math.floor(
-          (totalSecondes % 3600) / 60
-        );
+    const minutes = Math.floor(
+      (totalSecondes % 3600) / 60
+    );
 
-      const secondes =
-        totalSecondes % 60;
+    const secondes = totalSecondes % 60;
 
-      return [
-        String(heures).padStart(2, "0"),
-        String(minutes).padStart(2, "0"),
-        String(secondes).padStart(2, "0"),
-      ].join(":");
-    }, [
-      prochainePriereFinale,
-      maintenant,
-    ]);
-
+    return [
+      String(heures).padStart(2, "0"),
+      String(minutes).padStart(2, "0"),
+      String(secondes).padStart(2, "0"),
+    ].join(":");
+  }, [prochainePriereFinale, maintenant]);
 
   // ==========================================================
   // DONNEES DU JOUR
@@ -834,7 +736,6 @@ function MonEspace() {
 
   const dua = DUAS[duaIndex];
 
-
   const indexProchainePriere =
     prieres.findIndex(
       (priere) =>
@@ -842,10 +743,7 @@ function MonEspace() {
         priere.nom
     );
 
-
-  const prenom =
-    obtenirPrenom(utilisateur);
-
+  const prenom = obtenirPrenom(utilisateur);
 
   // ==========================================================
   // CHARGEMENT
@@ -853,21 +751,20 @@ function MonEspace() {
 
   if (chargement) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f8f7f2]">
+      <div className="flex min-h-screen items-center justify-center bg-[#f8f7f2] px-4">
         <div className="text-center">
           <RefreshCw
             size={32}
-            className="mx-auto text-emerald-700 animate-spin"
+            className="mx-auto animate-spin text-emerald-700"
           />
 
-          <p className="mt-3 text-slate-500">
+          <p className="mt-3 text-sm text-slate-500 sm:text-base">
             Chargement de votre espace...
           </p>
         </div>
       </div>
     );
   }
-
 
   // ==========================================================
   // NON CONNECTE
@@ -882,14 +779,12 @@ function MonEspace() {
     );
   }
 
-
   // ==========================================================
   // RENDU
   // ==========================================================
 
   return (
-    <div className="min-h-screen bg-[#f8f7f2] text-slate-900">
-
+    <div className="min-h-screen overflow-x-hidden bg-[#f8f7f2] text-slate-900">
 
       {/* ======================================================
           NAVBAR
@@ -897,20 +792,19 @@ function MonEspace() {
 
       <header className="sticky top-0 z-50 border-b border-emerald-900/10 bg-white/95 backdrop-blur-xl">
 
-        <div className="mx-auto max-w-7xl px-5">
+        <div className="mx-auto max-w-7xl px-3 sm:px-5">
 
-          <div className="flex h-[76px] items-center justify-between">
-
+          <div className="flex min-h-[68px] items-center justify-between gap-2 sm:h-[76px]">
 
             {/* LOGO */}
 
             <button
               type="button"
               onClick={() => navigate("/")}
-              className="flex items-center gap-3"
+              className="flex min-w-0 items-center gap-2 sm:gap-3"
             >
 
-              <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-emerald-950 shadow-sm">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-emerald-950 shadow-sm sm:h-11 sm:w-11 sm:rounded-2xl">
 
                 <img
                   src="/logo.png"
@@ -920,14 +814,13 @@ function MonEspace() {
 
               </div>
 
+              <div className="hidden min-w-0 text-left sm:block">
 
-              <div className="hidden text-left sm:block">
-
-                <p className="text-[15px] font-black tracking-tight text-emerald-950">
+                <p className="truncate text-[14px] font-black tracking-tight text-emerald-950 md:text-[15px]">
                   Dahira Mawahibou Naafih
                 </p>
 
-                <p className="mt-0.5 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400">
+                <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 sm:text-[11px]">
                   Espace membre
                 </p>
 
@@ -935,10 +828,9 @@ function MonEspace() {
 
             </button>
 
-
             {/* MENU DESKTOP */}
 
-            <nav className="hidden items-center gap-1 lg:flex">
+            <nav className="hidden items-center gap-0.5 xl:flex">
 
               {rubriquesAutorisees
                 .slice(0, 6)
@@ -956,23 +848,23 @@ function MonEspace() {
                           rubrique.route
                         )
                       }
-                      className="group inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-emerald-50 hover:text-emerald-800"
+                      className="group inline-flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-semibold text-slate-500 transition hover:bg-emerald-50 hover:text-emerald-800 2xl:px-3 2xl:py-2.5 2xl:text-sm"
                     >
 
                       <Icon
-                        size={16}
-                        className="transition group-hover:text-[#b88b28]"
+                        size={15}
+                        className="shrink-0 transition group-hover:text-[#b88b28]"
                       />
 
-                      {rubrique.nom}
+                      <span className="whitespace-nowrap">
+                        {rubrique.nom}
+                      </span>
 
                     </button>
                   );
                 })}
 
-
-              {rubriquesAutorisees.length >
-                6 && (
+              {rubriquesAutorisees.length > 6 && (
                 <button
                   type="button"
                   onClick={() =>
@@ -980,19 +872,19 @@ function MonEspace() {
                       !menuOuvert
                     )
                   }
-                  className={`inline-flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                  className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-semibold transition 2xl:px-3 2xl:py-2.5 2xl:text-sm ${
                     menuOuvert
                       ? "bg-emerald-950 text-white"
                       : "text-slate-500 hover:bg-emerald-50 hover:text-emerald-800"
                   }`}
                 >
 
-                  <Menu size={17} />
+                  <Menu size={16} />
 
                   Menu
 
                   <ChevronDown
-                    size={14}
+                    size={13}
                     className={
                       menuOuvert
                         ? "rotate-180 transition"
@@ -1005,21 +897,19 @@ function MonEspace() {
 
             </nav>
 
-
             {/* PROFIL + MOBILE */}
 
-            <div className="flex items-center gap-2">
-
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
 
               <button
                 type="button"
                 onClick={() =>
                   navigate("/mon-espace")
                 }
-                className="hidden items-center gap-3 rounded-2xl px-3 py-2 transition hover:bg-emerald-50 sm:flex"
+                className="hidden items-center gap-2 rounded-2xl px-2 py-2 transition hover:bg-emerald-50 md:flex lg:px-3"
               >
 
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-950 text-sm font-black text-[#d6ac47]">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-950 text-xs font-black text-[#d6ac47] lg:h-9 lg:w-9 lg:text-sm">
 
                   {prenom
                     ?.charAt(0)
@@ -1027,10 +917,9 @@ function MonEspace() {
 
                 </div>
 
+                <div className="hidden text-left lg:block">
 
-                <div className="text-left">
-
-                  <p className="text-sm font-bold text-emerald-950">
+                  <p className="max-w-[120px] truncate text-sm font-bold text-emerald-950">
                     {prenom}
                   </p>
 
@@ -1042,7 +931,6 @@ function MonEspace() {
 
               </button>
 
-
               <button
                 type="button"
                 onClick={() =>
@@ -1050,14 +938,18 @@ function MonEspace() {
                     !menuOuvert
                   )
                 }
-                className="flex h-11 w-11 items-center justify-center rounded-2xl text-emerald-950 transition hover:bg-emerald-50 lg:hidden"
-                aria-label="Ouvrir le menu"
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-emerald-950 transition hover:bg-emerald-50 sm:h-11 sm:w-11 sm:rounded-2xl xl:hidden"
+                aria-label={
+                  menuOuvert
+                    ? "Fermer le menu"
+                    : "Ouvrir le menu"
+                }
               >
 
                 {menuOuvert ? (
-                  <X size={22} />
+                  <X size={21} />
                 ) : (
-                  <Menu size={22} />
+                  <Menu size={21} />
                 )}
 
               </button>
@@ -1066,17 +958,16 @@ function MonEspace() {
 
           </div>
 
-
           {/* ==================================================
-              MENU MOBILE
+              MENU MOBILE / TABLETTE
           ================================================== */}
 
           {menuOuvert && (
-            <div className="border-t border-slate-100 py-4 lg:hidden">
+            <div className="border-t border-slate-100 py-3 sm:py-4 xl:hidden">
 
-              <div className="mb-4 flex items-center gap-3 rounded-2xl bg-emerald-950 p-4 text-white">
+              <div className="mb-3 flex min-w-0 items-center gap-3 rounded-2xl bg-emerald-950 p-3.5 text-white sm:mb-4 sm:p-4">
 
-                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 font-black text-[#d6ac47]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 font-black text-[#d6ac47] sm:h-11 sm:w-11">
 
                   {prenom
                     ?.charAt(0)
@@ -1084,20 +975,19 @@ function MonEspace() {
 
                 </div>
 
-                <div>
+                <div className="min-w-0">
 
-                  <p className="font-bold">
+                  <p className="truncate text-sm font-bold sm:text-base">
                     As Salam 'Aleykum {prenom}
                   </p>
 
-                  <p className="text-xs text-white/60">
+                  <p className="mt-0.5 text-xs text-white/60">
                     Votre espace membre
                   </p>
 
                 </div>
 
               </div>
-
 
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
 
@@ -1118,7 +1008,7 @@ function MonEspace() {
 
                           setMenuOuvert(false);
                         }}
-                        className="group flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3.5 text-left shadow-sm transition hover:border-emerald-200 hover:shadow-md"
+                        className="group flex min-w-0 items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 text-left shadow-sm transition hover:border-emerald-200 hover:shadow-md sm:p-3.5"
                       >
 
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-950 group-hover:text-[#d6ac47]">
@@ -1127,9 +1017,9 @@ function MonEspace() {
 
                         </div>
 
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
 
-                          <p className="text-sm font-bold text-emerald-950">
+                          <p className="truncate text-sm font-bold text-emerald-950">
                             {rubrique.nom}
                           </p>
 
@@ -1156,18 +1046,17 @@ function MonEspace() {
 
         </div>
 
-
         {/* ==================================================
             MENU COMPLET DESKTOP
         ================================================== */}
 
         {menuOuvert &&
           rubriquesAutorisees.length > 6 && (
-            <div className="hidden border-t border-emerald-900/10 bg-[#fafaf7] lg:block">
+            <div className="hidden border-t border-emerald-900/10 bg-[#fafaf7] xl:block">
 
-              <div className="mx-auto max-w-7xl px-5 py-6">
+              <div className="mx-auto max-w-7xl px-5 py-5 lg:py-6">
 
-                <div className="mb-5 flex items-end justify-between">
+                <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 
                   <div>
 
@@ -1175,21 +1064,20 @@ function MonEspace() {
                       Navigation
                     </p>
 
-                    <h2 className="mt-2 text-2xl font-black text-emerald-950">
+                    <h2 className="mt-2 text-xl font-black text-emerald-950 sm:text-2xl">
                       Toutes les rubriques
                     </h2>
 
                   </div>
 
-                  <p className="max-w-sm text-right text-sm text-slate-400">
+                  <p className="max-w-sm text-left text-sm text-slate-400 sm:text-right">
                     Accédez aux fonctionnalités disponibles
                     selon vos droits.
                   </p>
 
                 </div>
 
-
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-5">
 
                   {rubriquesAutorisees.map(
                     (rubrique) => {
@@ -1208,12 +1096,12 @@ function MonEspace() {
 
                             setMenuOuvert(false);
                           }}
-                          className="group rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg"
+                          className="group min-w-0 rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg"
                         >
 
-                          <div className="flex items-start justify-between">
+                          <div className="flex items-start justify-between gap-2">
 
-                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-950 group-hover:text-[#d6ac47]">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-950 group-hover:text-[#d6ac47]">
 
                               <Icon size={20} />
 
@@ -1221,17 +1109,16 @@ function MonEspace() {
 
                             <ArrowRight
                               size={16}
-                              className="text-slate-200 transition group-hover:text-[#b88b28]"
+                              className="shrink-0 text-slate-200 transition group-hover:text-[#b88b28]"
                             />
 
                           </div>
 
-
-                          <p className="mt-4 font-bold text-emerald-950">
+                          <p className="mt-4 truncate font-bold text-emerald-950">
                             {rubrique.nom}
                           </p>
 
-                          <p className="mt-1 text-xs leading-5 text-slate-400">
+                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">
                             {rubrique.description}
                           </p>
 
@@ -1249,7 +1136,6 @@ function MonEspace() {
 
       </header>
 
-
       {/* ======================================================
           HERO
       ====================================================== */}
@@ -1258,34 +1144,31 @@ function MonEspace() {
 
         <div className="absolute inset-0 opacity-20">
 
-          <div className="absolute -right-20 -top-24 h-80 w-80 rounded-full border border-[#d6ac47]/30" />
+          <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full border border-[#d6ac47]/30 sm:h-80 sm:w-80" />
 
-          <div className="absolute right-20 top-20 h-96 w-96 rounded-full border border-white/10" />
+          <div className="absolute right-10 top-20 h-72 w-72 rounded-full border border-white/10 sm:right-20 sm:h-96 sm:w-96" />
 
-          <div className="absolute -bottom-40 -left-20 h-96 w-96 rounded-full border border-[#d6ac47]/20" />
+          <div className="absolute -bottom-40 -left-20 h-80 w-80 rounded-full border border-[#d6ac47]/20 sm:h-96 sm:w-96" />
 
         </div>
 
+        <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-5 sm:py-14 lg:py-16 xl:py-20">
 
-        <div className="relative mx-auto max-w-7xl px-5 py-14 sm:py-16 lg:py-20">
-
-          <div className="grid gap-10 lg:grid-cols-[1fr_330px] lg:items-center">
-
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center lg:gap-10">
 
             {/* TEXTE */}
 
-            <div className="max-w-3xl">
+            <div className="min-w-0 max-w-3xl">
 
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-[#e7c96b]">
+              <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#e7c96b] sm:px-4 sm:py-2 sm:text-xs sm:tracking-[0.16em]">
 
-                <Sparkles size={14} />
+                <Sparkles size={13} />
 
                 Espace membre
 
               </div>
 
-
-              <h1 className="mt-6 text-4xl font-black leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+              <h1 className="mt-5 break-words text-3xl font-black leading-tight tracking-tight sm:mt-6 sm:text-4xl md:text-5xl lg:text-6xl">
 
                 As Salam
                 <span className="text-[#d6ac47]">
@@ -1298,8 +1181,7 @@ function MonEspace() {
 
               </h1>
 
-
-              <p className="mt-5 max-w-2xl text-base leading-8 text-white/65 sm:text-lg">
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-white/65 sm:mt-5 sm:text-base sm:leading-8 lg:text-lg">
 
                 Bienvenue dans votre espace personnel.
                 Retrouvez les informations essentielles
@@ -1309,45 +1191,47 @@ function MonEspace() {
 
               </p>
 
+              <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2.5 text-xs text-white/60 sm:mt-7 sm:gap-x-5 sm:text-sm">
 
-              <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3 text-sm text-white/60">
+                <span className="inline-flex min-w-0 items-center gap-2">
 
-                <span className="inline-flex items-center gap-2">
                   <CalendarDays
-                    size={16}
-                    className="text-[#d6ac47]"
+                    size={15}
+                    className="shrink-0 text-[#d6ac47]"
                   />
 
-                  {formaterDateComplete(
-                    maintenant
-                  )}
-                </span>
+                  <span className="break-words">
+                    {formaterDateComplete(
+                      maintenant
+                    )}
+                  </span>
 
+                </span>
 
                 <span className="hidden text-white/20 sm:block">
                   •
                 </span>
 
-
                 <span className="inline-flex items-center gap-2">
+
                   <MapPin
-                    size={16}
-                    className="text-[#d6ac47]"
+                    size={15}
+                    className="shrink-0 text-[#d6ac47]"
                   />
 
                   Dakar, Sénégal
+
                 </span>
 
               </div>
 
             </div>
 
-
             {/* HORLOGE */}
 
-            <div>
+            <div className="w-full min-w-0">
 
-              <div className="rounded-[2rem] border border-white/10 bg-white/10 p-6 backdrop-blur">
+              <div className="rounded-[1.5rem] border border-white/10 bg-white/10 p-5 backdrop-blur sm:rounded-[2rem] sm:p-6">
 
                 <div className="flex items-center gap-2 text-sm font-medium text-[#e7c96b]">
 
@@ -1357,8 +1241,7 @@ function MonEspace() {
 
                 </div>
 
-
-                <p className="mt-3 text-4xl font-black tracking-tight sm:text-5xl">
+                <p className="mt-3 text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
 
                   {maintenant.toLocaleTimeString(
                     "fr-FR",
@@ -1371,25 +1254,24 @@ function MonEspace() {
 
                 </p>
 
-
-                <p className="mt-2 text-sm text-white/50">
+                <p className="mt-2 text-xs text-white/50 sm:text-sm">
                   {formaterDateCourte(
                     maintenant
                   )}
                 </p>
 
+                <div className="mt-4 h-px bg-white/10 sm:mt-5" />
 
-                <div className="mt-5 h-px bg-white/10" />
-
-
-                <div className="mt-4 flex items-center gap-2 text-xs text-white/50">
+                <div className="mt-3 flex items-start gap-2 text-xs leading-5 text-white/50 sm:mt-4">
 
                   <Compass
                     size={14}
-                    className="text-[#d6ac47]"
+                    className="mt-0.5 shrink-0 text-[#d6ac47]"
                   />
 
-                  Horaires calculés pour Dakar
+                  <span>
+                    Horaires calculés pour Dakar
+                  </span>
 
                 </div>
 
@@ -1403,40 +1285,37 @@ function MonEspace() {
 
       </section>
 
-
       {/* ======================================================
           CONTENU
       ====================================================== */}
 
-      <main className="mx-auto max-w-7xl px-5 py-12 sm:py-14">
-
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-5 sm:py-12 lg:py-14">
 
         {/* ====================================================
             NOTIFICATIONS
         ==================================================== */}
 
-        <section className="mb-7">
+        <section className="mb-6 sm:mb-7">
 
-          <div className="rounded-[2rem] border border-emerald-900/10 bg-white p-5 shadow-sm md:p-6">
+          <div className="rounded-[1.5rem] border border-emerald-900/10 bg-white p-4 shadow-sm sm:rounded-[2rem] sm:p-5 md:p-6">
 
-            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-4 sm:gap-5 md:flex-row md:items-center md:justify-between">
 
-              <div className="flex items-start gap-4">
+              <div className="flex min-w-0 items-start gap-3 sm:gap-4">
 
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 sm:h-12 sm:w-12 sm:rounded-2xl">
 
-                  <Bell size={21} />
+                  <Bell size={20} />
 
                 </div>
 
+                <div className="min-w-0">
 
-                <div>
-
-                  <p className="text-xs font-black uppercase tracking-[0.16em] text-[#b88b28]">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#b88b28] sm:text-xs sm:tracking-[0.16em]">
                     Rester informé
                   </p>
 
-                  <h2 className="mt-1 text-lg font-black text-emerald-950">
+                  <h2 className="mt-1 text-base font-black text-emerald-950 sm:text-lg">
                     Notifications du Dahira
                   </h2>
 
@@ -1445,16 +1324,14 @@ function MonEspace() {
                     directement sur votre appareil.
                   </p>
 
-
                   {notificationsActivees && (
                     <p className="mt-2 text-sm font-semibold text-emerald-600">
                       ✓ Notifications activées
                     </p>
                   )}
 
-
                   {erreurNotifications && (
-                    <p className="mt-2 text-sm text-red-600">
+                    <p className="mt-2 break-words text-sm text-red-600">
                       {erreurNotifications}
                     </p>
                   )}
@@ -1463,17 +1340,12 @@ function MonEspace() {
 
               </div>
 
-
               {!notificationsActivees && (
                 <button
                   type="button"
-                  onClick={
-                    activerNotifications
-                  }
-                  disabled={
-                    activationNotifications
-                  }
-                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={activerNotifications}
+                  disabled={activationNotifications}
+                  className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
 
                   {activationNotifications ? (
@@ -1502,43 +1374,40 @@ function MonEspace() {
 
         </section>
 
-
         {/* ====================================================
             PROCHAINE PRIERE
         ==================================================== */}
 
-        <section className="mb-8">
+        <section className="mb-7 sm:mb-8">
 
-          <div className="grid gap-5 lg:grid-cols-3">
-
+          <div className="grid min-w-0 gap-4 sm:gap-5 lg:grid-cols-3">
 
             {/* PRIERE */}
 
-            <div className="relative overflow-hidden rounded-[2rem] bg-white shadow-sm ring-1 ring-emerald-900/10 lg:col-span-2">
+            <div className="relative min-w-0 overflow-hidden rounded-[1.5rem] bg-white shadow-sm ring-1 ring-emerald-900/10 sm:rounded-[2rem] lg:col-span-2">
 
-              <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-emerald-50" />
+              <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-emerald-50 sm:h-64 sm:w-64" />
 
-              <div className="relative p-6 md:p-8">
+              <div className="relative p-5 sm:p-6 md:p-8">
 
-                <div className="flex flex-col justify-between gap-7 md:flex-row md:items-center">
+                <div className="flex min-w-0 flex-col justify-between gap-6 md:flex-row md:items-center md:gap-7">
 
-                  <div>
+                  <div className="min-w-0">
 
-                    <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-[#b88b28]">
+                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-[#b88b28] sm:text-xs sm:tracking-[0.18em]">
 
-                      <Compass size={17} />
+                      <Compass size={16} />
 
                       Prochaine prière
 
                     </div>
-
 
                     {chargementHoraires ? (
                       <div className="mt-5">
 
                         <RefreshCw
                           size={30}
-                          className="text-emerald-700 animate-spin"
+                          className="animate-spin text-emerald-700"
                         />
 
                         <p className="mt-3 text-sm text-slate-500">
@@ -1551,14 +1420,16 @@ function MonEspace() {
 
                         <div className="flex items-start gap-2 text-red-600">
 
-                          <AlertCircle size={19} />
+                          <AlertCircle
+                            size={19}
+                            className="mt-0.5 shrink-0"
+                          />
 
-                          <span className="text-sm">
+                          <span className="break-words text-sm">
                             {erreurHoraires}
                           </span>
 
                         </div>
-
 
                         <button
                           type="button"
@@ -1578,7 +1449,7 @@ function MonEspace() {
                     ) : prochainePriereFinale ? (
                       <>
 
-                        <h2 className="mt-3 text-3xl font-black text-emerald-950 md:text-4xl">
+                        <h2 className="mt-3 text-2xl font-black text-emerald-950 sm:text-3xl md:text-4xl">
 
                           {
                             prochainePriereFinale.nom
@@ -1586,10 +1457,9 @@ function MonEspace() {
 
                         </h2>
 
+                        <div className="mt-2 flex flex-wrap items-baseline gap-2 sm:gap-3">
 
-                        <div className="mt-2 flex items-baseline gap-3">
-
-                          <span className="text-5xl font-black tracking-tight text-emerald-800 md:text-6xl">
+                          <span className="text-4xl font-black tracking-tight text-emerald-800 sm:text-5xl md:text-6xl">
 
                             {
                               prochainePriereFinale.heure
@@ -1597,7 +1467,7 @@ function MonEspace() {
 
                           </span>
 
-                          <span className="text-sm text-slate-400">
+                          <span className="text-xs text-slate-400 sm:text-sm">
                             à Dakar
                           </span>
 
@@ -1612,16 +1482,15 @@ function MonEspace() {
 
                   </div>
 
-
                   {prochainePriereFinale &&
                     !erreurHoraires && (
-                      <div className="shrink-0 rounded-2xl border border-emerald-900/10 bg-emerald-950 px-6 py-5 text-center text-white">
+                      <div className="w-full shrink-0 rounded-2xl border border-emerald-900/10 bg-emerald-950 px-5 py-4 text-center text-white md:w-auto md:px-6 md:py-5">
 
                         <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#d6ac47]">
                           Dans
                         </p>
 
-                        <p className="mt-1 font-mono text-2xl font-black md:text-3xl">
+                        <p className="mt-1 font-mono text-xl font-black sm:text-2xl md:text-3xl">
                           {compteARebours}
                         </p>
 
@@ -1634,22 +1503,21 @@ function MonEspace() {
 
             </div>
 
-
             {/* LOCALISATION */}
 
-            <div className="rounded-[2rem] bg-emerald-950 p-6 text-white shadow-sm">
+            <div className="min-w-0 rounded-[1.5rem] bg-emerald-950 p-5 text-white shadow-sm sm:rounded-[2rem] sm:p-6">
 
               <div className="flex items-center gap-3">
 
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-[#d6ac47]">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[#d6ac47]">
 
                   <MapPin size={20} />
 
                 </div>
 
-                <div>
+                <div className="min-w-0">
 
-                  <p className="text-xs uppercase tracking-[0.16em] text-white/40">
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-white/40 sm:text-xs sm:tracking-[0.16em]">
                     Localisation
                   </p>
 
@@ -1661,14 +1529,13 @@ function MonEspace() {
 
               </div>
 
-
-              <div className="mt-7 border-t border-white/10 pt-6">
+              <div className="mt-6 border-t border-white/10 pt-5 sm:mt-7 sm:pt-6">
 
                 <p className="text-xs uppercase tracking-[0.16em] text-[#d6ac47]">
                   Aujourd'hui
                 </p>
 
-                <p className="mt-2 text-xl font-black">
+                <p className="mt-2 text-lg font-black sm:text-xl">
                   {new Intl.DateTimeFormat(
                     "fr-FR",
                     {
@@ -1691,37 +1558,35 @@ function MonEspace() {
 
         </section>
 
-
         {/* ====================================================
             HORAIRES
         ==================================================== */}
 
-        <section className="mb-8">
+        <section className="mb-7 sm:mb-8">
 
-          <div className="mb-4 flex items-end justify-between gap-4">
+          <div className="mb-4 flex items-end justify-between gap-3 sm:gap-4">
 
-            <div>
+            <div className="min-w-0">
 
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b88b28]">
+              <p className="text-[10px] font-black uppercase tracking-[0.17em] text-[#b88b28] sm:text-xs sm:tracking-[0.2em]">
                 Spiritualité
               </p>
 
-              <h2 className="mt-2 text-2xl font-black text-emerald-950">
+              <h2 className="mt-2 text-xl font-black text-emerald-950 sm:text-2xl">
                 Horaires des prières
               </h2>
 
-              <p className="mt-1 text-sm text-slate-400">
+              <p className="mt-1 text-xs text-slate-400 sm:text-sm">
                 Les cinq prières quotidiennes
               </p>
 
             </div>
 
-
             <button
               type="button"
               onClick={chargerHoraires}
               disabled={chargementHoraires}
-              className="inline-flex items-center gap-2 rounded-xl border border-emerald-900/10 bg-white px-3 py-2 text-sm font-semibold text-slate-500 transition hover:border-emerald-200 hover:text-emerald-800 disabled:opacity-50"
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-emerald-900/10 bg-white px-3 py-2 text-sm font-semibold text-slate-500 transition hover:border-emerald-200 hover:text-emerald-800 disabled:opacity-50"
             >
 
               <RefreshCw
@@ -1741,8 +1606,7 @@ function MonEspace() {
 
           </div>
 
-
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
 
             {prieres.map(
               (priere, index) => {
@@ -1757,17 +1621,17 @@ function MonEspace() {
                 return (
                   <div
                     key={priere.nom}
-                    className={`rounded-2xl border p-4 transition ${
+                    className={`min-w-0 rounded-2xl border p-3 transition sm:p-4 ${
                       estProchaine
                         ? "border-emerald-950 bg-emerald-950 text-white shadow-lg shadow-emerald-900/10"
                         : "border-slate-100 bg-white text-slate-900 shadow-sm hover:-translate-y-1 hover:border-emerald-200 hover:shadow-md"
                     }`}
                   >
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
 
                       <span
-                        className={`text-xs font-bold ${
+                        className={`text-[11px] font-bold sm:text-xs ${
                           estProchaine
                             ? "text-white/50"
                             : "text-slate-400"
@@ -1777,19 +1641,18 @@ function MonEspace() {
                       </span>
 
                       <Icon
-                        size={17}
+                        size={16}
                         className={
                           estProchaine
-                            ? "text-[#d6ac47]"
-                            : "text-emerald-700"
+                            ? "shrink-0 text-[#d6ac47]"
+                            : "shrink-0 text-emerald-700"
                         }
                       />
 
                     </div>
 
-
                     <p
-                      className={`mt-3 text-2xl font-black ${
+                      className={`mt-2 text-xl font-black sm:mt-3 sm:text-2xl ${
                         estProchaine
                           ? "text-white"
                           : "text-emerald-950"
@@ -1798,9 +1661,8 @@ function MonEspace() {
                       {priere.heure}
                     </p>
 
-
                     {estProchaine && (
-                      <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-[#d6ac47]">
+                      <p className="mt-1 text-[9px] font-bold uppercase tracking-wide text-[#d6ac47]">
                         Prochaine
                       </p>
                     )}
@@ -1809,7 +1671,6 @@ function MonEspace() {
                 );
               }
             )}
-
 
             {!prieres.length &&
               !chargementHoraires && (
@@ -1822,35 +1683,33 @@ function MonEspace() {
 
         </section>
 
-
         {/* ====================================================
             DU'A + RAPPEL
         ==================================================== */}
 
-        <section className="mb-8 grid gap-5 lg:grid-cols-2">
-
+        <section className="mb-7 grid gap-4 sm:gap-5 lg:grid-cols-2">
 
           {/* DU'A */}
 
-          <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm ring-1 ring-emerald-900/10">
+          <div className="min-w-0 overflow-hidden rounded-[1.5rem] bg-white shadow-sm ring-1 ring-emerald-900/10 sm:rounded-[2rem]">
 
-            <div className="bg-emerald-950 p-6 text-white">
+            <div className="bg-emerald-950 p-5 text-white sm:p-6">
 
               <div className="flex items-center gap-3">
 
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10 text-[#d6ac47]">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[#d6ac47]">
 
                   <Heart size={20} />
 
                 </div>
 
-                <div>
+                <div className="min-w-0">
 
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#d6ac47]">
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#d6ac47]">
                     Invocation
                   </p>
 
-                  <h2 className="mt-1 text-xl font-black">
+                  <h2 className="mt-1 text-lg font-black sm:text-xl">
                     Du'a de la semaine
                   </h2>
 
@@ -1860,34 +1719,30 @@ function MonEspace() {
 
             </div>
 
+            <div className="p-5 sm:p-6">
 
-            <div className="p-6">
-
-              <div className="rounded-2xl bg-[#f8f7f2] p-5">
+              <div className="min-w-0 overflow-hidden rounded-2xl bg-[#f8f7f2] p-4 sm:p-5">
 
                 <p
                   dir="rtl"
-                  className="text-right font-serif text-2xl leading-loose text-emerald-950 md:text-3xl"
+                  className="break-words text-right font-serif text-xl leading-[2.1] text-emerald-950 sm:text-2xl md:text-3xl"
                 >
                   {dua.arabe}
                 </p>
 
               </div>
 
-
-              <p className="mt-5 text-sm italic leading-relaxed text-slate-500">
+              <p className="mt-4 break-words text-sm italic leading-relaxed text-slate-500 sm:mt-5">
                 {dua.transliteration}
               </p>
 
+              <div className="mt-4 border-l-4 border-[#b88b28] pl-3 sm:pl-4">
 
-              <div className="mt-4 border-l-4 border-[#b88b28] pl-4">
-
-                <p className="leading-relaxed text-slate-600">
+                <p className="break-words text-sm leading-relaxed text-slate-600 sm:text-base">
                   {dua.traduction}
                 </p>
 
               </div>
-
 
               <div className="mt-5 flex justify-end">
 
@@ -1899,7 +1754,7 @@ function MonEspace() {
                         DUAS.length
                     )
                   }
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-900"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-900 sm:w-auto"
                 >
 
                   Nouvelle invocation
@@ -1914,31 +1769,29 @@ function MonEspace() {
 
           </div>
 
-
           {/* RAPPEL */}
 
-          <div className="relative overflow-hidden rounded-[2rem] border border-[#d6ac47]/20 bg-[#f7f1df] p-6">
+          <div className="relative min-w-0 overflow-hidden rounded-[1.5rem] border border-[#d6ac47]/20 bg-[#f7f1df] p-5 sm:rounded-[2rem] sm:p-6">
 
             <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full border border-[#b88b28]/20" />
 
-
             <div className="relative">
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-start gap-3">
 
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-950 text-[#d6ac47]">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-950 text-[#d6ac47]">
 
                   <Sparkles size={20} />
 
                 </div>
 
-                <div>
+                <div className="min-w-0">
 
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#a77919]">
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#a77919]">
                     Méditation
                   </p>
 
-                  <h2 className="mt-1 text-xl font-black text-emerald-950">
+                  <h2 className="mt-1 break-words text-lg font-black text-emerald-950 sm:text-xl">
                     {rappelDuJour.titre}
                   </h2>
 
@@ -1946,18 +1799,21 @@ function MonEspace() {
 
               </div>
 
-
-              <p className="mt-7 text-base leading-8 text-slate-600">
+              <p className="mt-6 text-sm leading-7 text-slate-600 sm:mt-7 sm:text-base sm:leading-8">
                 {rappelDuJour.texte}
               </p>
 
+              <div className="mt-6 flex items-start gap-2 text-sm font-semibold leading-6 text-emerald-800 sm:mt-8">
 
-              <div className="mt-8 flex items-center gap-2 text-sm font-semibold text-emerald-800">
+                <Heart
+                  size={16}
+                  className="mt-1 shrink-0"
+                />
 
-                <Heart size={16} />
-
-                Qu'Allah nous accorde
-                la constance et la sincérité.
+                <span>
+                  Qu'Allah nous accorde
+                  la constance et la sincérité.
+                </span>
 
               </div>
 
@@ -1967,37 +1823,35 @@ function MonEspace() {
 
         </section>
 
-
         {/* ====================================================
             KHASSIDA
         ==================================================== */}
 
-        <section className="mb-8">
+        <section className="mb-7 sm:mb-8">
 
-          <div className="rounded-[2rem] bg-emerald-950 p-6 text-white shadow-sm md:p-7">
+          <div className="rounded-[1.5rem] bg-emerald-950 p-5 text-white shadow-sm sm:rounded-[2rem] sm:p-6 md:p-7">
 
-            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="flex min-w-0 flex-col gap-5 sm:gap-6 md:flex-row md:items-center md:justify-between">
 
-              <div className="flex items-start gap-4">
+              <div className="flex min-w-0 items-start gap-3 sm:gap-4">
 
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/10 text-[#d6ac47]">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[#d6ac47] sm:h-14 sm:w-14 sm:rounded-2xl">
 
-                  <BookOpen size={25} />
+                  <BookOpen size={23} />
 
                 </div>
 
+                <div className="min-w-0">
 
-                <div>
-
-                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#d6ac47]">
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#d6ac47]">
                     Lecture spirituelle
                   </p>
 
-                  <h2 className="mt-1 text-xl font-black md:text-2xl">
+                  <h2 className="mt-1 break-words text-lg font-black sm:text-xl md:text-2xl">
                     {khassidaDuJour.titre}
                   </h2>
 
-                  <p className="mt-2 max-w-2xl leading-7 text-white/55">
+                  <p className="mt-2 max-w-2xl break-words text-sm leading-6 text-white/55 sm:text-base sm:leading-7">
                     {khassidaDuJour.description}
                   </p>
 
@@ -2005,15 +1859,14 @@ function MonEspace() {
 
               </div>
 
-
-              <div className="flex flex-wrap gap-2">
+              <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
 
                 <button
                   type="button"
                   onClick={() =>
                     navigate("/khassidas")
                   }
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/10"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-bold text-white transition hover:bg-white/10 sm:px-4 sm:text-sm"
                 >
 
                   <BookOpen size={16} />
@@ -2022,13 +1875,12 @@ function MonEspace() {
 
                 </button>
 
-
                 <button
                   type="button"
                   onClick={() =>
                     navigate("/khassidas")
                   }
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#d6ac47] px-4 py-2.5 text-sm font-black text-emerald-950 transition hover:bg-[#e3c15f]"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#d6ac47] px-3 py-2.5 text-xs font-black text-emerald-950 transition hover:bg-[#e3c15f] sm:px-4 sm:text-sm"
                 >
 
                   <Volume2 size={16} />
@@ -2045,7 +1897,6 @@ function MonEspace() {
 
         </section>
 
-
         {/* ====================================================
             COMMUNICATIONS
         ==================================================== */}
@@ -2053,26 +1904,25 @@ function MonEspace() {
         {aPermission(
           "COMMUNICATION_CONSULTER"
         ) && (
-          <section className="mb-8">
+          <section className="mb-7 sm:mb-8">
 
-            <div className="mb-5 flex items-end justify-between gap-4">
+            <div className="mb-4 flex items-end justify-between gap-3 sm:mb-5 sm:gap-4">
 
-              <div>
+              <div className="min-w-0">
 
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b88b28]">
+                <p className="text-[10px] font-black uppercase tracking-[0.17em] text-[#b88b28] sm:text-xs sm:tracking-[0.2em]">
                   Vie du Dahira
                 </p>
 
-                <h2 className="mt-2 text-2xl font-black text-emerald-950">
+                <h2 className="mt-2 text-xl font-black text-emerald-950 sm:text-2xl">
                   Communications
                 </h2>
 
-                <p className="mt-1 text-sm text-slate-400">
+                <p className="mt-1 text-xs text-slate-400 sm:text-sm">
                   Les dernières informations du Dahira
                 </p>
 
               </div>
-
 
               <button
                 type="button"
@@ -2081,17 +1931,16 @@ function MonEspace() {
                     "/communications"
                   )
                 }
-                className="inline-flex items-center gap-1 text-sm font-bold text-emerald-800 transition hover:text-[#a77919]"
+                className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-emerald-800 transition hover:text-[#a77919] sm:text-sm"
               >
 
                 Tout voir
 
-                <ArrowRight size={16} />
+                <ArrowRight size={15} />
 
               </button>
 
             </div>
-
 
             {chargementCommunications ? (
               <div className="rounded-2xl border border-slate-100 bg-white p-8 text-center">
@@ -2111,9 +1960,12 @@ function MonEspace() {
 
                 <div className="flex items-start gap-3 text-red-600">
 
-                  <AlertCircle size={19} />
+                  <AlertCircle
+                    size={19}
+                    className="mt-0.5 shrink-0"
+                  />
 
-                  <p className="text-sm">
+                  <p className="break-words text-sm">
                     {erreurCommunications}
                   </p>
 
@@ -2134,7 +1986,7 @@ function MonEspace() {
 
               </div>
             ) : (
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-3 sm:gap-4 md:grid-cols-3">
 
                 {communications.map(
                   (communication) => (
@@ -2146,35 +1998,31 @@ function MonEspace() {
                           `/communications/${communication.id}`
                         )
                       }
-                      className="group rounded-[1.75rem] border border-slate-100 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg"
+                      className="group min-w-0 rounded-[1.5rem] border border-slate-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg sm:rounded-[1.75rem] sm:p-5"
                     >
 
                       <div className="flex items-center justify-between">
 
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
 
                           <Megaphone size={18} />
 
                         </div>
 
-
                         <ArrowRight
                           size={17}
-                          className="text-slate-200 transition group-hover:text-[#b88b28]"
+                          className="shrink-0 text-slate-200 transition group-hover:text-[#b88b28]"
                         />
 
                       </div>
 
-
-                      <h3 className="mt-4 line-clamp-2 font-bold text-emerald-950">
+                      <h3 className="mt-4 line-clamp-2 break-words font-bold text-emerald-950">
                         {communication.titre}
                       </h3>
 
-
-                      <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">
+                      <p className="mt-2 line-clamp-3 break-words text-sm leading-6 text-slate-500">
                         {communication.contenu}
                       </p>
-
 
                       <div className="mt-4 flex items-center gap-2 text-xs text-slate-300">
 
@@ -2207,31 +2055,29 @@ function MonEspace() {
           </section>
         )}
 
-
         {/* ====================================================
             ACCES RAPIDES
         ==================================================== */}
 
-        <section className="mb-8">
+        <section className="mb-7 sm:mb-8">
 
-          <div className="mb-5">
+          <div className="mb-4 sm:mb-5">
 
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-[#b88b28]">
+            <p className="text-[10px] font-black uppercase tracking-[0.17em] text-[#b88b28] sm:text-xs sm:tracking-[0.2em]">
               Mon espace
             </p>
 
-            <h2 className="mt-2 text-2xl font-black text-emerald-950">
+            <h2 className="mt-2 text-xl font-black text-emerald-950 sm:text-2xl">
               Accès rapides
             </h2>
 
-            <p className="mt-1 text-sm text-slate-400">
+            <p className="mt-1 text-xs text-slate-400 sm:text-sm">
               Retrouvez rapidement les services qui vous sont accessibles.
             </p>
 
           </div>
 
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
 
             {aPermission(
               "REUNION_CONSULTER"
@@ -2241,12 +2087,12 @@ function MonEspace() {
                 onClick={() =>
                   navigate("/reunions")
                 }
-                className="group rounded-[1.75rem] border border-slate-100 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg"
+                className="group min-w-0 rounded-[1.5rem] border border-slate-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg sm:rounded-[1.75rem] sm:p-5"
               >
 
                 <div className="flex items-center justify-between">
 
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
 
                     <Calendar size={19} />
 
@@ -2254,13 +2100,12 @@ function MonEspace() {
 
                   <ArrowRight
                     size={17}
-                    className="text-slate-200 transition group-hover:text-[#b88b28]"
+                    className="shrink-0 text-slate-200 transition group-hover:text-[#b88b28]"
                   />
 
                 </div>
 
-
-                <h3 className="mt-5 font-black text-emerald-950">
+                <h3 className="mt-4 font-black text-emerald-950 sm:mt-5">
                   Réunions
                 </h3>
 
@@ -2270,7 +2115,6 @@ function MonEspace() {
 
               </button>
             )}
-
 
             {aPermission(
               "COMMUNICATION_CONSULTER"
@@ -2282,12 +2126,12 @@ function MonEspace() {
                     "/communications"
                   )
                 }
-                className="group rounded-[1.75rem] border border-slate-100 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg"
+                className="group min-w-0 rounded-[1.5rem] border border-slate-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg sm:rounded-[1.75rem] sm:p-5"
               >
 
                 <div className="flex items-center justify-between">
 
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
 
                     <Megaphone size={19} />
 
@@ -2295,13 +2139,12 @@ function MonEspace() {
 
                   <ArrowRight
                     size={17}
-                    className="text-slate-200 transition group-hover:text-[#b88b28]"
+                    className="shrink-0 text-slate-200 transition group-hover:text-[#b88b28]"
                   />
 
                 </div>
 
-
-                <h3 className="mt-5 font-black text-emerald-950">
+                <h3 className="mt-4 font-black text-emerald-950 sm:mt-5">
                   Communications
                 </h3>
 
@@ -2312,7 +2155,6 @@ function MonEspace() {
               </button>
             )}
 
-
             {aPermission(
               "KOUREL_CONSULTER"
             ) && (
@@ -2321,12 +2163,12 @@ function MonEspace() {
                 onClick={() =>
                   navigate("/khassidas")
                 }
-                className="group rounded-[1.75rem] border border-slate-100 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg"
+                className="group min-w-0 rounded-[1.5rem] border border-slate-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg sm:rounded-[1.75rem] sm:p-5"
               >
 
                 <div className="flex items-center justify-between">
 
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
 
                     <BookOpen size={19} />
 
@@ -2334,13 +2176,12 @@ function MonEspace() {
 
                   <ArrowRight
                     size={17}
-                    className="text-slate-200 transition group-hover:text-[#b88b28]"
+                    className="shrink-0 text-slate-200 transition group-hover:text-[#b88b28]"
                   />
 
                 </div>
 
-
-                <h3 className="mt-5 font-black text-emerald-950">
+                <h3 className="mt-4 font-black text-emerald-950 sm:mt-5">
                   Khassidas
                 </h3>
 
@@ -2350,7 +2191,6 @@ function MonEspace() {
 
               </button>
             )}
-
 
             {aPermission(
               "NOTIFICATION_CONSULTER"
@@ -2362,12 +2202,12 @@ function MonEspace() {
                     "/notifications"
                   )
                 }
-                className="group rounded-[1.75rem] border border-slate-100 bg-white p-5 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg"
+                className="group min-w-0 rounded-[1.5rem] border border-slate-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg sm:rounded-[1.75rem] sm:p-5"
               >
 
                 <div className="flex items-center justify-between">
 
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
 
                     <Bell size={19} />
 
@@ -2375,13 +2215,12 @@ function MonEspace() {
 
                   <ArrowRight
                     size={17}
-                    className="text-slate-200 transition group-hover:text-[#b88b28]"
+                    className="shrink-0 text-slate-200 transition group-hover:text-[#b88b28]"
                   />
 
                 </div>
 
-
-                <h3 className="mt-5 font-black text-emerald-950">
+                <h3 className="mt-4 font-black text-emerald-950 sm:mt-5">
                   Notifications
                 </h3>
 
@@ -2396,21 +2235,19 @@ function MonEspace() {
 
         </section>
 
-
         {/* ====================================================
             FOOTER SPIRITUEL
         ==================================================== */}
 
-        <section className="relative overflow-hidden rounded-[2rem] bg-emerald-950 p-7 text-white md:p-9">
+        <section className="relative overflow-hidden rounded-[1.5rem] bg-emerald-950 p-5 text-white sm:rounded-[2rem] sm:p-7 md:p-9">
 
-          <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full border border-[#d6ac47]/20" />
+          <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full border border-[#d6ac47]/20 sm:h-48 sm:w-48" />
 
-          <div className="absolute -bottom-20 -left-10 h-56 w-56 rounded-full border border-white/10" />
+          <div className="absolute -bottom-20 -left-10 h-48 w-48 rounded-full border border-white/10 sm:h-56 sm:w-56" />
 
+          <div className="relative flex min-w-0 flex-col gap-5 sm:gap-6 md:flex-row md:items-center md:justify-between">
 
-          <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-
-            <div>
+            <div className="min-w-0">
 
               <div className="flex items-center gap-2 text-sm font-bold text-[#d6ac47]">
 
@@ -2420,13 +2257,11 @@ function MonEspace() {
 
               </div>
 
-
-              <h2 className="mt-2 text-xl font-black md:text-2xl">
+              <h2 className="mt-2 break-words text-lg font-black sm:text-xl md:text-2xl">
                 Qu'Allah bénisse votre journée.
               </h2>
 
-
-              <p className="mt-2 max-w-2xl leading-7 text-white/50">
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/50 sm:text-base sm:leading-7">
 
                 Que chaque prière, chaque invocation
                 et chaque bonne action soit une source
@@ -2436,15 +2271,14 @@ function MonEspace() {
 
             </div>
 
-
             <div className="flex shrink-0 items-center gap-3">
 
               <Volume2
                 size={23}
-                className="text-[#d6ac47]"
+                className="shrink-0 text-[#d6ac47]"
               />
 
-              <span className="text-sm text-white/50">
+              <span className="text-xs text-white/50 sm:text-sm">
                 Dhikr • Prière • Fraternité
               </span>
 
@@ -2456,14 +2290,13 @@ function MonEspace() {
 
       </main>
 
-
       {/* ======================================================
           PETIT PIED DE PAGE
       ====================================================== */}
 
       <footer className="border-t border-emerald-900/10 bg-white">
 
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-6 text-center text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between sm:text-left">
+        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-center text-[11px] text-slate-400 sm:px-5 sm:py-6 sm:text-xs md:flex-row md:items-center md:justify-between md:text-left">
 
           <p>
             © {new Date().getFullYear()} Dahira Mawahibou Naafih
