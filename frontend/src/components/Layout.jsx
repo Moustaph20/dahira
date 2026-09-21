@@ -680,11 +680,22 @@ function Layout() {
   }, [aPermission]);
 
 
-  /* ==========================================================
-     REUNIONS ET ACTIVITES
-     ========================================================== */
+/* ==========================================================
+   REUNIONS ET ACTIVITES
+   ========================================================== */
 
-  const navigationActivites = useMemo(() => {
+const navigationActivites = useMemo(() => {
+  /*
+   * Les réunions sont consultables par tous les membres.
+   *
+   * Il n'y a volontairement PAS de permission ici.
+   *
+   * Les permissions REUNION_CREER,
+   * REUNION_MODIFIER,
+   * REUNION_SUPPRIMER et REUNION_GERER
+   * restent utilisées côté gestion.
+   */
+
   return [
     {
       code: "REUNIONS",
@@ -697,18 +708,6 @@ function Layout() {
     },
   ];
 }, []);
-
-    /*
-     * Programme religieux n'est volontairement
-     * plus placé dans cette section.
-     *
-     * Il appartient à l'Espace Kourel.
-     */
-
-    return items;
-  }, [aPermission]);
-
-
   /* ==========================================================
      COMMUNICATION
      ========================================================== */
