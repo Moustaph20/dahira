@@ -5,12 +5,8 @@ import api from "./client";
 | CRÉER UNE COTISATION
 |--------------------------------------------------------------------------
 |
-| Une cotisation représente le montant fixe dû par le membre
-| pour une période donnée.
-|
-| IMPORTANT :
+| La cotisation représente le montant fixe dû par le membre.
 | Aucun paiement n'est créé ici.
-| Le paiement est enregistré séparément avec ajouterPaiement().
 |
 |--------------------------------------------------------------------------
 */
@@ -44,14 +40,71 @@ export const creerCotisation = async ({
   return response.data;
 };
 
+/*
+|--------------------------------------------------------------------------
+| MODIFIER UNE COTISATION
+|--------------------------------------------------------------------------
+*/
+
+export const modifierCotisation = async (
+  cotisationId,
+  {
+    membre_id,
+    montant,
+    mois_concerne,
+    annee,
+    date_cotisation = null,
+  }
+) => {
+  const params = {
+    membre_id: Number(membre_id),
+    montant: Number(montant),
+    mois_concerne,
+    annee: Number(annee),
+  };
+
+  if (date_cotisation) {
+    params.date_cotisation = date_cotisation;
+  }
+
+  const response = await api.put(
+    `/cotisations/${cotisationId}`,
+    null,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
+/*
+|--------------------------------------------------------------------------
+| SUPPRIMER UNE COTISATION
+|--------------------------------------------------------------------------
+*/
+
+export const supprimerCotisation = async (
+  cotisationId
+) => {
+  const response = await api.delete(
+    `/cotisations/${cotisationId}`
+  );
+
+  return response.data;
+};
 
 /*
 |--------------------------------------------------------------------------
 | AJOUTER UN PAIEMENT
 |--------------------------------------------------------------------------
 |
-| Enregistre l'argent réellement reçu pour une cotisation
-| existante.
+| Le paiement est séparé de la cotisation.
+|
+| Exemple :
+| Cotisation = 7 000 FCFA
+| Paiement = 5 000 FCFA
+| Reste = 2 000 FCFA
 |
 |--------------------------------------------------------------------------
 */
@@ -89,10 +142,9 @@ export const ajouterPaiement = async (
   return response.data;
 };
 
-
 /*
 |--------------------------------------------------------------------------
-| LISTER LES COTISATIONS
+| RÉCUPÉRER LES COTISATIONS
 |--------------------------------------------------------------------------
 */
 
@@ -142,10 +194,9 @@ export const getCotisations = async ({
   return response.data;
 };
 
-
 /*
 |--------------------------------------------------------------------------
-| CONSULTER UNE COTISATION
+| RÉCUPÉRER UNE COTISATION
 |--------------------------------------------------------------------------
 */
 
@@ -159,15 +210,16 @@ export const getCotisation = async (
   return response.data;
 };
 
-
 /*
 |--------------------------------------------------------------------------
-| EXPORT
+| EXPORT PAR DÉFAUT
 |--------------------------------------------------------------------------
 */
 
 export default {
   creerCotisation,
+  modifierCotisation,
+  supprimerCotisation,
   ajouterPaiement,
   getCotisations,
   getCotisation,
