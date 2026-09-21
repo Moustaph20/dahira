@@ -25,11 +25,6 @@ import {
 
 import { getMembres } from "../api/membres";
 
-
-// ============================================================
-// CONSTANTES
-// ============================================================
-
 const MOIS = [
   "Janvier",
   "Février",
@@ -53,17 +48,10 @@ const MODES_PAIEMENT = [
   "chèque",
 ];
 
-
-// ============================================================
-// HELPERS
-// ============================================================
-
 const formaterMontant = (montant) => {
   const valeur = Number(montant || 0);
-
   return `${valeur.toLocaleString("fr-FR")} FCFA`;
 };
-
 
 const formaterDate = (date) => {
   if (!date) return "-";
@@ -75,43 +63,57 @@ const formaterDate = (date) => {
   }
 };
 
-
 const obtenirMoisActuel = () => {
-  const mois = new Date().getMonth();
-
-  return MOIS[mois];
+  return MOIS[new Date().getMonth()];
 };
-
 
 const obtenirNumeroMois = (mois) => {
   if (!mois) return 0;
 
   const index = MOIS.findIndex(
-    (item) =>
-      item.toLowerCase() === String(mois).toLowerCase()
+    (item) => item.toLowerCase() === String(mois).toLowerCase()
   );
 
   return index >= 0 ? index + 1 : 0;
 };
 
+/**
+ * Calcule le montant réellement encaissé
+ * à partir de la table paiements.
+ */
+const calculerMontantPaye = (cotisation) => {
+  if (!cotisation) return 0;
+
+  if (Array.isArray(cotisation.paiements)) {
+    return cotisation.paiements
+      .filter((paiement) => paiement?.actif !== false)
+      .reduce(
+        (total, paiement) => total + Number(paiement?.montant || 0),
+        0
+      );
+  }
+
+  /*
+   * Compatibilité avec une ancienne réponse API.
+   * La vraie source reste paiements.
+   */
+  return Number(cotisation.montant_cotise || 0);
+};
 
 const calculerReste = (cotisation) => {
   if (!cotisation) return 0;
 
-  const montant = Number(cotisation.montant || 0);
-  const montantCotise = Number(cotisation.montant_cotise || 0);
+  const montantFixe = Number(cotisation.montant || 0);
+  const montantPaye = calculerMontantPaye(cotisation);
 
-  return Math.max(0, montant - montantCotise);
+  return Math.max(0, montantFixe - montantPaye);
 };
 
-
 const getStatut = (cotisation) => {
-  const montant = Number(cotisation?.montant || 0);
-  const montantCotise = Number(
-    cotisation?.montant_cotise || 0
-  );
+  const montantFixe = Number(cotisation?.montant || 0);
+  const montantPaye = calculerMontantPaye(cotisation);
 
-  if (montant <= 0) {
+  if (montantFixe <= 0) {
     return {
       label: "Invalide",
       couleur: "bg-slate-100 text-slate-600",
@@ -119,7 +121,7 @@ const getStatut = (cotisation) => {
     };
   }
 
-  if (montantCotise >= montant) {
+  if (montantPaye >= montantFixe) {
     return {
       label: "Payée",
       couleur: "bg-emerald-100 text-emerald-700",
@@ -127,7 +129,7 @@ const getStatut = (cotisation) => {
     };
   }
 
-  if (montantCotise > 0) {
+  if (montantPaye > 0) {
     return {
       label: "Partielle",
       couleur: "bg-amber-100 text-amber-700",
@@ -142,19 +144,11 @@ const getStatut = (cotisation) => {
   };
 };
 
-
-// ============================================================
-// COMPOSANT
-// ============================================================
-
 export default function Cotisations() {
   const { utilisateur } = useAuth();
 
-  // ----------------------------------------------------------
-  // ÉTATS
-  // ----------------------------------------------------------
-
   const [cotisations, setCotisations] = useState([]);
+  const [mesCotisations, setMesCotisations] = useState([]);
   const [membres, setMembres] = useState([]);
 
   const [chargement, setChargement] = useState(true);
@@ -172,70 +166,41 @@ export default function Cotisations() {
   const [cotisationSelectionnee, setCotisationSelectionnee] =
     useState(null);
 
-  // ----------------------------------------------------------
-  // FORMULAIRE CRÉATION
-  // ----------------------------------------------------------
-
   const maintenant = new Date();
 
   const [formulaire, setFormulaire] = useState({
     membre_id: "",
     montant: "",
-    montant_cotise: "",
     mois_concerne: obtenirMoisActuel(),
     annee: maintenant.getFullYear(),
     mode_paiement: "espèce",
-    date_cotisation: maintenant
-      .toISOString()
-      .split("T")[0],
-    reference: "",
+    date_cotisation: maintenant.toISOString().split("T")[0],
   });
 
-  // ----------------------------------------------------------
-  // FORMULAIRE PAIEMENT
-  // ----------------------------------------------------------
-
-  const [formulairePaiement, setFormulairePaiement] =
-    useState({
-      montant: "",
-      mode_paiement: "espèce",
-      date_paiement: maintenant
-        .toISOString()
-        .split("T")[0],
-      reference: "",
-    });
-
-
-  // ==========================================================
-  // PERMISSIONS
-  // ==========================================================
+  const [formulairePaiement, setFormulairePaiement] = useState({
+    montant: "",
+    mode_paiement: "espèce",
+    date_paiement: maintenant.toISOString().split("T")[0],
+    reference: "",
+  });
 
   const permissions = utilisateur?.permissions || [];
 
   const peutConsulter = permissions.some(
-    (permission) =>
-      permission.code === "COTISATION_CONSULTER"
+    (permission) => permission.code === "COTISATION_CONSULTER"
   );
 
   const peutCreer = permissions.some(
-    (permission) =>
-      permission.code === "COTISATION_CREER"
+    (permission) => permission.code === "COTISATION_CREER"
   );
 
   const membreId = utilisateur?.membre_id;
 
-
-  // ==========================================================
-  // MEMBRES
-  // ==========================================================
-
   const trouverMembre = (id) => {
     return membres.find(
-      (membre) =>
-        Number(membre.id) === Number(id)
+      (membre) => Number(membre.id) === Number(id)
     );
   };
-
 
   const nomMembre = (id) => {
     const membre = trouverMembre(id);
@@ -244,11 +209,8 @@ export default function Cotisations() {
       return `Membre #${id}`;
     }
 
-    return `${membre.prenom || ""} ${
-      membre.nom || ""
-    }`.trim();
+    return `${membre.prenom || ""} ${membre.nom || ""}`.trim();
   };
-
 
   const obtenirMontantFixeMembre = (membre) => {
     if (!membre) return 0;
@@ -263,32 +225,14 @@ export default function Cotisations() {
     );
   };
 
-
-  // ==========================================================
-  // MEMBRES ACTIFS
-  // ==========================================================
-
   const membresActifs = useMemo(() => {
-    return membres.filter(
-      (membre) => membre.actif !== false
-    );
+    return membres.filter((membre) => membre.actif !== false);
   }, [membres]);
 
-
-  // ==========================================================
-  // ESTIMATION MENSUELLE DU DAHIRA
-  //
-  // IMPORTANT :
-  // Cette estimation ne dépend PAS des lignes Cotisation.
-  //
-  // Exemple :
-  // 35 membres actifs × 5 000 FCFA
-  // = 175 000 FCFA estimés pour le mois.
-  //
-  // Même si seulement 20 cotisations sont créées,
-  // l'estimation reste 175 000 FCFA.
-  // ==========================================================
-
+  /**
+   * Estimation mensuelle du Dahira :
+   * tous les membres actifs.
+   */
   const estimationMensuelle = useMemo(() => {
     return membresActifs.reduce(
       (total, membre) =>
@@ -296,11 +240,6 @@ export default function Cotisations() {
       0
     );
   }, [membresActifs]);
-
-
-  // ==========================================================
-  // CHARGEMENT DES MEMBRES
-  // ==========================================================
 
   const chargerMembres = async () => {
     try {
@@ -323,39 +262,49 @@ export default function Cotisations() {
     }
   };
 
-
-  // ==========================================================
-  // CHARGEMENT DES COTISATIONS
-  // ==========================================================
-
   const chargerCotisations = async () => {
     try {
       setChargement(true);
       setErreur("");
 
       /*
-       * Pour la gestion du Dahira, on charge toujours
-       * les membres afin de pouvoir calculer l'estimation
-       * mensuelle à partir de leurs cotisations fixes.
+       * Les membres sont nécessaires pour :
+       * - afficher les noms
+       * - calculer l'estimation mensuelle
+       * - remplir le formulaire
        */
-      if (peutCreer) {
-        await chargerMembres();
-      }
-
-      let params = {};
+      await chargerMembres();
 
       /*
-       * Un membre simple ne voit que ses propres cotisations.
+       * 1. Cotisations de la personne connectée
        */
-      if (!peutCreer && membreId) {
-        params.membre_id = membreId;
+      if (membreId) {
+        const dataMesCotisations = await getCotisations({
+          membre_id: membreId,
+        });
+
+        const listeMesCotisations =
+          dataMesCotisations?.cotisations || [];
+
+        setMesCotisations(listeMesCotisations);
+      } else {
+        setMesCotisations([]);
       }
 
-      const data = await getCotisations(params);
+      /*
+       * 2. Cotisations du Dahira uniquement si l'utilisateur
+       * possède le droit de création/gestion.
+       */
+      if (peutCreer) {
+        const dataCotisations = await getCotisations({});
 
-      const liste = data?.cotisations || [];
+        const listeCotisations =
+          dataCotisations?.cotisations || [];
 
-      setCotisations(liste);
+        setCotisations(listeCotisations);
+      } else {
+        setCotisations([]);
+      }
     } catch (error) {
       console.error(
         "ERREUR CHARGEMENT COTISATIONS :",
@@ -370,11 +319,6 @@ export default function Cotisations() {
       setChargement(false);
     }
   };
-
-
-  // ==========================================================
-  // CHARGEMENT INITIAL
-  // ==========================================================
 
   useEffect(() => {
     if (!utilisateur) return;
@@ -397,21 +341,11 @@ export default function Cotisations() {
     peutConsulter,
   ]);
 
-
-  // ==========================================================
-  // MES COTISATIONS
-  // ==========================================================
-
-  const mesCotisations = useMemo(() => {
-    if (!membreId) return [];
-
-    return cotisations.filter(
-      (cotisation) =>
-        Number(cotisation.membre_id) ===
-        Number(membreId)
-    );
-  }, [cotisations, membreId]);
-
+  /*
+   * =========================
+   * MES COTISATIONS
+   * =========================
+   */
 
   const totalMesMontantsFixes = useMemo(() => {
     return mesCotisations.reduce(
@@ -421,16 +355,13 @@ export default function Cotisations() {
     );
   }, [mesCotisations]);
 
-
   const totalMesCotisations = useMemo(() => {
     return mesCotisations.reduce(
       (total, cotisation) =>
-        total +
-        Number(cotisation.montant_cotise || 0),
+        total + calculerMontantPaye(cotisation),
       0
     );
   }, [mesCotisations]);
-
 
   const totalMesRestes = useMemo(() => {
     return mesCotisations.reduce(
@@ -440,41 +371,24 @@ export default function Cotisations() {
     );
   }, [mesCotisations]);
 
-
-  // ==========================================================
-  // ANNÉES DISPONIBLES
-  // ==========================================================
+  /*
+   * =========================
+   * COTISATIONS DU DAHIRA
+   * =========================
+   */
 
   const anneesDisponibles = useMemo(() => {
     const annees = cotisations
-      .map((cotisation) =>
-        Number(cotisation.annee)
-      )
+      .map((cotisation) => Number(cotisation.annee))
       .filter(
         (annee) =>
-          Number.isFinite(annee) &&
-          annee > 0
+          Number.isFinite(annee) && annee > 0
       );
 
-    /*
-     * On ajoute l'année actuelle afin qu'elle puisse
-     * apparaître même lorsqu'aucune cotisation n'a encore
-     * été créée cette année.
-     */
-    const anneeActuelle =
-      new Date().getFullYear();
-
-    annees.push(anneeActuelle);
-
-    return [
-      ...new Set(annees),
-    ].sort((a, b) => b - a);
+    return [...new Set(annees)].sort(
+      (a, b) => b - a
+    );
   }, [cotisations]);
-
-
-  // ==========================================================
-  // FILTRAGE
-  // ==========================================================
 
   const cotisationsFiltrees = useMemo(() => {
     return cotisations.filter((cotisation) => {
@@ -494,7 +408,8 @@ export default function Cotisations() {
       }
 
       if (filtreStatut) {
-        const statut = getStatut(cotisation).label;
+        const statut =
+          getStatut(cotisation).label;
 
         if (statut !== filtreStatut) {
           return false;
@@ -537,86 +452,40 @@ export default function Cotisations() {
     membres,
   ]);
 
-
-  // ==========================================================
-  // GROUPES MENSUELS
-  //
-  // Ici, contrairement à l'ancienne version, on crée
-  // également les mois qui n'ont aucune ligne Cotisation.
-  //
-  // L'estimation du mois vient TOUJOURS des membres actifs.
-  // ==========================================================
-
+  /*
+   * IMPORTANT :
+   *
+   * On crée uniquement les mois qui ont au moins
+   * une cotisation enregistrée.
+   *
+   * Donc :
+   * Septembre 2026 → affiché
+   * Octobre 2026 → pas affiché si aucune cotisation
+   */
   const cotisationsParMois = useMemo(() => {
     const groupes = {};
 
-    let anneesCibles = [];
-
-    if (filtreAnnee) {
-      anneesCibles = [
-        Number(filtreAnnee),
-      ];
-    } else {
-      anneesCibles = [
-        ...anneesDisponibles,
-      ];
-    }
-
-    /*
-     * S'il n'y a absolument aucune année disponible,
-     * on utilise l'année actuelle.
-     */
-    if (anneesCibles.length === 0) {
-      anneesCibles = [
-        new Date().getFullYear(),
-      ];
-    }
-
-    /*
-     * Création des 12 mois pour chaque année.
-     *
-     * Cela permet par exemple d'afficher :
-     *
-     * Janvier 2026
-     * Février 2026
-     * Mars 2026
-     *
-     * même si aucune Cotisation n'existe encore.
-     */
-    anneesCibles.forEach((annee) => {
-      MOIS.forEach((mois, index) => {
-        if (
-          filtreMois &&
-          filtreMois !== mois
-        ) {
-          return;
-        }
-
-        const numeroMois = index + 1;
-
-        const cle = `${annee}-${String(
-          numeroMois
-        ).padStart(2, "0")}`;
-
-        groupes[cle] = {
-          mois,
-          annee,
-          cotisations: [],
-        };
-      });
-    });
-
-    /*
-     * Ajout des cotisations existantes dans les bons mois.
-     */
     cotisationsFiltrees.forEach((cotisation) => {
       const mois =
-        cotisation.mois_concerne ||
-        "Mois inconnu";
+        cotisation.mois_concerne || "Mois inconnu";
 
       const annee = Number(
         cotisation.annee || 0
       );
+
+      if (
+        filtreMois &&
+        mois !== filtreMois
+      ) {
+        return;
+      }
+
+      if (
+        filtreAnnee &&
+        annee !== Number(filtreAnnee)
+      ) {
+        return;
+      }
 
       const numeroMois =
         obtenirNumeroMois(mois);
@@ -660,32 +529,25 @@ export default function Cotisations() {
     cotisationsFiltrees,
     filtreAnnee,
     filtreMois,
-    anneesDisponibles,
   ]);
-
-
-  // ==========================================================
-  // STATISTIQUES FILTRÉES
-  // ==========================================================
 
   const totalFiltreCotise = useMemo(() => {
     return cotisationsFiltrees.reduce(
       (total, cotisation) =>
         total +
-        Number(cotisation.montant_cotise || 0),
+        calculerMontantPaye(cotisation),
       0
     );
   }, [cotisationsFiltrees]);
-
 
   const totalFiltreReste = useMemo(() => {
     return cotisationsFiltrees.reduce(
       (total, cotisation) =>
-        total + calculerReste(cotisation),
+        total +
+        calculerReste(cotisation),
       0
     );
   }, [cotisationsFiltrees]);
-
 
   const nombrePayees = useMemo(() => {
     return cotisationsFiltrees.filter(
@@ -695,7 +557,6 @@ export default function Cotisations() {
     ).length;
   }, [cotisationsFiltrees]);
 
-
   const nombrePartielles = useMemo(() => {
     return cotisationsFiltrees.filter(
       (cotisation) =>
@@ -703,7 +564,6 @@ export default function Cotisations() {
         "Partielle"
     ).length;
   }, [cotisationsFiltrees]);
-
 
   const nombreImpayees = useMemo(() => {
     return cotisationsFiltrees.filter(
@@ -713,11 +573,6 @@ export default function Cotisations() {
     ).length;
   }, [cotisationsFiltrees]);
 
-
-  // ==========================================================
-  // RESET FILTRES
-  // ==========================================================
-
   const reinitialiserFiltres = () => {
     setRecherche("");
     setFiltreMois("");
@@ -725,10 +580,11 @@ export default function Cotisations() {
     setFiltreStatut("");
   };
 
-
-  // ==========================================================
-  // FORMULAIRE CRÉATION
-  // ==========================================================
+  /*
+   * =========================
+   * CRÉATION
+   * =========================
+   */
 
   const ouvrirFormulaire = () => {
     const date = new Date();
@@ -736,24 +592,19 @@ export default function Cotisations() {
     setFormulaire({
       membre_id: "",
       montant: "",
-      montant_cotise: "",
       mois_concerne: obtenirMoisActuel(),
       annee: date.getFullYear(),
       mode_paiement: "espèce",
-      date_cotisation: date
-        .toISOString()
-        .split("T")[0],
-      reference: "",
+      date_cotisation:
+        date.toISOString().split("T")[0],
     });
 
     setModalCreation(true);
   };
 
-
   const fermerFormulaire = () => {
     setModalCreation(false);
   };
-
 
   const changerMembre = (event) => {
     const membreIdSelectionne =
@@ -768,14 +619,14 @@ export default function Cotisations() {
 
     setFormulaire((ancien) => ({
       ...ancien,
-      membre_id: membreIdSelectionne,
+      membre_id:
+        membreIdSelectionne,
       montant:
         montantFixe > 0
           ? montantFixe
           : "",
     }));
   };
-
 
   const enregistrerCotisation = async (
     event
@@ -796,27 +647,9 @@ export default function Cotisations() {
         formulaire.montant || 0
       );
 
-      const montantCotise = Number(
-        formulaire.montant_cotise || 0
-      );
-
       if (montant <= 0) {
         setErreur(
           "Le montant de la cotisation doit être supérieur à zéro."
-        );
-        return;
-      }
-
-      if (montantCotise < 0) {
-        setErreur(
-          "Le montant cotisé ne peut pas être négatif."
-        );
-        return;
-      }
-
-      if (montantCotise > montant) {
-        setErreur(
-          "Le montant cotisé ne peut pas dépasser le montant fixé."
         );
         return;
       }
@@ -826,7 +659,6 @@ export default function Cotisations() {
           formulaire.membre_id
         ),
         montant,
-        montant_cotise: montantCotise,
         mois_concerne:
           formulaire.mois_concerne,
         annee: Number(
@@ -836,8 +668,6 @@ export default function Cotisations() {
           formulaire.mode_paiement,
         date_cotisation:
           formulaire.date_cotisation,
-        reference:
-          formulaire.reference || null,
       });
 
       setModalCreation(false);
@@ -856,12 +686,15 @@ export default function Cotisations() {
     }
   };
 
+  /*
+   * =========================
+   * PAIEMENT
+   * =========================
+   */
 
-  // ==========================================================
-  // PAIEMENT
-  // ==========================================================
-
-  const ouvrirPaiement = (cotisation) => {
+  const ouvrirPaiement = (
+    cotisation
+  ) => {
     setCotisationSelectionnee(
       cotisation
     );
@@ -871,21 +704,18 @@ export default function Cotisations() {
     setFormulairePaiement({
       montant: "",
       mode_paiement: "espèce",
-      date_paiement: date
-        .toISOString()
-        .split("T")[0],
+      date_paiement:
+        date.toISOString().split("T")[0],
       reference: "",
     });
 
     setModalPaiement(true);
   };
 
-
   const fermerPaiement = () => {
     setModalPaiement(false);
     setCotisationSelectionnee(null);
   };
-
 
   const enregistrerPaiement = async (
     event
@@ -954,10 +784,11 @@ export default function Cotisations() {
     }
   };
 
-
-  // ==========================================================
-  // DÉTAIL
-  // ==========================================================
+  /*
+   * =========================
+   * DÉTAIL
+   * =========================
+   */
 
   const ouvrirDetail = async (
     cotisation
@@ -980,11 +811,6 @@ export default function Cotisations() {
         error
       );
 
-      /*
-       * On garde tout de même la cotisation
-       * déjà disponible si le détail backend
-       * échoue.
-       */
       setCotisationSelectionnee(
         cotisation
       );
@@ -993,16 +819,10 @@ export default function Cotisations() {
     }
   };
 
-
   const fermerDetail = () => {
     setModalDetail(false);
     setCotisationSelectionnee(null);
   };
-
-
-  // ==========================================================
-  // RENDU
-  // ==========================================================
 
   if (chargement) {
     return (
@@ -1012,6 +832,7 @@ export default function Cotisations() {
             size={22}
             className="animate-spin"
           />
+
           <span>
             Chargement des cotisations...
           </span>
@@ -1019,7 +840,6 @@ export default function Cotisations() {
       </div>
     );
   }
-
 
   if (!peutConsulter) {
     return (
@@ -1036,8 +856,8 @@ export default function Cotisations() {
             </h2>
 
             <p className="mt-1 text-sm text-red-700">
-              Vous n'avez pas la permission de
-              consulter les cotisations.
+              Vous n'avez pas la permission
+              de consulter les cotisations.
             </p>
           </div>
         </div>
@@ -1045,12 +865,12 @@ export default function Cotisations() {
     );
   }
 
-
   return (
     <div className="space-y-6">
-      {/* =====================================================
+
+      {/* =========================
           EN-TÊTE
-      ====================================================== */}
+      ========================= */}
 
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -1074,9 +894,9 @@ export default function Cotisations() {
           </div>
 
           <p className="mt-3 text-sm text-slate-600">
-            Suivez les cotisations mensuelles des
-            membres du Dahira, les paiements
-            effectués et les restes à payer.
+            Consultez vos cotisations et,
+            selon vos permissions, la situation
+            globale du Dahira.
           </p>
         </div>
 
@@ -1103,10 +923,9 @@ export default function Cotisations() {
         </div>
       </div>
 
-
-      {/* =====================================================
+      {/* =========================
           ERREUR
-      ====================================================== */}
+      ========================= */}
 
       {erreur && (
         <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
@@ -1131,195 +950,192 @@ export default function Cotisations() {
         </div>
       )}
 
-
       {/* =====================================================
-          MES COTISATIONS
-      ====================================================== */}
+          1. COTISATIONS DE LA PERSONNE CONNECTÉE
+      ===================================================== */}
 
-      {!peutCreer && (
-        <section className="space-y-4">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">
-              Mes cotisations
-            </h2>
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-bold text-slate-900">
+            Ma cotisation
+          </h2>
 
+          <p className="text-sm text-slate-500">
+            Vos cotisations enregistrées.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-sm text-slate-500">
-              Consultez vos cotisations et vos
-              paiements.
+              Montant fixé
+            </p>
+
+            <p className="mt-2 text-xl font-bold text-slate-900">
+              {formaterMontant(
+                totalMesMontantsFixes
+              )}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm text-slate-500">
-                Montant fixé
-              </p>
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-sm">
+            <p className="text-sm text-emerald-700">
+              Total versé
+            </p>
 
-              <p className="mt-2 text-xl font-bold text-slate-900">
-                {formaterMontant(
-                  totalMesMontantsFixes
-                )}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm text-slate-500">
-                Total cotisé
-              </p>
-
-              <p className="mt-2 text-xl font-bold text-emerald-600">
-                {formaterMontant(
-                  totalMesCotisations
-                )}
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm text-slate-500">
-                Reste à payer
-              </p>
-
-              <p className="mt-2 text-xl font-bold text-amber-600">
-                {formaterMontant(
-                  totalMesRestes
-                )}
-              </p>
-            </div>
+            <p className="mt-2 text-xl font-bold text-emerald-700">
+              {formaterMontant(
+                totalMesCotisations
+              )}
+            </p>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-sm">
-                <thead className="border-b border-slate-200 bg-slate-50">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-sm">
+            <p className="text-sm text-amber-700">
+              Reste à payer
+            </p>
+
+            <p className="mt-2 text-xl font-bold text-amber-700">
+              {formaterMontant(
+                totalMesRestes
+              )}
+            </p>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px] text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-slate-600">
+                    Période
+                  </th>
+
+                  <th className="px-4 py-3 text-right font-semibold text-slate-600">
+                    Montant fixé
+                  </th>
+
+                  <th className="px-4 py-3 text-right font-semibold text-slate-600">
+                    Total versé
+                  </th>
+
+                  <th className="px-4 py-3 text-right font-semibold text-slate-600">
+                    Reste
+                  </th>
+
+                  <th className="px-4 py-3 text-center font-semibold text-slate-600">
+                    Statut
+                  </th>
+
+                  <th className="px-4 py-3 text-right font-semibold text-slate-600">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-slate-100">
+                {mesCotisations.length === 0 ? (
                   <tr>
-                    <th className="px-4 py-3 text-left font-semibold text-slate-600">
-                      Période
-                    </th>
-
-                    <th className="px-4 py-3 text-right font-semibold text-slate-600">
-                      Montant fixé
-                    </th>
-
-                    <th className="px-4 py-3 text-right font-semibold text-slate-600">
-                      Total cotisé
-                    </th>
-
-                    <th className="px-4 py-3 text-right font-semibold text-slate-600">
-                      Reste
-                    </th>
-
-                    <th className="px-4 py-3 text-center font-semibold text-slate-600">
-                      Statut
-                    </th>
-
-                    <th className="px-4 py-3 text-right font-semibold text-slate-600">
-                      Actions
-                    </th>
+                    <td
+                      colSpan={6}
+                      className="px-4 py-10 text-center text-slate-500"
+                    >
+                      Aucune cotisation enregistrée
+                      pour vous.
+                    </td>
                   </tr>
-                </thead>
+                ) : (
+                  mesCotisations.map(
+                    (cotisation) => {
+                      const statut =
+                        getStatut(cotisation);
 
-                <tbody className="divide-y divide-slate-100">
-                  {mesCotisations.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="px-4 py-10 text-center text-slate-500"
-                      >
-                        Aucune cotisation enregistrée.
-                      </td>
-                    </tr>
-                  ) : (
-                    mesCotisations.map(
-                      (cotisation) => {
-                        const statut =
-                          getStatut(
-                            cotisation
-                          );
+                      const Icone =
+                        statut.icone;
 
-                        const Icone =
-                          statut.icone;
+                      const montantPaye =
+                        calculerMontantPaye(
+                          cotisation
+                        );
 
-                        return (
-                          <tr
-                            key={cotisation.id}
-                            className="hover:bg-slate-50"
-                          >
-                            <td className="px-4 py-4">
-                              <div className="font-medium text-slate-900">
-                                {
-                                  cotisation.mois_concerne
-                                }{" "}
-                                {
-                                  cotisation.annee
-                                }
-                              </div>
-                            </td>
+                      const reste =
+                        calculerReste(
+                          cotisation
+                        );
 
-                            <td className="px-4 py-4 text-right font-medium text-slate-700">
-                              {formaterMontant(
-                                cotisation.montant
-                              )}
-                            </td>
+                      return (
+                        <tr
+                          key={cotisation.id}
+                          className="hover:bg-slate-50"
+                        >
+                          <td className="px-4 py-4">
+                            <div className="font-medium text-slate-900">
+                              {
+                                cotisation.mois_concerne
+                              }{" "}
+                              {
+                                cotisation.annee
+                              }
+                            </div>
+                          </td>
 
-                            <td className="px-4 py-4 text-right font-medium text-emerald-600">
-                              {formaterMontant(
-                                cotisation.montant_cotise
-                              )}
-                            </td>
+                          <td className="px-4 py-4 text-right font-medium text-slate-700">
+                            {formaterMontant(
+                              cotisation.montant
+                            )}
+                          </td>
 
-                            <td className="px-4 py-4 text-right font-medium text-amber-600">
-                              {formaterMontant(
-                                calculerReste(
+                          <td className="px-4 py-4 text-right font-medium text-emerald-600">
+                            {formaterMontant(
+                              montantPaye
+                            )}
+                          </td>
+
+                          <td className="px-4 py-4 text-right font-medium text-amber-600">
+                            {formaterMontant(
+                              reste
+                            )}
+                          </td>
+
+                          <td className="px-4 py-4 text-center">
+                            <span
+                              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${statut.couleur}`}
+                            >
+                              <Icone size={14} />
+                              {statut.label}
+                            </span>
+                          </td>
+
+                          <td className="px-4 py-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                ouvrirDetail(
                                   cotisation
                                 )
-                              )}
-                            </td>
-
-                            <td className="px-4 py-4 text-center">
-                              <span
-                                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${statut.couleur}`}
-                              >
-                                <Icone
-                                  size={14}
-                                />
-                                {
-                                  statut.label
-                                }
-                              </span>
-                            </td>
-
-                            <td className="px-4 py-4 text-right">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  ouvrirDetail(
-                                    cotisation
-                                  )
-                                }
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
-                              >
-                                <Eye
-                                  size={15}
-                                />
-                                Détail
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      }
-                    )
-                  )}
-                </tbody>
-              </table>
-            </div>
+                              }
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+                            >
+                              <Eye size={15} />
+                              Détail
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    }
+                  )
+                )}
+              </tbody>
+            </table>
           </div>
-        </section>
-      )}
-
+        </div>
+      </section>
 
       {/* =====================================================
-          COTISATIONS DU DAHIRA
-      ====================================================== */}
+          2. COTISATIONS DU DAHIRA
+          UNIQUEMENT SI PEUT CREER
+      ===================================================== */}
 
       {peutCreer && (
         <section className="space-y-5">
@@ -1329,15 +1145,12 @@ export default function Cotisations() {
             </h2>
 
             <p className="text-sm text-slate-500">
-              Suivez la situation globale des
-              cotisations mensuelles.
+              Situation globale des cotisations
+              enregistrées.
             </p>
           </div>
 
-
-          {/* =================================================
-              ESTIMATION MENSUELLE
-          ================================================== */}
+          {/* ESTIMATION */}
 
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -1354,8 +1167,7 @@ export default function Cotisations() {
                 </div>
 
                 <p className="mt-1 text-sm text-emerald-700">
-                  Calculée à partir de tous les
-                  membres actifs et de leur
+                  Tous les membres actifs et leur
                   cotisation mensuelle fixe.
                 </p>
               </div>
@@ -1368,21 +1180,20 @@ export default function Cotisations() {
                 </p>
 
                 <p className="mt-1 text-xs text-emerald-700">
-                  {membresActifs.length}{" "}
-                  membre
+                  {membresActifs.length} membre
                   {membresActifs.length > 1
                     ? "s"
                     : ""}{" "}
-                  pris en compte
+                  actif
+                  {membresActifs.length > 1
+                    ? "s"
+                    : ""}
                 </p>
               </div>
             </div>
           </div>
 
-
-          {/* =================================================
-              RECHERCHE / FILTRES
-          ================================================== */}
+          {/* FILTRES */}
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-2">
@@ -1509,10 +1320,7 @@ export default function Cotisations() {
             )}
           </div>
 
-
-          {/* =================================================
-              STATISTIQUES
-          ================================================== */}
+          {/* RÉSUMÉ */}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -1521,7 +1329,9 @@ export default function Cotisations() {
               </p>
 
               <p className="mt-2 text-2xl font-bold text-slate-900">
-                {cotisationsFiltrees.length}
+                {
+                  cotisationsFiltrees.length
+                }
               </p>
             </div>
 
@@ -1543,7 +1353,7 @@ export default function Cotisations() {
 
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-sm text-slate-500">
-                Total cotisé
+                Total versé
               </p>
 
               <p className="mt-2 text-xl font-bold text-emerald-600">
@@ -1586,10 +1396,9 @@ export default function Cotisations() {
             </div>
           </div>
 
-
-          {/* =================================================
-              GROUPES PAR MOIS
-          ================================================== */}
+          {/* =========================
+              MOIS AVEC COTISATIONS
+          ========================= */}
 
           <div className="space-y-5">
             {cotisationsParMois.length === 0 ? (
@@ -1600,53 +1409,34 @@ export default function Cotisations() {
                 />
 
                 <p className="mt-3 font-medium text-slate-700">
-                  Aucun mois à afficher.
+                  Aucune cotisation enregistrée.
+                </p>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Les mois apparaîtront uniquement
+                  lorsqu'une cotisation aura été
+                  enregistrée.
                 </p>
               </div>
             ) : (
               cotisationsParMois.map(
                 (groupe) => {
-                  /*
-                   * IMPORTANT :
-                   *
-                   * L'estimation du mois n'est PAS :
-                   *
-                   * SUM(cotisation.montant)
-                   *
-                   * Elle est :
-                   *
-                   * SUM(membre.montant_cotisation)
-                   *
-                   * pour tous les membres actifs.
-                   */
                   const totalEstime =
                     estimationMensuelle;
 
-                  /*
-                   * Les montants réellement encaissés
-                   * correspondent uniquement aux cotisations
-                   * qui existent pour ce mois.
-                   */
                   const totalCotise =
                     groupe.cotisations.reduce(
-                      (total, cotisation) =>
+                      (
+                        total,
+                        cotisation
+                      ) =>
                         total +
-                        Number(
-                          cotisation.montant_cotise ||
-                            0
+                        calculerMontantPaye(
+                          cotisation
                         ),
                       0
                     );
 
-                  /*
-                   * Le reste correspond à :
-                   *
-                   * estimation mensuelle
-                   * -
-                   * montant réellement cotisé
-                   *
-                   * Il ne peut jamais être négatif.
-                   */
                   const totalReste =
                     Math.max(
                       0,
@@ -1659,28 +1449,36 @@ export default function Cotisations() {
                       key={`${groupe.annee}-${groupe.mois}`}
                       className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
                     >
-                      {/* En-tête du mois */}
+                      {/* EN-TÊTE DU MOIS */}
+
                       <div className="border-b border-slate-200 bg-slate-50 p-5">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                           <div>
                             <h3 className="text-lg font-bold text-slate-900">
-                              {groupe.mois}{" "}
-                              {groupe.annee}
+                              {
+                                groupe.mois
+                              }{" "}
+                              {
+                                groupe.annee
+                              }
                             </h3>
 
                             <p className="mt-1 text-sm text-slate-500">
                               {
-                                groupe.cotisations
+                                groupe
+                                  .cotisations
                                   .length
                               }{" "}
                               cotisation
-                              {groupe.cotisations
+                              {groupe
+                                .cotisations
                                 .length >
                               1
                                 ? "s"
                                 : ""}{" "}
                               enregistrée
-                              {groupe.cotisations
+                              {groupe
+                                .cotisations
                                 .length >
                               1
                                 ? "s"
@@ -1708,7 +1506,7 @@ export default function Cotisations() {
 
                             <div className="rounded-xl bg-white px-4 py-3 shadow-sm">
                               <p className="text-xs text-slate-500">
-                                Total cotisé
+                                Total versé
                               </p>
 
                               <p className="mt-1 font-bold text-slate-900">
@@ -1733,203 +1531,185 @@ export default function Cotisations() {
                         </div>
                       </div>
 
+                      {/* TABLEAU */}
 
-                      {/* Liste des cotisations */}
-                      {groupe.cotisations
-                        .length === 0 ? (
-                        <div className="p-8 text-center">
-                          <Clock
-                            size={30}
-                            className="mx-auto text-slate-300"
-                          />
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[950px] text-sm">
+                          <thead className="border-b border-slate-200 bg-white">
+                            <tr>
+                              <th className="px-4 py-3 text-left font-semibold text-slate-600">
+                                Membre
+                              </th>
 
-                          <p className="mt-3 text-sm font-medium text-slate-700">
-                            Aucune cotisation
-                            enregistrée pour ce
-                            mois.
-                          </p>
+                              <th className="px-4 py-3 text-left font-semibold text-slate-600">
+                                Période
+                              </th>
 
-                          <p className="mt-1 text-xs text-slate-500">
-                            Estimation attendue :{" "}
-                            {formaterMontant(
-                              totalEstime
-                            )}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="overflow-x-auto">
-                          <table className="w-full min-w-[900px] text-sm">
-                            <thead className="border-b border-slate-200 bg-white">
-                              <tr>
-                                <th className="px-4 py-3 text-left font-semibold text-slate-600">
-                                  Membre
-                                </th>
+                              <th className="px-4 py-3 text-right font-semibold text-slate-600">
+                                Montant fixé
+                              </th>
 
-                                <th className="px-4 py-3 text-left font-semibold text-slate-600">
-                                  Période
-                                </th>
+                              <th className="px-4 py-3 text-right font-semibold text-slate-600">
+                                Total versé
+                              </th>
 
-                                <th className="px-4 py-3 text-right font-semibold text-slate-600">
-                                  Montant fixé
-                                </th>
+                              <th className="px-4 py-3 text-right font-semibold text-slate-600">
+                                Reste
+                              </th>
 
-                                <th className="px-4 py-3 text-right font-semibold text-slate-600">
-                                  Total cotisé
-                                </th>
+                              <th className="px-4 py-3 text-center font-semibold text-slate-600">
+                                Statut
+                              </th>
 
-                                <th className="px-4 py-3 text-right font-semibold text-slate-600">
-                                  Reste
-                                </th>
+                              <th className="px-4 py-3 text-right font-semibold text-slate-600">
+                                Actions
+                              </th>
+                            </tr>
+                          </thead>
 
-                                <th className="px-4 py-3 text-center font-semibold text-slate-600">
-                                  Statut
-                                </th>
+                          <tbody className="divide-y divide-slate-100">
+                            {groupe.cotisations.map(
+                              (cotisation) => {
+                                const statut =
+                                  getStatut(
+                                    cotisation
+                                  );
 
-                                <th className="px-4 py-3 text-right font-semibold text-slate-600">
-                                  Actions
-                                </th>
-                              </tr>
-                            </thead>
+                                const Icone =
+                                  statut.icone;
 
-                            <tbody className="divide-y divide-slate-100">
-                              {groupe.cotisations.map(
-                                (
-                                  cotisation
-                                ) => {
-                                  const statut =
-                                    getStatut(
-                                      cotisation
-                                    );
+                                const montantPaye =
+                                  calculerMontantPaye(
+                                    cotisation
+                                  );
 
-                                  const Icone =
-                                    statut.icone;
+                                const reste =
+                                  calculerReste(
+                                    cotisation
+                                  );
 
-                                  const reste =
-                                    calculerReste(
-                                      cotisation
-                                    );
+                                return (
+                                  <tr
+                                    key={
+                                      cotisation.id
+                                    }
+                                    className="transition hover:bg-slate-50"
+                                  >
+                                    <td className="px-4 py-4">
+                                      <div className="font-medium text-slate-900">
+                                        {nomMembre(
+                                          cotisation.membre_id
+                                        )}
+                                      </div>
 
-                                  return (
-                                    <tr
-                                      key={
-                                        cotisation.id
-                                      }
-                                      className="transition hover:bg-slate-50"
-                                    >
-                                      <td className="px-4 py-4">
-                                        <div className="font-medium text-slate-900">
-                                          {nomMembre(
+                                      {(() => {
+                                        const membre =
+                                          trouverMembre(
                                             cotisation.membre_id
-                                          )}
-                                        </div>
+                                          );
 
-                                        {(() => {
-                                          const membre =
-                                            trouverMembre(
-                                              cotisation.membre_id
-                                            );
+                                        return membre?.telephone ? (
+                                          <div className="mt-0.5 text-xs text-slate-400">
+                                            {
+                                              membre.telephone
+                                            }
+                                          </div>
+                                        ) : null;
+                                      })()}
+                                    </td>
 
-                                          return membre?.telephone ? (
-                                            <div className="mt-0.5 text-xs text-slate-400">
-                                              {
-                                                membre.telephone
-                                              }
-                                            </div>
-                                          ) : null;
-                                        })()}
-                                      </td>
+                                    <td className="px-4 py-4 text-slate-600">
+                                      {
+                                        cotisation.mois_concerne
+                                      }{" "}
+                                      {
+                                        cotisation.annee
+                                      }
+                                    </td>
 
-                                      <td className="px-4 py-4 text-slate-600">
+                                    <td className="px-4 py-4 text-right font-medium text-slate-700">
+                                      {formaterMontant(
+                                        cotisation.montant
+                                      )}
+                                    </td>
+
+                                    <td className="px-4 py-4 text-right font-medium text-emerald-600">
+                                      {formaterMontant(
+                                        montantPaye
+                                      )}
+                                    </td>
+
+                                    <td className="px-4 py-4 text-right font-medium text-amber-600">
+                                      {formaterMontant(
+                                        reste
+                                      )}
+                                    </td>
+
+                                    <td className="px-4 py-4 text-center">
+                                      <span
+                                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${statut.couleur}`}
+                                      >
+                                        <Icone
+                                          size={
+                                            14
+                                          }
+                                        />
+
                                         {
-                                          cotisation.mois_concerne
-                                        }{" "}
-                                        {
-                                          cotisation.annee
+                                          statut.label
                                         }
-                                      </td>
+                                      </span>
+                                    </td>
 
-                                      <td className="px-4 py-4 text-right font-medium text-slate-700">
-                                        {formaterMontant(
-                                          cotisation.montant
-                                        )}
-                                      </td>
-
-                                      <td className="px-4 py-4 text-right font-medium text-emerald-600">
-                                        {formaterMontant(
-                                          cotisation.montant_cotise
-                                        )}
-                                      </td>
-
-                                      <td className="px-4 py-4 text-right font-medium text-amber-600">
-                                        {formaterMontant(
-                                          reste
-                                        )}
-                                      </td>
-
-                                      <td className="px-4 py-4 text-center">
-                                        <span
-                                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${statut.couleur}`}
+                                    <td className="px-4 py-4">
+                                      <div className="flex justify-end gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            ouvrirDetail(
+                                              cotisation
+                                            )
+                                          }
+                                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
                                         >
-                                          <Icone
+                                          <Eye
                                             size={
-                                              14
+                                              15
                                             }
                                           />
 
-                                          {
-                                            statut.label
-                                          }
-                                        </span>
-                                      </td>
+                                          Détail
+                                        </button>
 
-                                      <td className="px-4 py-4">
-                                        <div className="flex justify-end gap-2">
+                                        {reste >
+                                          0 && (
                                           <button
                                             type="button"
                                             onClick={() =>
-                                              ouvrirDetail(
+                                              ouvrirPaiement(
                                                 cotisation
                                               )
                                             }
-                                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+                                            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700"
                                           >
-                                            <Eye
+                                            <CreditCard
                                               size={
                                                 15
                                               }
                                             />
-                                            Détail
-                                          </button>
 
-                                          {reste >
-                                            0 && (
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                ouvrirPaiement(
-                                                  cotisation
-                                                )
-                                              }
-                                              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700"
-                                            >
-                                              <CreditCard
-                                                size={
-                                                  15
-                                                }
-                                              />
-                                              Payer
-                                            </button>
-                                          )}
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  );
-                                }
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
+                                            Payer
+                                          </button>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              }
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   );
                 }
@@ -1939,10 +1719,9 @@ export default function Cotisations() {
         </section>
       )}
 
-
       {/* =====================================================
-          MODAL CRÉATION
-      ====================================================== */}
+          MODAL : NOUVELLE COTISATION
+      ===================================================== */}
 
       {modalCreation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -1954,8 +1733,7 @@ export default function Cotisations() {
                 </h2>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  Enregistrer une cotisation
-                  mensuelle.
+                  Enregistrer une cotisation mensuelle.
                 </p>
               </div>
 
@@ -1976,7 +1754,6 @@ export default function Cotisations() {
               }
               className="space-y-5 p-5"
             >
-              {/* Membre */}
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   Membre
@@ -1999,17 +1776,25 @@ export default function Cotisations() {
                   {membresActifs
                     .slice()
                     .sort((a, b) =>
-                      `${a.prenom || ""} ${a.nom || ""}`
+                      `${a.prenom || ""} ${
+                        a.nom || ""
+                      }`
                         .trim()
                         .localeCompare(
-                          `${b.prenom || ""} ${b.nom || ""}`.trim(),
+                          `${b.prenom || ""} ${
+                            b.nom || ""
+                          }`.trim(),
                           "fr"
                         )
                     )
                     .map((membre) => (
                       <option
-                        key={membre.id}
-                        value={membre.id}
+                        key={
+                          membre.id
+                        }
+                        value={
+                          membre.id
+                        }
                       >
                         {`${membre.prenom || ""} ${
                           membre.nom || ""
@@ -2019,8 +1804,6 @@ export default function Cotisations() {
                 </select>
               </div>
 
-
-              {/* Montant */}
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   Montant mensuel fixé
@@ -2038,7 +1821,8 @@ export default function Cotisations() {
                       (ancien) => ({
                         ...ancien,
                         montant:
-                          event.target.value,
+                          event.target
+                            .value,
                       })
                     )
                   }
@@ -2047,67 +1831,12 @@ export default function Cotisations() {
                 />
 
                 <p className="mt-1 text-xs text-slate-500">
-                  Ce montant correspond à la
-                  cotisation mensuelle fixe du
-                  membre.
+                  Le montant proposé correspond
+                  à la cotisation mensuelle fixe
+                  du membre.
                 </p>
               </div>
 
-
-              {/* Somme réellement cotisée */}
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Somme réellement cotisée
-                </label>
-
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={
-                    formulaire.montant_cotise
-                  }
-                  onChange={(event) =>
-                    setFormulaire(
-                      (ancien) => ({
-                        ...ancien,
-                        montant_cotise:
-                          event.target.value,
-                      })
-                    )
-                  }
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-                />
-              </div>
-
-
-              {/* Reste */}
-              <div className="rounded-xl bg-slate-50 p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-500">
-                    Reste à payer
-                  </span>
-
-                  <span className="font-bold text-amber-600">
-                    {formaterMontant(
-                      Math.max(
-                        0,
-                        Number(
-                          formulaire.montant ||
-                            0
-                        ) -
-                          Number(
-                            formulaire.montant_cotise ||
-                              0
-                          )
-                      )
-                    )}
-                  </span>
-                </div>
-              </div>
-
-
-              {/* Mois / année */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-slate-700">
@@ -2123,20 +1852,23 @@ export default function Cotisations() {
                         (ancien) => ({
                           ...ancien,
                           mois_concerne:
-                            event.target.value,
+                            event.target
+                              .value,
                         })
                       )
                     }
                     className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                   >
-                    {MOIS.map((mois) => (
-                      <option
-                        key={mois}
-                        value={mois}
-                      >
-                        {mois}
-                      </option>
-                    ))}
+                    {MOIS.map(
+                      (mois) => (
+                        <option
+                          key={mois}
+                          value={mois}
+                        >
+                          {mois}
+                        </option>
+                      )
+                    )}
                   </select>
                 </div>
 
@@ -2156,7 +1888,8 @@ export default function Cotisations() {
                         (ancien) => ({
                           ...ancien,
                           annee:
-                            event.target.value,
+                            event.target
+                              .value,
                         })
                       )
                     }
@@ -2165,8 +1898,6 @@ export default function Cotisations() {
                 </div>
               </div>
 
-
-              {/* Mode paiement */}
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   Mode de paiement
@@ -2181,7 +1912,8 @@ export default function Cotisations() {
                       (ancien) => ({
                         ...ancien,
                         mode_paiement:
-                          event.target.value,
+                          event.target
+                            .value,
                       })
                     )
                   }
@@ -2200,8 +1932,6 @@ export default function Cotisations() {
                 </select>
               </div>
 
-
-              {/* Date */}
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   Date de cotisation
@@ -2217,7 +1947,8 @@ export default function Cotisations() {
                       (ancien) => ({
                         ...ancien,
                         date_cotisation:
-                          event.target.value,
+                          event.target
+                            .value,
                       })
                     )
                   }
@@ -2225,37 +1956,6 @@ export default function Cotisations() {
                 />
               </div>
 
-
-              {/* Référence */}
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                  Référence
-                  <span className="ml-1 text-xs font-normal text-slate-400">
-                    (optionnel)
-                  </span>
-                </label>
-
-                <input
-                  type="text"
-                  value={
-                    formulaire.reference
-                  }
-                  onChange={(event) =>
-                    setFormulaire(
-                      (ancien) => ({
-                        ...ancien,
-                        reference:
-                          event.target.value,
-                      })
-                    )
-                  }
-                  placeholder="Ex : RECU-2026-001"
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
-                />
-              </div>
-
-
-              {/* Boutons */}
               <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
                 <button
                   type="button"
@@ -2279,10 +1979,9 @@ export default function Cotisations() {
         </div>
       )}
 
-
       {/* =====================================================
-          MODAL PAIEMENT
-      ====================================================== */}
+          MODAL : PAIEMENT
+      ===================================================== */}
 
       {modalPaiement &&
         cotisationSelectionnee && (
@@ -2334,12 +2033,14 @@ export default function Cotisations() {
 
                     <div>
                       <p className="text-xs text-slate-500">
-                        Déjà cotisé
+                        Déjà versé
                       </p>
 
                       <p className="mt-1 font-bold text-emerald-600">
                         {formaterMontant(
-                          cotisationSelectionnee.montant_cotise
+                          calculerMontantPaye(
+                            cotisationSelectionnee
+                          )
                         )}
                       </p>
                     </div>
@@ -2360,8 +2061,6 @@ export default function Cotisations() {
                   </div>
                 </div>
 
-
-                {/* Montant */}
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-slate-700">
                     Montant du paiement
@@ -2382,7 +2081,8 @@ export default function Cotisations() {
                         (ancien) => ({
                           ...ancien,
                           montant:
-                            event.target.value,
+                            event.target
+                              .value,
                         })
                       )
                     }
@@ -2392,8 +2092,6 @@ export default function Cotisations() {
                   />
                 </div>
 
-
-                {/* Mode */}
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-slate-700">
                     Mode de paiement
@@ -2408,7 +2106,8 @@ export default function Cotisations() {
                         (ancien) => ({
                           ...ancien,
                           mode_paiement:
-                            event.target.value,
+                            event.target
+                              .value,
                         })
                       )
                     }
@@ -2427,8 +2126,6 @@ export default function Cotisations() {
                   </select>
                 </div>
 
-
-                {/* Date */}
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-slate-700">
                     Date du paiement
@@ -2444,7 +2141,8 @@ export default function Cotisations() {
                         (ancien) => ({
                           ...ancien,
                           date_paiement:
-                            event.target.value,
+                            event.target
+                              .value,
                         })
                       )
                     }
@@ -2452,8 +2150,6 @@ export default function Cotisations() {
                   />
                 </div>
 
-
-                {/* Référence */}
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-slate-700">
                     Référence
@@ -2472,7 +2168,8 @@ export default function Cotisations() {
                         (ancien) => ({
                           ...ancien,
                           reference:
-                            event.target.value,
+                            event.target
+                              .value,
                         })
                       )
                     }
@@ -2481,8 +2178,6 @@ export default function Cotisations() {
                   />
                 </div>
 
-
-                {/* Boutons */}
                 <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
                   <button
                     type="button"
@@ -2509,10 +2204,9 @@ export default function Cotisations() {
           </div>
         )}
 
-
       {/* =====================================================
-          MODAL DÉTAIL
-      ====================================================== */}
+          MODAL : DÉTAIL
+      ===================================================== */}
 
       {modalDetail &&
         cotisationSelectionnee && (
@@ -2533,7 +2227,9 @@ export default function Cotisations() {
 
                 <button
                   type="button"
-                  onClick={fermerDetail}
+                  onClick={
+                    fermerDetail
+                  }
                   className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                 >
                   <X size={20} />
@@ -2541,7 +2237,6 @@ export default function Cotisations() {
               </div>
 
               <div className="space-y-5 p-5">
-                {/* Informations principales */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="rounded-xl bg-slate-50 p-4">
                     <p className="text-xs text-slate-500">
@@ -2584,12 +2279,14 @@ export default function Cotisations() {
 
                   <div className="rounded-xl bg-slate-50 p-4">
                     <p className="text-xs text-slate-500">
-                      Total cotisé
+                      Total versé
                     </p>
 
                     <p className="mt-1 font-semibold text-emerald-600">
                       {formaterMontant(
-                        cotisationSelectionnee.montant_cotise
+                        calculerMontantPaye(
+                          cotisationSelectionnee
+                        )
                       )}
                     </p>
                   </div>
@@ -2621,8 +2318,6 @@ export default function Cotisations() {
                   </div>
                 </div>
 
-
-                {/* Statut */}
                 <div>
                   <p className="mb-2 text-sm font-semibold text-slate-800">
                     Statut
@@ -2641,20 +2336,15 @@ export default function Cotisations() {
                       <span
                         className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold ${statut.couleur}`}
                       >
-                        <Icone
-                          size={16}
-                        />
-
-                        {
-                          statut.label
-                        }
+                        <Icone size={16} />
+                        {statut.label}
                       </span>
                     );
                   })()}
                 </div>
 
+                {/* HISTORIQUE DES PAIEMENTS */}
 
-                {/* Historique des paiements */}
                 <div>
                   <div className="mb-3 flex items-center gap-2">
                     <History
@@ -2671,7 +2361,8 @@ export default function Cotisations() {
                     cotisationSelectionnee.paiements
                   ) &&
                   cotisationSelectionnee
-                    .paiements.length > 0 ? (
+                    .paiements.length >
+                    0 ? (
                     <div className="overflow-hidden rounded-xl border border-slate-200">
                       <div className="overflow-x-auto">
                         <table className="w-full min-w-[600px] text-sm">
@@ -2696,37 +2387,45 @@ export default function Cotisations() {
                           </thead>
 
                           <tbody className="divide-y divide-slate-100">
-                            {cotisationSelectionnee.paiements.map(
-                              (paiement) => (
-                                <tr
-                                  key={
-                                    paiement.id
-                                  }
-                                >
-                                  <td className="px-4 py-3 text-slate-600">
-                                    {formaterDate(
-                                      paiement.date_paiement
-                                    )}
-                                  </td>
-
-                                  <td className="px-4 py-3 text-right font-semibold text-emerald-600">
-                                    {formaterMontant(
-                                      paiement.montant
-                                    )}
-                                  </td>
-
-                                  <td className="px-4 py-3 capitalize text-slate-600">
-                                    {paiement.mode_paiement ||
-                                      "-"}
-                                  </td>
-
-                                  <td className="px-4 py-3 text-slate-500">
-                                    {paiement.reference ||
-                                      "-"}
-                                  </td>
-                                </tr>
+                            {cotisationSelectionnee.paiements
+                              .filter(
+                                (paiement) =>
+                                  paiement?.actif !==
+                                  false
                               )
-                            )}
+                              .map(
+                                (
+                                  paiement
+                                ) => (
+                                  <tr
+                                    key={
+                                      paiement.id
+                                    }
+                                  >
+                                    <td className="px-4 py-3 text-slate-600">
+                                      {formaterDate(
+                                        paiement.date_paiement
+                                      )}
+                                    </td>
+
+                                    <td className="px-4 py-3 text-right font-semibold text-emerald-600">
+                                      {formaterMontant(
+                                        paiement.montant
+                                      )}
+                                    </td>
+
+                                    <td className="px-4 py-3 capitalize text-slate-600">
+                                      {paiement.mode_paiement ||
+                                        "-"}
+                                    </td>
+
+                                    <td className="px-4 py-3 text-slate-500">
+                                      {paiement.reference ||
+                                        "-"}
+                                    </td>
+                                  </tr>
+                                )
+                              )}
                           </tbody>
                         </table>
                       </div>
@@ -2746,8 +2445,6 @@ export default function Cotisations() {
                   )}
                 </div>
 
-
-                {/* Bouton paiement */}
                 {calculerReste(
                   cotisationSelectionnee
                 ) > 0 && (
@@ -2768,6 +2465,7 @@ export default function Cotisations() {
                       <CreditCard
                         size={17}
                       />
+
                       Ajouter un paiement
                     </button>
                   </div>
