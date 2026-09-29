@@ -2982,178 +2982,132 @@ export default function ProgrammeReligieux() {
       ================================================== */}
 
       {modalRepetition && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-200 p-5">
-              <h2 className="text-lg font-bold text-slate-900">
-                {repetitionSelectionnee
-                  ? "Modifier la répétition"
-                  : "Nouvelle répétition"}
-              </h2>
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
+      <div className="flex items-center justify-between border-b border-slate-200 p-5">
+        <div>
+          <h2 className="text-lg font-bold text-slate-900">
+            {repetitionSelectionnee
+              ? "Modifier la répétition"
+              : "Nouvelle répétition"}
+          </h2>
 
-              <button
-                type="button"
-                onClick={
-                  fermerModalRepetition
-                }
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+          <p className="mt-1 text-xs text-slate-500">
+            Planifiez la date, les horaires et le lieu de la répétition.
+          </p>
+        </div>
 
-            <form
-              onSubmit={
-                enregistrerRepetition
+        <button
+          type="button"
+          onClick={fermerModalRepetition}
+          className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      <form
+        onSubmit={enregistrerRepetition}
+        className="space-y-4 p-5"
+      >
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Date
+          </label>
+
+          <input
+            type="date"
+            value={formRepetition.date_repetition}
+            onChange={(event) =>
+              setFormRepetition((ancien) => ({
+                ...ancien,
+                date_repetition: event.target.value,
+              }))
+            }
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10"
+            required
+          />
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Heure début
+            </label>
+
+            <input
+              type="time"
+              value={formRepetition.heure_debut}
+              onChange={(event) =>
+                setFormRepetition((ancien) => ({
+                  ...ancien,
+                  heure_debut: event.target.value,
+                }))
               }
-              className="space-y-4 p-5"
-            >
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Date
-                </label>
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10"
+            />
+          </div>
 
-                <input
-                  type="date"
-                  value={
-                    formRepetition.date_repetition
-                  }
-                  onChange={(event) =>
-                    setFormRepetition(
-                      (ancien) => ({
-                        ...ancien,
-                        date_repetition:
-                          event.target
-                            .value,
-                      })
-                    )
-                  }
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3"
-                  required
-                />
-              </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Heure fin
+            </label>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Heure début
-                  </label>
-
-                  <input
-                    type="time"
-                    value={
-                      formRepetition.heure_debut
-                    }
-                    onChange={(event) =>
-                      setFormRepetition(
-                        (ancien) => ({
-                          ...ancien,
-                          heure_debut:
-                            event.target
-                              .value,
-                        })
-                      )
-                    }
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Heure fin
-                  </label>
-
-                  <input
-                    type="time"
-                    value={
-                      formRepetition.heure_fin
-                    }
-                    onChange={(event) =>
-                      setFormRepetition(
-                        (ancien) => ({
-                          ...ancien,
-                          heure_fin:
-                            event.target
-                              .value,
-                        })
-                      )
-                    }
-                    className="w-full rounded-xl border border-slate-200 px-4 py-3"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Lieu
-                </label>
-
-                <input
-                  type="text"
-                  value={
-                    formRepetition.lieu
-                  }
-                  onChange={(event) =>
-                    setFormRepetition(
-                      (ancien) => ({
-                        ...ancien,
-                        lieu:
-                          event.target.value,
-                      })
-                    )
-                  }
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3"
-                  placeholder="Lieu de la répétition"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Ordre
-                </label>
-
-                <input
-                  type="number"
-                  min="1"
-                  value={
-                    formRepetition.ordre
-                  }
-                  onChange={(event) =>
-                    setFormRepetition(
-                      (ancien) => ({
-                        ...ancien,
-                        ordre:
-                          event.target.value,
-                      })
-                    )
-                  }
-                  className="w-full rounded-xl border border-slate-200 px-4 py-3"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={
-                    fermerModalRepetition
-                  }
-                  className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm"
-                >
-                  Annuler
-                </button>
-
-                <button
-                  type="submit"
-                  className="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700"
-                >
-                  Enregistrer
-                </button>
-              </div>
-            </form>
+            <input
+              type="time"
+              value={formRepetition.heure_fin}
+              onChange={(event) =>
+                setFormRepetition((ancien) => ({
+                  ...ancien,
+                  heure_fin: event.target.value,
+                }))
+              }
+              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10"
+            />
           </div>
         </div>
-      )}
 
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Lieu
+          </label>
+
+          <input
+            type="text"
+            value={formRepetition.lieu}
+            onChange={(event) =>
+              setFormRepetition((ancien) => ({
+                ...ancien,
+                lieu: event.target.value,
+              }))
+            }
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10"
+            placeholder="Lieu de la répétition"
+          />
+        </div>
+
+        <div className="flex justify-end gap-3 border-t border-slate-100 pt-4">
+          <button
+            type="button"
+            onClick={fermerModalRepetition}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
+            Annuler
+          </button>
+
+          <button
+            type="submit"
+            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-700"
+          >
+            {repetitionSelectionnee
+              ? "Enregistrer les modifications"
+              : "Ajouter la répétition"}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
       {/* ==================================================
           MODAL KHASSIDA REPETITION
       ================================================== */}
