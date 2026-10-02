@@ -28,13 +28,11 @@ def obtenir_mois_annee_actuels(
     aujourd_hui: date | None = None,
 ) -> tuple[str, int]:
     """
-    Retourne le mois et l'année correspondant à la date fournie.
+    Retourne le mois et l'année actuels.
 
     Exemple :
-        2026-10-02
-        -> ("Octobre", 2026)
+    2 octobre 2026 -> ("Octobre", 2026)
     """
-
     aujourd_hui = aujourd_hui or date.today()
 
     mois_numero = aujourd_hui.month
@@ -61,10 +59,6 @@ def creer_cotisation_mensuelle_pour_membre(
     Retourne :
         (cotisation, True)  -> nouvelle cotisation créée
         (cotisation, False) -> cotisation déjà existante
-
-    Cette fonction est volontairement idempotente :
-    l'exécuter plusieurs fois ne doit pas créer plusieurs
-    cotisations pour la même période.
     """
 
     cotisation_existante = (
@@ -99,6 +93,11 @@ def creer_cotisation_mensuelle_pour_membre(
 
     db.add(cotisation)
 
+    # Important :
+    # on force SQLAlchemy à envoyer l'INSERT à PostgreSQL
+    # afin que cotisation.id soit disponible immédiatement.
+    db.flush()
+
     return cotisation, True
 
 
@@ -109,21 +108,21 @@ def generer_cotisations_mensuelles(
     date_enregistrement: date | None = None,
 ) -> dict:
     """
-    Génère les cotisations du mois pour tous les membres actifs.
+    Génère automatiquement les cotisations du mois
+    pour tous les membres actifs.
 
-    Si le mois et l'année ne sont pas fournis,
-    le mois actuel est utilisé.
-
-    Cette fonction :
-
-    - récupère uniquement les membres actifs ;
-    - crée une cotisation pour chaque membre ;
-    - utilise son montant_cotisation ;
-    - ne crée jamais de doublon ;
-    - ne vérifie pas si le mois précédent est payé ;
-    - ne modifie aucune cotisation existante.
+    Règles :
+    - uniquement les membres actifs ;
+    - une seule cotisation par membre et par mois ;
+    - une cotisation existante n'est jamais recréée ;
+    - les impayés des mois précédents ne bloquent pas
+      la création du nouveau mois ;
+    - le montant vient de membre.montant_cotisation ;
+    - les données historiques ne sont pas modifiées.
     """
 
+    # Si le mois et l'année ne sont pas fournis,
+    # on utilise automatiquement le mois actuel.
     if mois_concerne is None or annee is None:
         mois_actuel, annee_actuelle = (
             obtenir_mois_annee_actuels()
@@ -139,11 +138,13 @@ def generer_cotisations_mensuelles(
             else annee_actuelle
         )
 
+    # Vérification du mois.
     if mois_concerne not in MOIS_ORDRE:
         raise ValueError(
             f"Mois invalide : {mois_concerne}"
         )
 
+    # Récupération uniquement des membres actifs.
     membres = (
         db.query(Membre)
         .filter(
@@ -164,7 +165,6 @@ def generer_cotisations_mensuelles(
     cotisations_creees = []
 
     try:
-
         for membre in membres:
 
             cotisation, creee = (
@@ -178,12 +178,15 @@ def generer_cotisations_mensuelles(
             )
 
             if creee:
-
                 nombre_creees += 1
 
-                if float(
-                    membre.montant_cotisation or 0
-                ) <= 0:
+                montant = Decimal(
+                    str(
+                        membre.montant_cotisation or 0
+                    )
+                )
+
+                if montant <= 0:
                     nombre_zero += 1
 
                 cotisations_creees.append(
@@ -197,15 +200,12 @@ def generer_cotisations_mensuelles(
                 )
 
             else:
-
                 nombre_existantes += 1
 
         db.commit()
 
     except IntegrityError:
-
         db.rollback()
-
         raise
 
     return {
