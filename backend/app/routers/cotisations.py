@@ -1,3 +1,4 @@
+
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -53,7 +54,6 @@ def normaliser_mois(mois: str) -> str:
     """
     Nettoie le nom du mois.
     """
-
     return (mois or "").strip()
 
 
@@ -61,7 +61,6 @@ def obtenir_numero_mois(mois: str) -> int | None:
     """
     Retourne le numéro correspondant au mois.
     """
-
     mois_normalise = normaliser_mois(mois)
 
     return MOIS_ORDRE.get(mois_normalise)
@@ -312,6 +311,7 @@ def utilisateur_peut_voir_toutes_cotisations(
       est considérée comme une fonction responsable/gestionnaire
       pour cette page.
     """
+
     fonctions = (
         db.query(Fonction)
         .join(
@@ -443,16 +443,6 @@ def creer_cotisation(
     # --------------------------------------------------------
     # MONTANT FIXE DU MEMBRE
     # --------------------------------------------------------
-    #
-    # Le frontend peut envoyer "montant", mais le backend
-    # n'en fait PAS une source de vérité.
-    #
-    # La vraie valeur est :
-    #
-    # membre.montant_cotisation
-    #
-    # Cela garantit la cohérence.
-    #
 
     montant_fixe = float(
         membre.montant_cotisation or 0
@@ -490,12 +480,6 @@ def creer_cotisation(
     # CAS PARTICULIER :
     # MEMBRE AVEC COTISATION FIXE = 0
     # --------------------------------------------------------
-    #
-    # Il n'est jamais bloqué par la règle du mois précédent.
-    #
-    # Il peut avoir une cotisation mensuelle à 0 et effectuer
-    # des versements volontaires.
-    #
 
     if montant_fixe <= 0:
 
@@ -769,10 +753,6 @@ def ajouter_paiement(
 
     if montant_fixe > 0:
 
-        # ----------------------------------------------------
-        # EMPÊCHER PAIEMENT APRÈS PAIEMENT COMPLET
-        # ----------------------------------------------------
-
         if reste <= 0:
 
             raise HTTPException(
@@ -782,10 +762,6 @@ def ajouter_paiement(
                     "entièrement payée."
                 ),
             )
-
-        # ----------------------------------------------------
-        # EMPÊCHER DE DÉPASSER LE RESTE
-        # ----------------------------------------------------
 
         if montant > reste:
 
@@ -802,11 +778,6 @@ def ajouter_paiement(
     # CAS 2 :
     # COTISATION FIXE = 0
     # ========================================================
-    #
-    # AUCUNE LIMITE DE RESTE.
-    #
-    # Le paiement est un versement volontaire.
-    #
 
     nouveau_total_paye = (
         montant_deja_paye + montant
@@ -996,15 +967,45 @@ def ajouter_paiement(
 def lister_membres_actifs_pour_cotisations(
     db: Session = Depends(get_db),
     current_user=Depends(
-        require_permission("COTISATION_CREER")
+        require_permission("COTISATION_CONSULTER")
     ),
 ):
     """
     Retourne les membres actifs nécessaires à la gestion
     des cotisations.
 
-    Cette route ne nécessite pas MEMBRE_CONSULTER.
+    Règle de sécurité :
+
+    - Un responsable/gestionnaire disposant de
+      COTISATION_CONSULTER peut voir la liste complète.
+    - Un membre ordinaire ne peut pas utiliser cette route
+      pour récupérer la liste de tous les membres.
+    - COTISATION_CREER n'est PAS nécessaire pour consulter
+      cette liste.
     """
+
+    # --------------------------------------------------------
+    # VÉRIFIER LE NIVEAU DE VISIBILITÉ
+    # --------------------------------------------------------
+
+    peut_voir_tout = utilisateur_peut_voir_toutes_cotisations(
+        current_user=current_user,
+        db=db,
+    )
+
+    if not peut_voir_tout:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Vous ne pouvez pas consulter "
+                "la liste des membres pour la gestion "
+                "des cotisations."
+            ),
+        )
+
+    # --------------------------------------------------------
+    # RÉCUPÉRER LES MEMBRES
+    # --------------------------------------------------------
 
     membres = (
         db.query(Membre)
@@ -1088,19 +1089,28 @@ def lister_cotisations(
     )
 
     if not peut_voir_tout:
+
         if current_user.membre_id is None:
+
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Aucun membre n'est associé à cet utilisateur.",
+                detail=(
+                    "Aucun membre n'est associé "
+                    "à cet utilisateur."
+                ),
             )
 
         if (
             membre_id is not None
             and int(membre_id) != int(current_user.membre_id)
         ):
+
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Vous ne pouvez consulter que vos propres cotisations.",
+                detail=(
+                    "Vous ne pouvez consulter que "
+                    "vos propres cotisations."
+                ),
             )
 
         query = query.filter(
@@ -1235,6 +1245,7 @@ def obtenir_cotisation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cotisation introuvable.",
         )
+
     # --------------------------------------------------------
     # SÉCURITÉ DE CONSULTATION
     # --------------------------------------------------------
@@ -1252,13 +1263,17 @@ def obtenir_cotisation(
         not peut_voir_tout
         and cotisation.membre_id != current_user.membre_id
     ):
+
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Vous ne pouvez consulter que vos propres cotisations.",
+            detail=(
+                "Vous ne pouvez consulter que "
+                "vos propres cotisations."
+            ),
         )
-
 
     return construire_cotisation(
         cotisation,
         db,
     )
+
