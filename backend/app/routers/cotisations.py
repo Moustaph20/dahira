@@ -1,4 +1,3 @@
-
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -66,35 +65,6 @@ def obtenir_numero_mois(mois: str) -> int | None:
     return MOIS_ORDRE.get(mois_normalise)
 
 
-def obtenir_mois_precedent(
-    mois: str,
-    annee: int,
-) -> tuple[str, int] | None:
-    """
-    Retourne le mois précédant le mois fourni.
-
-    Exemple :
-        Septembre 2026 -> Août 2026
-        Janvier 2026  -> Décembre 2025
-    """
-
-    numero_mois = obtenir_numero_mois(mois)
-
-    if numero_mois is None:
-        return None
-
-    if numero_mois == 1:
-        return "Décembre", annee - 1
-
-    mois_precedent_numero = numero_mois - 1
-
-    for nom_mois, numero in MOIS_ORDRE.items():
-        if numero == mois_precedent_numero:
-            return nom_mois, annee
-
-    return None
-
-
 def obtenir_montant_paye(
     cotisation_id: int,
     db: Session,
@@ -128,9 +98,6 @@ def calculer_reste(
 ) -> float:
     """
     Calcule le reste à payer.
-
-    Pour une cotisation à 0 :
-        reste = 0
     """
 
     return max(
@@ -146,7 +113,7 @@ def calculer_statut(
     """
     Détermine le statut d'une cotisation.
 
-    Cas particuliers :
+    Cas :
 
     montant = 0
     paiement = 0
@@ -306,10 +273,14 @@ def utilisateur_peut_voir_toutes_cotisations(
     les cotisations de tout le Dahira.
 
     Règle :
+
     - la fonction MEMBRE = consultation personnelle uniquement ;
-    - toute autre fonction disposant de COTISATION_CONSULTER
-      est considérée comme une fonction responsable/gestionnaire
-      pour cette page.
+    - toute autre fonction disposant de
+      COTISATION_CONSULTER peut consulter les cotisations
+      de tout le Dahira.
+
+    Le contrôle de permission COTISATION_CONSULTER
+    est effectué par require_permission() sur les routes.
     """
 
     fonctions = (
@@ -331,45 +302,8 @@ def utilisateur_peut_voir_toutes_cotisations(
     )
 
 
-def obtenir_cotisation_precedente(
-    membre_id: int,
-    mois_concerne: str,
-    annee: int,
-    db: Session,
-):
-    """
-    Recherche la cotisation du mois immédiatement précédent.
-
-    Si elle n'existe pas, on retourne None.
-
-    Le premier mois enregistré pour un membre n'est donc pas
-    artificiellement bloqué.
-    """
-
-    precedent = obtenir_mois_precedent(
-        mois_concerne,
-        annee,
-    )
-
-    if precedent is None:
-        return None
-
-    mois_precedent, annee_precedente = precedent
-
-    return (
-        db.query(Cotisation)
-        .filter(
-            Cotisation.membre_id == membre_id,
-            Cotisation.mois_concerne == mois_precedent,
-            Cotisation.annee == annee_precedente,
-            Cotisation.actif.is_(True),
-        )
-        .first()
-    )
-
-
 # ============================================================
-# CRÉER UNE COTISATION
+# CRÉER UNE COTISATION MANUELLEMENT
 # ============================================================
 
 @router.post(
@@ -397,12 +331,14 @@ def creer_cotisation(
     )
 
     if not mois_concerne:
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Le mois concerné est obligatoire.",
         )
 
     if mois_concerne not in MOIS_ORDRE:
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
@@ -416,6 +352,7 @@ def creer_cotisation(
     # --------------------------------------------------------
 
     if annee < 2000 or annee > 2100:
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="L'année concernée est invalide.",
@@ -435,6 +372,7 @@ def creer_cotisation(
     )
 
     if not membre:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Membre actif introuvable.",
@@ -477,77 +415,40 @@ def creer_cotisation(
         )
 
     # --------------------------------------------------------
-    # CAS PARTICULIER :
-    # MEMBRE AVEC COTISATION FIXE = 0
+    # MONTANT À ENREGISTRER
+    # --------------------------------------------------------
+    #
+    # IMPORTANT :
+    #
+    # Le mois précédent n'est plus vérifié.
+    #
+    # Une cotisation impayée n'empêche donc PAS la création
+    # de la cotisation du mois suivant.
+    #
+    # Exemple :
+    #
+    # Septembre : 5 000 impayés
+    # Octobre   : 5 000 créé automatiquement
+    # Novembre  : 5 000 créé automatiquement
+    #
+    # Les dettes mensuelles s'accumulent normalement.
     # --------------------------------------------------------
 
-    if montant_fixe <= 0:
+    montant_a_enregistrer = montant_fixe
 
-        montant_a_enregistrer = 0
+    # --------------------------------------------------------
+    # NOTE SUR LE PARAMÈTRE montant
+    # --------------------------------------------------------
+    #
+    # Le montant mensuel officiel reste celui défini dans
+    # membre.montant_cotisation.
+    #
+    # Le paramètre montant est conservé pour compatibilité
+    # avec le frontend existant, mais il n'est pas utilisé
+    # pour remplacer le montant fixe du membre.
+    # --------------------------------------------------------
 
-    else:
-
-        # ----------------------------------------------------
-        # VÉRIFIER LE MOIS PRÉCÉDENT
-        # ----------------------------------------------------
-
-        cotisation_precedente = (
-            obtenir_cotisation_precedente(
-                membre_id=membre_id,
-                mois_concerne=mois_concerne,
-                annee=annee,
-                db=db,
-            )
-        )
-
-        # ----------------------------------------------------
-        # SI LE MOIS PRÉCÉDENT EXISTE
-        # ----------------------------------------------------
-
-        if cotisation_precedente:
-
-            montant_precedent = float(
-                cotisation_precedente.montant or 0
-            )
-
-            montant_precedent_paye = (
-                obtenir_montant_paye(
-                    cotisation_precedente.id,
-                    db,
-                )
-            )
-
-            reste_precedent = calculer_reste(
-                montant_precedent,
-                montant_precedent_paye,
-            )
-
-            # ------------------------------------------------
-            # MOIS PRÉCÉDENT NON SOLDÉ
-            # ------------------------------------------------
-
-            if reste_precedent > 0:
-
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=(
-                        f"La cotisation de "
-                        f"{cotisation_precedente.mois_concerne} "
-                        f"{cotisation_precedente.annee} "
-                        "n'est pas encore soldée. "
-                        f"Reste à payer : "
-                        f"{reste_precedent:g} FCFA. "
-                        "Vous devez d'abord solder cette "
-                        "cotisation avant de passer au mois "
-                        "suivant."
-                    ),
-                )
-
-        # ----------------------------------------------------
-        # LE MOIS PRÉCÉDENT EST SOLDÉ
-        # ----------------------------------------------------
-
-        montant_a_enregistrer = montant_fixe
+    _ = montant
 
     # --------------------------------------------------------
     # CRÉER LA COTISATION
@@ -691,6 +592,7 @@ def ajouter_paiement(
     # --------------------------------------------------------
 
     if montant <= 0:
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
@@ -704,6 +606,7 @@ def ajouter_paiement(
     ).strip()
 
     if not mode_paiement:
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Le mode de paiement est obligatoire.",
@@ -723,6 +626,7 @@ def ajouter_paiement(
     )
 
     if not cotisation:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cotisation introuvable.",
@@ -747,7 +651,6 @@ def ajouter_paiement(
     )
 
     # ========================================================
-    # CAS 1 :
     # COTISATION FIXE > 0
     # ========================================================
 
@@ -775,8 +678,7 @@ def ajouter_paiement(
             )
 
     # ========================================================
-    # CAS 2 :
-    # COTISATION FIXE = 0
+    # CALCUL APRÈS PAIEMENT
     # ========================================================
 
     nouveau_total_paye = (
@@ -974,14 +876,13 @@ def lister_membres_actifs_pour_cotisations(
     Retourne les membres actifs nécessaires à la gestion
     des cotisations.
 
-    Règle de sécurité :
+    Règle :
 
-    - Un responsable/gestionnaire disposant de
+    - Un responsable disposant de
       COTISATION_CONSULTER peut voir la liste complète.
-    - Un membre ordinaire ne peut pas utiliser cette route
-      pour récupérer la liste de tous les membres.
-    - COTISATION_CREER n'est PAS nécessaire pour consulter
-      cette liste.
+    - Un membre ordinaire ne peut pas récupérer
+      la liste de tous les membres.
+    - COTISATION_CREER n'est pas nécessaire.
     """
 
     # --------------------------------------------------------
@@ -994,6 +895,7 @@ def lister_membres_actifs_pour_cotisations(
     )
 
     if not peut_voir_tout:
+
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=(
@@ -1079,8 +981,6 @@ def lister_cotisations(
     # Responsable / gestionnaire :
     #   cotisations de tout le Dahira.
     #
-    # Le contrôle est fait côté backend afin qu'un utilisateur
-    # ne puisse pas contourner la restriction avec membre_id.
     # --------------------------------------------------------
 
     peut_voir_tout = utilisateur_peut_voir_toutes_cotisations(
@@ -1102,7 +1002,8 @@ def lister_cotisations(
 
         if (
             membre_id is not None
-            and int(membre_id) != int(current_user.membre_id)
+            and int(membre_id)
+            != int(current_user.membre_id)
         ):
 
             raise HTTPException(
@@ -1114,7 +1015,8 @@ def lister_cotisations(
             )
 
         query = query.filter(
-            Cotisation.membre_id == current_user.membre_id
+            Cotisation.membre_id
+            == current_user.membre_id
         )
 
     elif membre_id is not None:
@@ -1130,13 +1032,15 @@ def lister_cotisations(
     if date_debut is not None:
 
         query = query.filter(
-            Cotisation.date_cotisation >= date_debut
+            Cotisation.date_cotisation
+            >= date_debut
         )
 
     if date_fin is not None:
 
         query = query.filter(
-            Cotisation.date_cotisation <= date_fin
+            Cotisation.date_cotisation
+            <= date_fin
         )
 
     # --------------------------------------------------------
@@ -1250,8 +1154,8 @@ def obtenir_cotisation(
     # SÉCURITÉ DE CONSULTATION
     # --------------------------------------------------------
     #
-    # Un membre ordinaire ne peut jamais consulter la
-    # cotisation d'un autre membre, même en connaissant son ID.
+    # Un membre ordinaire ne peut jamais consulter
+    # la cotisation d'un autre membre.
     # --------------------------------------------------------
 
     peut_voir_tout = utilisateur_peut_voir_toutes_cotisations(
@@ -1261,7 +1165,8 @@ def obtenir_cotisation(
 
     if (
         not peut_voir_tout
-        and cotisation.membre_id != current_user.membre_id
+        and cotisation.membre_id
+        != current_user.membre_id
     ):
 
         raise HTTPException(
@@ -1276,4 +1181,3 @@ def obtenir_cotisation(
         cotisation,
         db,
     )
-
