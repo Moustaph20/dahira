@@ -12,7 +12,7 @@ from app.services.notification_service import creer_notification
 from app.services.notifications_push import envoyer_notification_push
 
 
-JOURS_RAPPEL_COTISATION = {2, 5, 10, 20}
+JOURS_RAPPEL_COTISATION = {5, 10, 20}
 
 
 def obtenir_mois_annee(aujourd_hui: date) -> tuple[str, int]:
