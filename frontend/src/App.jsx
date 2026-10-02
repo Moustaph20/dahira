@@ -1,4 +1,3 @@
-
 import {
   BrowserRouter,
   Routes,
@@ -34,6 +33,7 @@ import Utilisateurs from "./pages/Utilisateurs";
 // ============================================================
 
 import MonEspace from "./pages/MonEspace";
+import Profil from "./pages/Profil";
 
 // ============================================================
 // KOUREL
@@ -70,20 +70,15 @@ import Communication from "./pages/Communication";
 import Notifications from "./pages/Notifications";
 import Galerie from "./pages/Galerie";
 
-/*
-|--------------------------------------------------------------------------
-| ROUTE PRIVÉE
-|--------------------------------------------------------------------------
-|
-| Vérifie qu'un utilisateur est connecté.
-|
-| Toutes les routes placées à l'intérieur de cette route bénéficient
-| automatiquement du Layout principal.
-|
-*/
+
+// ============================================================
+// ROUTE PRIVÉE
+// ============================================================
 
 function RoutePrivee() {
-  const { utilisateur } = useAuth();
+  const {
+    utilisateur,
+  } = useAuth();
 
   if (!utilisateur) {
     return (
@@ -97,23 +92,20 @@ function RoutePrivee() {
   return <Layout />;
 }
 
-/*
-|--------------------------------------------------------------------------
-| ROUTE AVEC PERMISSION
-|--------------------------------------------------------------------------
-|
-| Vérifie qu'un utilisateur possède une permission précise.
-|
-*/
+
+// ============================================================
+// ROUTE AVEC PERMISSION
+// ============================================================
 
 function RoutePermission({
   permission,
   children,
   fallback = "/mon-espace",
 }) {
-  const { utilisateur } = useAuth();
+  const {
+    utilisateur,
+  } = useAuth();
 
-  // Utilisateur non connecté
   if (!utilisateur) {
     return (
       <Navigate
@@ -123,25 +115,19 @@ function RoutePermission({
     );
   }
 
-  // Récupération sécurisée des permissions
-  const permissions = Array.isArray(
-    utilisateur.permissions
-  )
-    ? utilisateur.permissions
-    : [];
+  const permissions =
+    Array.isArray(
+      utilisateur.permissions
+    )
+      ? utilisateur.permissions
+      : [];
 
-  // Vérification de la permission
-  const autorise = permissions.some(
-    (item) =>
-      item?.code === permission
-  );
+  const autorise =
+    permissions.some(
+      (item) =>
+        item?.code === permission
+    );
 
-  console.log(
-    `[RoutePermission] ${permission} :`,
-    autorise
-  );
-
-  // Permission refusée
   if (!autorise) {
     return (
       <Navigate
@@ -154,18 +140,17 @@ function RoutePermission({
   return children;
 }
 
-/*
-|--------------------------------------------------------------------------
-| ROUTE FINANCES
-|--------------------------------------------------------------------------
-|
-| L'espace Finances est accessible si l'utilisateur possède AU MOINS
-| une des permissions financières suivantes.
-|
-*/
 
-function RouteFinance({ children }) {
-  const { utilisateur } = useAuth();
+// ============================================================
+// ROUTE FINANCES
+// ============================================================
+
+function RouteFinance({
+  children,
+}) {
+  const {
+    utilisateur,
+  } = useAuth();
 
   if (!utilisateur) {
     return (
@@ -176,11 +161,12 @@ function RouteFinance({ children }) {
     );
   }
 
-  const permissions = Array.isArray(
-    utilisateur.permissions
-  )
-    ? utilisateur.permissions
-    : [];
+  const permissions =
+    Array.isArray(
+      utilisateur.permissions
+    )
+      ? utilisateur.permissions
+      : [];
 
   const permissionsFinance = [
     "DEPENSE_CONSULTER",
@@ -189,12 +175,13 @@ function RouteFinance({ children }) {
     "PAIEMENT_CONSULTER",
   ];
 
-  const autorise = permissions.some(
-    (item) =>
-      permissionsFinance.includes(
-        item?.code
-      )
-  );
+  const autorise =
+    permissions.some(
+      (item) =>
+        permissionsFinance.includes(
+          item?.code
+        )
+    );
 
   if (!autorise) {
     return (
@@ -208,22 +195,17 @@ function RouteFinance({ children }) {
   return children;
 }
 
-/*
-|--------------------------------------------------------------------------
-| ROUTE MEMBRE DU KOUREL
-|--------------------------------------------------------------------------
-|
-| Vérifie que l'utilisateur appartient réellement à au moins un Kourel.
-|
-| Deux possibilités sont acceptées :
-|
-| 1. utilisateur.est_membre_kourel === true
-| 2. utilisateur.kourels contient au moins un élément
-|
-*/
 
-function RouteKourel({ children }) {
-  const { utilisateur } = useAuth();
+// ============================================================
+// ROUTE MEMBRE DU KOUREL
+// ============================================================
+
+function RouteKourel({
+  children,
+}) {
+  const {
+    utilisateur,
+  } = useAuth();
 
   if (!utilisateur) {
     return (
@@ -234,11 +216,12 @@ function RouteKourel({ children }) {
     );
   }
 
-  const kourels = Array.isArray(
-    utilisateur.kourels
-  )
-    ? utilisateur.kourels
-    : [];
+  const kourels =
+    Array.isArray(
+      utilisateur.kourels
+    )
+      ? utilisateur.kourels
+      : [];
 
   const estMembreKourel =
     utilisateur.est_membre_kourel === true ||
@@ -256,21 +239,15 @@ function RouteKourel({ children }) {
   return children;
 }
 
-/*
-|--------------------------------------------------------------------------
-| ROUTE DASHBOARD
-|--------------------------------------------------------------------------
-|
-| Le Dashboard est protégé par la permission
-| DASHBOARD_CONSULTER.
-|
-| On ne vérifie plus directement le nom de la fonction.
-| La permission est la source de vérité.
-|
-*/
+
+// ============================================================
+// ROUTE DASHBOARD
+// ============================================================
 
 function RouteDashboard() {
-  const { utilisateur } = useAuth();
+  const {
+    utilisateur,
+  } = useAuth();
 
   if (!utilisateur) {
     return (
@@ -281,21 +258,19 @@ function RouteDashboard() {
     );
   }
 
-  const permissions = Array.isArray(
-    utilisateur.permissions
-  )
-    ? utilisateur.permissions
-    : [];
+  const permissions =
+    Array.isArray(
+      utilisateur.permissions
+    )
+      ? utilisateur.permissions
+      : [];
 
-  const autorise = permissions.some(
-    (permission) =>
-      permission?.code === "DASHBOARD_CONSULTER"
-  );
-
-  console.log(
-    "[RouteDashboard] DASHBOARD_CONSULTER :",
-    autorise
-  );
+  const autorise =
+    permissions.some(
+      (permission) =>
+        permission?.code ===
+        "DASHBOARD_CONSULTER"
+    );
 
   if (!autorise) {
     return (
@@ -309,11 +284,10 @@ function RouteDashboard() {
   return <Dashboard />;
 }
 
-/*
-|--------------------------------------------------------------------------
-| APPLICATION
-|--------------------------------------------------------------------------
-*/
+
+// ============================================================
+// APPLICATION
+// ============================================================
 
 function App() {
   const {
@@ -321,11 +295,10 @@ function App() {
     chargement,
   } = useAuth();
 
-  /*
-  |--------------------------------------------------------------------------
-  | CHARGEMENT INITIAL
-  |--------------------------------------------------------------------------
-  */
+
+  // ==========================================================
+  // CHARGEMENT INITIAL
+  // ==========================================================
 
   if (chargement) {
     return (
@@ -361,31 +334,29 @@ function App() {
     );
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | UTILISATEUR CONNECTÉ
-  |--------------------------------------------------------------------------
-  */
 
-  const connecte = Boolean(utilisateur);
+  const connecte =
+    Boolean(utilisateur);
+
 
   return (
     <BrowserRouter>
 
       <Routes>
 
-        {/* ==========================================================
+        {/* ==================================================
             ACCUEIL
-        ========================================================== */}
+        ================================================== */}
 
         <Route
           path="/"
           element={<Home />}
         />
 
-        {/* ==========================================================
+
+        {/* ==================================================
             CONNEXION
-        ========================================================== */}
+        ================================================== */}
 
         <Route
           path="/login"
@@ -401,9 +372,10 @@ function App() {
           }
         />
 
-        {/* ==========================================================
+
+        {/* ==================================================
             ESPACE PERSONNEL
-        ========================================================== */}
+        ================================================== */}
 
         <Route
           path="/mon-espace"
@@ -419,17 +391,37 @@ function App() {
           }
         />
 
-        {/* ==========================================================
+
+        {/* ==================================================
             ROUTES PRIVÉES
-        ========================================================== */}
+        ================================================== */}
 
         <Route
-          element={<RoutePrivee />}
+          element={
+            <RoutePrivee />
+          }
         >
 
-          {/* ========================================================
+          {/* =================================================
+              PROFIL
+              
+              IMPORTANT :
+              aucune permission n'est nécessaire.
+              Tout utilisateur connecté peut modifier
+              son propre mot de passe.
+          ================================================= */}
+
+          <Route
+            path="/profil"
+            element={
+              <Profil />
+            }
+          />
+
+
+          {/* =================================================
               DASHBOARD
-          ======================================================== */}
+          ================================================= */}
 
           <Route
             path="/dashboard"
@@ -438,9 +430,10 @@ function App() {
             }
           />
 
-          {/* ========================================================
+
+          {/* =================================================
               UTILISATEURS
-          ======================================================== */}
+          ================================================= */}
 
           <Route
             path="/utilisateurs"
@@ -453,9 +446,10 @@ function App() {
             }
           />
 
-          {/* ========================================================
+
+          {/* =================================================
               MEMBRES
-          ======================================================== */}
+          ================================================= */}
 
           <Route
             path="/membres"
@@ -468,9 +462,10 @@ function App() {
             }
           />
 
-          {/* ========================================================
+
+          {/* =================================================
               COTISATIONS
-          ======================================================== */}
+          ================================================= */}
 
           <Route
             path="/cotisations"
@@ -483,9 +478,10 @@ function App() {
             }
           />
 
-          {/* ========================================================
+
+          {/* =================================================
               PAIEMENTS
-          ======================================================== */}
+          ================================================= */}
 
           <Route
             path="/paiements"
@@ -498,9 +494,10 @@ function App() {
             }
           />
 
-          {/* ========================================================
+
+          {/* =================================================
               FINANCES
-          ======================================================== */}
+          ================================================= */}
 
           <Route
             path="/finances"
@@ -511,9 +508,10 @@ function App() {
             }
           />
 
-          {/* ========================================================
+
+          {/* =================================================
               RÉUNIONS
-          ======================================================== */}
+          ================================================= */}
 
           <Route
             path="/reunions"
@@ -526,9 +524,10 @@ function App() {
             }
           />
 
-          {/* ========================================================
+
+          {/* =================================================
               PROGRAMME RELIGIEUX
-          ======================================================== */}
+          ================================================= */}
 
           <Route
             path="/programme-religieux"
@@ -543,9 +542,10 @@ function App() {
             }
           />
 
-          {/* ========================================================
+
+          {/* =================================================
               COMMUNICATIONS
-          ======================================================== */}
+          ================================================= */}
 
           <Route
             path="/communications"
@@ -558,9 +558,10 @@ function App() {
             }
           />
 
-          {/* ========================================================
+
+          {/* =================================================
               GALERIE
-          ======================================================== */}
+          ================================================= */}
 
           <Route
             path="/galerie"
@@ -573,9 +574,10 @@ function App() {
             }
           />
 
-          {/* ========================================================
+
+          {/* =================================================
               NOTIFICATIONS
-          ======================================================== */}
+          ================================================= */}
 
           <Route
             path="/notifications"
@@ -588,9 +590,10 @@ function App() {
             }
           />
 
-          {/* ========================================================
+
+          {/* =================================================
               MON KOUREL
-          ======================================================== */}
+          ================================================= */}
 
           <Route
             path="/mon-kourel"
@@ -605,9 +608,10 @@ function App() {
             }
           />
 
-          {/* ========================================================
+
+          {/* =================================================
               PROGRAMME DU KOUREL
-          ======================================================== */}
+          ================================================= */}
 
           <Route
             path="/programme-kourel"
@@ -622,9 +626,10 @@ function App() {
             }
           />
 
-          {/* ========================================================
-              DÉTAIL D'UNE RÉPÉTITION
-          ======================================================== */}
+
+          {/* =================================================
+              DÉTAIL RÉPÉTITION
+          ================================================= */}
 
           <Route
             path="/programme-kourel/repetitions/:id"
@@ -639,9 +644,10 @@ function App() {
             }
           />
 
-          {/* ========================================================
+
+          {/* =================================================
               RÉPÉTITIONS
-          ======================================================== */}
+          ================================================= */}
 
           <Route
             path="/repetitions"
@@ -656,9 +662,10 @@ function App() {
             }
           />
 
-          {/* ========================================================
+
+          {/* =================================================
               KHASSIDAS
-          ======================================================== */}
+          ================================================= */}
 
           <Route
             path="/khassidas"
@@ -673,9 +680,10 @@ function App() {
             }
           />
 
-          {/* ========================================================
+
+          {/* =================================================
               KOURELS
-          ======================================================== */}
+          ================================================= */}
 
           <Route
             path="/kourels"
@@ -688,9 +696,10 @@ function App() {
             }
           />
 
-          {/* ========================================================
+
+          {/* =================================================
               DÉTAIL KOUREL
-          ======================================================== */}
+          ================================================= */}
 
           <Route
             path="/kourels/:id"
@@ -705,9 +714,10 @@ function App() {
 
         </Route>
 
-        {/* ==========================================================
+
+        {/* ==================================================
             ROUTE INCONNUE
-        ========================================================== */}
+        ================================================== */}
 
         <Route
           path="*"
@@ -724,5 +734,6 @@ function App() {
     </BrowserRouter>
   );
 }
+
 
 export default App;

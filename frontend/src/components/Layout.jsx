@@ -1705,7 +1705,7 @@ const navigationActivites = useMemo(() => {
           <button
             type="button"
             onClick={() =>
-              navigate("/mon-espace")
+              navigate("/profil")
             }
             className="
               group mb-2 flex w-full
@@ -1728,7 +1728,7 @@ const navigationActivites = useMemo(() => {
               <CircleUserRound size={16} />
             </div>
 
-            Mon espace
+            Mon profil
           </button>
 
 
@@ -2047,29 +2047,32 @@ const navigationActivites = useMemo(() => {
 
 
                 <button
-                  type="button"
-                  onClick={() =>
-                    navigate(
-                      "/mon-espace"
-                    )
-                  }
-                  className="
-                    relative flex h-11 w-11
-                    items-center
-                    justify-center
-                    rounded-2xl
-                    bg-gradient-to-br
-                    from-emerald-500
-                    to-teal-700
-                    text-xs font-black
-                    text-white shadow-lg
-                    transition
-                    hover:-translate-y-0.5
-                  "
-                  title="Mon espace"
-                >
-                  {initiales}
-                </button>
+  type="button"
+  onClick={() =>
+    navigate("/profil")
+  }
+  className="
+    group mb-2 flex w-full
+    items-center gap-3
+    rounded-xl px-3 py-2.5
+    text-xs font-semibold
+    text-white/45
+    transition hover:bg-white/[0.06]
+    hover:text-white
+  "
+>
+  <div
+    className="
+      flex h-8 w-8 items-center
+      justify-center rounded-lg
+      bg-white/[0.05]
+    "
+  >
+    <CircleUserRound size={16} />
+  </div>
+
+  Mon profil
+</button>
 
               </div>
 

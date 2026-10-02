@@ -5,6 +5,7 @@ from app.core.database import get_db
 from app.core.security import (
     creer_access_token,
     verifier_mot_de_passe,
+    hasher_mot_de_passe,
 )
 from app.core.dependencies import get_current_user
 
@@ -16,7 +17,11 @@ from app.models.utilisateur_fonction import UtilisateurFonction
 from app.models.membre import Membre
 from app.models.kourel_membre import KourelMembre
 
-from app.schemas.auth import LoginRequest, TokenResponse
+from app.schemas.auth import (
+    LoginRequest,
+    TokenResponse,
+    ModifierMotDePasseRequest,
+)
 
 
 router = APIRouter(
@@ -113,6 +118,83 @@ def login(
 
 
 # ============================================================
+# MODIFIER SON MOT DE PASSE
+# ============================================================
+
+@router.put(
+    "/modifier-mot-de-passe",
+)
+def modifier_mot_de_passe(
+    data: ModifierMotDePasseRequest,
+    current_user: Utilisateur = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Permet à l'utilisateur connecté de modifier
+    son propre mot de passe.
+
+    Aucun droit d'administration n'est nécessaire.
+    """
+
+    # --------------------------------------------------------
+    # Vérifier l'ancien mot de passe
+    # --------------------------------------------------------
+
+    ancien_mot_de_passe_correct = (
+        verifier_mot_de_passe(
+            data.ancien_mot_de_passe,
+            current_user.mot_de_passe_hash,
+        )
+    )
+
+    if not ancien_mot_de_passe_correct:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="L'ancien mot de passe est incorrect.",
+        )
+
+    # --------------------------------------------------------
+    # Vérifier que le nouveau mot de passe est différent
+    # --------------------------------------------------------
+
+    if (
+        data.ancien_mot_de_passe
+        == data.nouveau_mot_de_passe
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Le nouveau mot de passe doit être "
+                "différent de l'ancien."
+            ),
+        )
+
+    # --------------------------------------------------------
+    # Générer le nouveau hash
+    # --------------------------------------------------------
+
+    nouveau_hash = hasher_mot_de_passe(
+        data.nouveau_mot_de_passe
+    )
+
+    # --------------------------------------------------------
+    # Enregistrer le nouveau mot de passe
+    # --------------------------------------------------------
+
+    current_user.mot_de_passe_hash = nouveau_hash
+
+    # Une fois le mot de passe changé, la première connexion
+    # n'est plus considérée comme étant en attente.
+    current_user.premiere_connexion = False
+
+    db.commit()
+
+    return {
+        "message": "Mot de passe modifié avec succès."
+    }
+
+
+# ============================================================
 # UTILISATEUR CONNECTÉ
 # ============================================================
 
@@ -124,16 +206,6 @@ def get_me(
     """
     Retourne toutes les informations nécessaires
     au frontend pour construire l'espace utilisateur.
-
-    La réponse contient notamment :
-
-    - informations utilisateur
-    - informations membre
-    - fonctions
-    - permissions cumulées
-    - appartenance aux Kourels
-    - statut gestionnaire de Kourel
-    - espace personnel
     """
 
     # ========================================================
@@ -217,15 +289,13 @@ def get_me(
     }
 
     # ========================================================
-    # 5. RÉCUPÉRER LES KOURELS DE L'UTILISATEUR
+    # 5. RÉCUPÉRER LES KOURELS
     # ========================================================
 
     kourels = []
 
     est_membre_kourel = False
-
     est_gestionnaire_kourel = False
-
     gestionnaire_kourel_id = None
 
     if membre:
@@ -239,16 +309,8 @@ def get_me(
             .all()
         )
 
-        # ----------------------------------------------------
-        # L'utilisateur est membre d'au moins un Kourel
-        # ----------------------------------------------------
-
         if affiliations:
             est_membre_kourel = True
-
-        # ----------------------------------------------------
-        # Parcourir les affiliations
-        # ----------------------------------------------------
 
         for affiliation in affiliations:
 
@@ -260,69 +322,53 @@ def get_me(
             if not kourel.actif:
                 continue
 
-            # ------------------------------------------------
-            # Déterminer si l'utilisateur est gestionnaire
-            # ------------------------------------------------
-
             est_gestionnaire = False
 
-            # On vérifie plusieurs possibilités afin de
-            # rester compatible avec les modèles actuels.
-            # ------------------------------------------------
-
-            if hasattr(affiliation, "est_gestionnaire"):
+            if hasattr(
+                affiliation,
+                "est_gestionnaire",
+            ):
                 est_gestionnaire = (
                     affiliation.est_gestionnaire is True
                 )
 
-            elif hasattr(affiliation, "gestionnaire"):
+            elif hasattr(
+                affiliation,
+                "gestionnaire",
+            ):
                 est_gestionnaire = (
                     affiliation.gestionnaire is True
                 )
 
-            # ------------------------------------------------
-            # Si le Kourel possède directement un gestionnaire
-            # ------------------------------------------------
-
-            if hasattr(kourel, "gestionnaire_membre_id"):
-
+            if hasattr(
+                kourel,
+                "gestionnaire_membre_id",
+            ):
                 if (
                     kourel.gestionnaire_membre_id
                     == membre.id
                 ):
                     est_gestionnaire = True
 
-            # ------------------------------------------------
-            # Si le Kourel possède un gestionnaire_id
-            # ------------------------------------------------
-
-            if hasattr(kourel, "gestionnaire_id"):
-
+            if hasattr(
+                kourel,
+                "gestionnaire_id",
+            ):
                 if (
                     kourel.gestionnaire_id
                     == membre.id
                 ):
                     est_gestionnaire = True
 
-            # ------------------------------------------------
-            # Ajouter le Kourel
-            # ------------------------------------------------
-
             kourels.append({
                 "id": kourel.id,
                 "nom": kourel.nom,
                 "description": kourel.description,
                 "date_entree": affiliation.date_entree,
-
-                # Informations utiles au frontend
                 "gestionnaire": est_gestionnaire,
                 "est_gestionnaire": est_gestionnaire,
                 "is_gestionnaire": est_gestionnaire,
             })
-
-            # ------------------------------------------------
-            # Si gestionnaire d'au moins un Kourel
-            # ------------------------------------------------
 
             if est_gestionnaire:
                 est_gestionnaire_kourel = True
@@ -344,7 +390,9 @@ def get_me(
         espace.append({
             "code": "MEMBRES",
             "label": "Membres",
-            "description": "Gestion et consultation des membres",
+            "description": (
+                "Gestion et consultation des membres"
+            ),
             "route": "/membres",
             "icone": "users",
             "ordre": 1,
@@ -397,13 +445,15 @@ def get_me(
     # --------------------------------------------------------
 
     if (
-    est_membre_kourel
-    and "KOUREL_CONSULTER" in permission_codes
-):
+        est_membre_kourel
+        and "KOUREL_CONSULTER" in permission_codes
+    ):
         espace.append({
             "code": "PROGRAMME_RELIGIEUX",
             "label": "Programme religieux",
-            "description": "Consulter le programme religieux",
+            "description": (
+                "Consulter le programme religieux"
+            ),
             "route": "/programme-religieux",
             "icone": "book-open",
             "ordre": 5,
@@ -417,7 +467,9 @@ def get_me(
         espace.append({
             "code": "COMMUNICATIONS",
             "label": "Communications",
-            "description": "Consulter les communications",
+            "description": (
+                "Consulter les communications"
+            ),
             "route": "/communications",
             "icone": "megaphone",
             "ordre": 6,
@@ -431,7 +483,9 @@ def get_me(
         espace.append({
             "code": "NOTIFICATIONS",
             "label": "Notifications",
-            "description": "Consulter les notifications",
+            "description": (
+                "Consulter les notifications"
+            ),
             "route": "/notifications",
             "icone": "bell",
             "ordre": 7,
@@ -440,39 +494,22 @@ def get_me(
     # ========================================================
     # ESPACE KOUREL
     # ========================================================
-    #
-    # IMPORTANT :
-    #
-    # On utilise les vraies permissions de la base.
-    #
-    # KOUREL_CONSULTER = accès à l'espace Kourel
-    #
-    # L'utilisateur doit également être membre d'au moins
-    # un Kourel.
-    #
-    # ========================================================
 
     if (
         est_membre_kourel
         and "KOUREL_CONSULTER" in permission_codes
     ):
 
-        # ----------------------------------------------------
-        # MON KOUREL
-        # ----------------------------------------------------
-
         espace.append({
             "code": "MON_KOUREL",
             "label": "Mon Kourel",
-            "description": "Consulter mon espace Kourel",
+            "description": (
+                "Consulter mon espace Kourel"
+            ),
             "route": "/mon-kourel",
             "icone": "users",
             "ordre": 8,
         })
-
-        # ----------------------------------------------------
-        # PROGRAMME DU KOUREL
-        # ----------------------------------------------------
 
         espace.append({
             "code": "PROGRAMME_KOUREL",
@@ -485,10 +522,6 @@ def get_me(
             "icone": "calendar",
             "ordre": 9,
         })
-
-        # ----------------------------------------------------
-        # RÉPÉTITIONS
-        # ----------------------------------------------------
 
         espace.append({
             "code": "REPETITIONS",
@@ -504,16 +537,11 @@ def get_me(
     # ========================================================
     # KHASSIDAS
     # ========================================================
-    #
-    # KHASSIDA_CONSULTER est la vraie permission.
-    #
-    # ========================================================
 
     if (
-    est_membre_kourel
-    and "KOUREL_CONSULTER" in permission_codes
-):
-
+        est_membre_kourel
+        and "KOUREL_CONSULTER" in permission_codes
+    ):
         espace.append({
             "code": "KHASSIDAS",
             "label": "Khassidas",
@@ -524,18 +552,7 @@ def get_me(
         })
 
     # ========================================================
-    # AUDIO
-    # ========================================================
-    #
-    # Il n'existe actuellement pas de permission AUDIOS dans
-    # la liste connue de ta base.
-    #
-    # On ne l'ajoute donc pas artificiellement ici.
-    #
-    # ========================================================
-
-    # ========================================================
-    # TRIER L'ESPACE
+    # TRIER
     # ========================================================
 
     espace.sort(
@@ -543,28 +560,15 @@ def get_me(
     )
 
     # ========================================================
-    # 7. INFORMATIONS FINALES
+    # 7. RÉPONSE
     # ========================================================
 
     return {
-
-        # ----------------------------------------------------
-        # UTILISATEUR
-        # ----------------------------------------------------
-
         "id": current_user.id,
-
         "membre_id": current_user.membre_id,
-
         "identifiant": current_user.identifiant,
-
         "actif": current_user.actif,
-
         "premiere_connexion": current_user.premiere_connexion,
-
-        # ----------------------------------------------------
-        # INFORMATIONS DU MEMBRE
-        # ----------------------------------------------------
 
         "nom": (
             membre.nom
@@ -596,10 +600,6 @@ def get_me(
             else None
         ),
 
-        # ----------------------------------------------------
-        # KOUREL
-        # ----------------------------------------------------
-
         "est_membre_kourel": est_membre_kourel,
 
         "est_gestionnaire_kourel": (
@@ -612,10 +612,6 @@ def get_me(
 
         "kourels": kourels,
 
-        # ----------------------------------------------------
-        # FONCTIONS
-        # ----------------------------------------------------
-
         "fonctions": [
             {
                 "id": fonction.id,
@@ -624,10 +620,6 @@ def get_me(
             }
             for fonction in fonctions
         ],
-
-        # ----------------------------------------------------
-        # PERMISSIONS
-        # ----------------------------------------------------
 
         "permissions": [
             {
@@ -638,10 +630,6 @@ def get_me(
             }
             for permission in permissions
         ],
-
-        # ----------------------------------------------------
-        # ESPACE UTILISATEUR
-        # ----------------------------------------------------
 
         "espace": espace,
     }
