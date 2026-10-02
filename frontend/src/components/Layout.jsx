@@ -26,11 +26,9 @@ import {
   Clock3,
   Star,
   UserCog,
-  Settings2,
   HandCoins,
   CreditCard,
   Receipt,
-  Landmark,
   CalendarCheck,
   Globe2,
   Images,
@@ -82,22 +80,27 @@ const COULEURS_MENU = {
     icon: "from-emerald-500 to-green-600",
     active: "bg-emerald-50 text-emerald-700",
   },
+
   blue: {
     icon: "from-blue-500 to-indigo-600",
     active: "bg-blue-50 text-blue-700",
   },
+
   violet: {
     icon: "from-violet-500 to-purple-600",
     active: "bg-violet-50 text-violet-700",
   },
+
   amber: {
     icon: "from-amber-400 to-orange-500",
     active: "bg-amber-50 text-amber-700",
   },
+
   rose: {
     icon: "from-rose-500 to-pink-600",
     active: "bg-rose-50 text-rose-700",
   },
+
   cyan: {
     icon: "from-cyan-500 to-sky-600",
     active: "bg-cyan-50 text-cyan-700",
@@ -115,7 +118,8 @@ function NavigationItem({
   const Icon = item.icon;
 
   const couleur =
-    COULEURS_MENU[item.couleur] || COULEURS_MENU.emerald;
+    COULEURS_MENU[item.couleur] ||
+    COULEURS_MENU.emerald;
 
   return (
     <NavLink
@@ -123,9 +127,14 @@ function NavigationItem({
       onClick={onNavigate}
       className={({ isActive }) =>
         [
-          "group relative flex items-center gap-3 rounded-2xl px-3 py-2.5",
-          "text-[13px] font-semibold transition-all duration-200",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60",
+          "group relative flex items-center gap-3",
+          "rounded-2xl px-3 py-2.5",
+          "text-[13px] font-semibold",
+          "transition-all duration-200",
+          "focus:outline-none",
+          "focus-visible:ring-2",
+          "focus-visible:ring-emerald-400/60",
+
           isActive
             ? `${couleur.active} shadow-sm`
             : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
@@ -137,8 +146,10 @@ function NavigationItem({
           {isActive && (
             <span
               className="
-                absolute left-0 top-1/2 h-7 w-1
-                -translate-y-1/2 rounded-r-full
+                absolute left-0 top-1/2
+                h-7 w-1
+                -translate-y-1/2
+                rounded-r-full
                 bg-emerald-500
               "
             />
@@ -146,14 +157,21 @@ function NavigationItem({
 
           <span
             className={[
-              "flex h-9 w-9 shrink-0 items-center justify-center",
-              "rounded-xl bg-gradient-to-br text-white shadow-sm",
+              "flex h-9 w-9 shrink-0",
+              "items-center justify-center",
+              "rounded-xl",
+              "bg-gradient-to-br",
+              "text-white shadow-sm",
               "transition-all duration-200",
-              "group-hover:scale-[1.04] group-hover:shadow-md",
+              "group-hover:scale-[1.04]",
+              "group-hover:shadow-md",
               couleur.icon,
             ].join(" ")}
           >
-            <Icon size={17} strokeWidth={2.2} />
+            <Icon
+              size={17}
+              strokeWidth={2.2}
+            />
           </span>
 
           <span className="min-w-0 flex-1 truncate">
@@ -164,6 +182,7 @@ function NavigationItem({
             size={15}
             className={[
               "shrink-0 transition-all duration-200",
+
               isActive
                 ? "translate-x-0 opacity-100"
                 : "-translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-60",
@@ -179,13 +198,23 @@ function NavigationItem({
 // TITRE DE SECTION
 // ============================================================
 
-function SectionTitre({ children }) {
+function SectionTitre({
+  children,
+}) {
   return (
     <div className="mb-2 mt-5 px-3 first:mt-2">
       <div className="flex items-center gap-2">
         <span className="h-px w-3 bg-slate-300" />
 
-        <span className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
+        <span
+          className="
+            text-[10px]
+            font-extrabold
+            uppercase
+            tracking-[0.18em]
+            text-slate-400
+          "
+        >
           {children}
         </span>
       </div>
@@ -207,22 +236,33 @@ export default function Layout() {
     aPermission,
   } = useAuth();
 
-  // ============================================================
+  // ==========================================================
   // ÉTATS
-  // ============================================================
+  // ==========================================================
 
-  const [menuOuvert, setMenuOuvert] = useState(false);
-  const [recherche, setRecherche] = useState("");
+  const [
+    menuOuvert,
+    setMenuOuvert,
+  ] = useState(false);
 
-  // ============================================================
+  const [
+    recherche,
+    setRecherche,
+  ] = useState("");
+
+  // ==========================================================
   // INFORMATIONS UTILISATEUR
-  // ============================================================
+  // ==========================================================
 
   const possedePermission = useCallback(
     (permission) => {
-      if (!permission) return true;
+      if (!permission) {
+        return true;
+      }
 
-      return Boolean(aPermission?.(permission));
+      return Boolean(
+        aPermission?.(permission)
+      );
     },
     [aPermission]
   );
@@ -248,25 +288,32 @@ export default function Layout() {
     "Membre";
 
   const initiales = useMemo(() => {
-    const p = prenom?.trim()?.[0] || "";
-    const n = nom?.trim()?.[0] || "";
+    const premiereLettrePrenom =
+      prenom?.trim()?.[0] || "";
 
-    const resultat = `${p}${n}`.toUpperCase();
+    const premiereLettreNom =
+      nom?.trim()?.[0] || "";
+
+    const resultat = (
+      `${premiereLettrePrenom}${premiereLettreNom}`
+    ).toUpperCase();
 
     return resultat || "DM";
   }, [prenom, nom]);
 
-  // ============================================================
+  // ==========================================================
   // KOURÉLS
-  // ============================================================
+  // ==========================================================
 
-  const kourels = utilisateur?.kourels || [];
+  const kourels =
+    utilisateur?.kourels || [];
 
-  const estMembreKourel = kourels.length > 0;
+  const estMembreKourel =
+    kourels.length > 0;
 
-  // ============================================================
+  // ==========================================================
   // NAVIGATION
-  // ============================================================
+  // ==========================================================
 
   const navigationDashboard = useMemo(
     () => [
@@ -281,187 +328,309 @@ export default function Layout() {
     []
   );
 
-  const navigationAdministration = useMemo(
-    () => [
-      {
-        label: "Utilisateurs",
-        chemin: "/utilisateurs",
-        permission: "UTILISATEUR_CONSULTER",
-        icon: UserCog,
-        couleur: "blue",
-      },
-      {
-        label: "Galerie",
-        chemin: "/galerie",
-        permission: "GALERIE_CONSULTER",
-        icon: Images,
-        couleur: "violet",
-      },
-    ],
-    []
-  );
+  const navigationAdministration =
+    useMemo(
+      () => [
+        {
+          label: "Utilisateurs",
+          chemin: "/utilisateurs",
+          permission:
+            "UTILISATEUR_CONSULTER",
+          icon: UserCog,
+          couleur: "blue",
+        },
 
-  const navigationMembres = useMemo(
-    () => [
-      {
-        label: "Membres",
-        chemin: "/membres",
-        permission: "MEMBRE_CONSULTER",
-        icon: Users,
-        couleur: "blue",
-      },
-    ],
-    []
-  );
+        {
+          label: "Galerie",
+          chemin: "/galerie",
+          permission:
+            "GALERIE_CONSULTER",
+          icon: Images,
+          couleur: "violet",
+        },
+      ],
+      []
+    );
 
-  const navigationFinances = useMemo(
-    () => [
-      {
-        label: "Cotisations",
-        chemin: "/cotisations",
-        permission: "COTISATION_CONSULTER",
-        icon: Wallet,
-        couleur: "emerald",
-      },
-      {
-        label: "Paiements",
-        chemin: "/paiements",
-        permission: "PAIEMENT_CONSULTER",
-        icon: CreditCard,
-        couleur: "cyan",
-      },
-      {
-        label: "Dépenses",
-        chemin: "/finances",
-        permission: "DEPENSE_CONSULTER",
-        icon: Receipt,
-        couleur: "rose",
-      },
-      {
-        label: "Aides extérieures",
-        chemin: "/finances",
-        permission: "AIDE_EXTERIEURE_CONSULTER",
-        icon: HandCoins,
-        couleur: "amber",
-      },
-    ],
-    []
-  );
+  const navigationMembres =
+    useMemo(
+      () => [
+        {
+          label: "Membres",
+          chemin: "/membres",
+          permission:
+            "MEMBRE_CONSULTER",
+          icon: Users,
+          couleur: "blue",
+        },
+      ],
+      []
+    );
 
-  const navigationActivites = useMemo(
-    () => [
-      {
-        label: "Réunions",
-        chemin: "/reunions",
-        icon: CalendarCheck,
-        couleur: "violet",
-      },
-      {
-        label: "Répétitions",
-        chemin: "/repetitions",
-        permission: "KOUREL_CONSULTER",
-        icon: Music,
-        couleur: "amber",
-      },
-    ],
-    []
-  );
+  // ==========================================================
+  // FINANCES
+  // ==========================================================
+  //
+  // IMPORTANT :
+  // Dépenses et Aides extérieures utilisent actuellement
+  // toutes les deux /finances.
+  //
+  // On ne met donc plus deux entrées identiques dans
+  // la sidebar.
+  //
+  // La page /finances doit gérer les deux fonctionnalités.
+  // ==========================================================
 
-  const navigationCommunication = useMemo(
-    () => [
-      {
-        label: "Communication",
-        chemin: "/communication",
-        permission: "COMMUNICATION_CONSULTER",
-        icon: Megaphone,
-        couleur: "rose",
-      },
-    ],
-    []
-  );
+  const navigationFinances =
+    useMemo(
+      () => [
+        {
+          label: "Cotisations",
+          chemin: "/cotisations",
+          permission:
+            "COTISATION_CONSULTER",
+          icon: Wallet,
+          couleur: "emerald",
+        },
 
-  const navigationRelations = useMemo(
-    () => [
-      {
-        label: "Relations extérieures",
-        chemin: "/relations-exterieures",
-        permission: "RELATION_EXTERIEUR_CONSULTER",
-        icon: Globe2,
-        couleur: "cyan",
-      },
-    ],
-    []
-  );
+        {
+          label: "Paiements",
+          chemin: "/paiements",
+          permission:
+            "PAIEMENT_CONSULTER",
+          icon: CreditCard,
+          couleur: "cyan",
+        },
 
-  const navigationNotifications = useMemo(
-    () => [
-      {
-        label: "Notifications",
-        chemin: "/notifications",
-        permission: "NOTIFICATION_CONSULTER",
-        icon: Bell,
-        couleur: "rose",
-      },
-    ],
-    []
-  );
+        {
+          label: "Finances",
+          chemin: "/finances",
+          permission: null,
+          permissions: [
+            "DEPENSE_CONSULTER",
+            "AIDE_EXTERIEURE_CONSULTER",
+          ],
+          icon: Receipt,
+          couleur: "rose",
+        },
+      ],
+      []
+    );
 
-  const filtrerNavigation = useCallback(
-    (navigation) => {
-      const terme = recherche.trim().toLowerCase();
+  // ==========================================================
+  // ACTIVITÉS
+  // ==========================================================
 
-      return navigation.filter((item) => {
-        const autorise = possedePermission(item.permission);
+  const navigationActivites =
+    useMemo(
+      () => [
+        {
+          label: "Réunions",
+          chemin: "/reunions",
+          icon: CalendarCheck,
+          couleur: "violet",
+        },
 
-        if (!autorise) return false;
+        {
+          label: "Répétitions",
+          chemin: "/repetitions",
+          permission:
+            "KOUREL_CONSULTER",
+          icon: Music,
+          couleur: "amber",
+        },
+      ],
+      []
+    );
 
-        if (!terme) return true;
+  // ==========================================================
+  // COMMUNICATION
+  // ==========================================================
 
-        return item.label
-          .toLowerCase()
-          .includes(terme);
-      });
+  const navigationCommunication =
+    useMemo(
+      () => [
+        {
+          label: "Communication",
+          chemin: "/communication",
+          permission:
+            "COMMUNICATION_CONSULTER",
+          icon: Megaphone,
+          couleur: "rose",
+        },
+      ],
+      []
+    );
+
+  // ==========================================================
+  // RELATIONS EXTÉRIEURES
+  // ==========================================================
+
+  const navigationRelations =
+    useMemo(
+      () => [
+        {
+          label: "Relations extérieures",
+          chemin:
+            "/relations-exterieures",
+          permission:
+            "RELATION_EXTERIEUR_CONSULTER",
+          icon: Globe2,
+          couleur: "cyan",
+        },
+      ],
+      []
+    );
+
+  // ==========================================================
+  // NOTIFICATIONS
+  // ==========================================================
+
+  const navigationNotifications =
+    useMemo(
+      () => [
+        {
+          label: "Notifications",
+          chemin: "/notifications",
+          permission:
+            "NOTIFICATION_CONSULTER",
+          icon: Bell,
+          couleur: "rose",
+        },
+      ],
+      []
+    );
+
+  // ==========================================================
+  // VÉRIFICATION DES PERMISSIONS D'UN ITEM
+  // ==========================================================
+
+  const itemAutorise = useCallback(
+    (item) => {
+      if (item.permissions?.length) {
+        return item.permissions.some(
+          (permission) =>
+            possedePermission(permission)
+        );
+      }
+
+      return possedePermission(
+        item.permission
+      );
     },
-    [possedePermission, recherche]
+    [possedePermission]
   );
 
-  const navigation = useMemo(
-    () => ({
-      dashboard: filtrerNavigation(navigationDashboard),
-      administration: filtrerNavigation(
-        navigationAdministration
-      ),
-      membres: filtrerNavigation(navigationMembres),
-      finances: filtrerNavigation(navigationFinances),
-      activites: filtrerNavigation(navigationActivites),
-      communication: filtrerNavigation(
-        navigationCommunication
-      ),
-      relations: filtrerNavigation(navigationRelations),
-      kourel: estMembreKourel
-        ? RUBRIQUES_KOUREL.filter((item) => {
-            if (!possedePermission(item.permission)) {
+  // ==========================================================
+  // FILTRAGE NAVIGATION
+  // ==========================================================
+
+  const filtrerNavigation =
+    useCallback(
+      (navigation) => {
+        const terme =
+          recherche
+            .trim()
+            .toLowerCase();
+
+        return navigation.filter(
+          (item) => {
+            if (!itemAutorise(item)) {
               return false;
             }
 
-            const terme = recherche
-              .trim()
-              .toLowerCase();
-
-            if (!terme) return true;
+            if (!terme) {
+              return true;
+            }
 
             return item.label
               .toLowerCase()
               .includes(terme);
-          })
-        : [],
-      notifications: filtrerNavigation(
-        navigationNotifications
-      ),
+          }
+        );
+      },
+      [
+        itemAutorise,
+        recherche,
+      ]
+    );
+
+  // ==========================================================
+  // NAVIGATION FINALE
+  // ==========================================================
+
+  const navigation = useMemo(
+    () => ({
+      dashboard:
+        filtrerNavigation(
+          navigationDashboard
+        ),
+
+      administration:
+        filtrerNavigation(
+          navigationAdministration
+        ),
+
+      membres:
+        filtrerNavigation(
+          navigationMembres
+        ),
+
+      finances:
+        filtrerNavigation(
+          navigationFinances
+        ),
+
+      activites:
+        filtrerNavigation(
+          navigationActivites
+        ),
+
+      communication:
+        filtrerNavigation(
+          navigationCommunication
+        ),
+
+      relations:
+        filtrerNavigation(
+          navigationRelations
+        ),
+
+      kourel:
+        estMembreKourel
+          ? RUBRIQUES_KOUREL.filter(
+              (item) => {
+                if (
+                  !itemAutorise(item)
+                ) {
+                  return false;
+                }
+
+                const terme =
+                  recherche
+                    .trim()
+                    .toLowerCase();
+
+                if (!terme) {
+                  return true;
+                }
+
+                return item.label
+                  .toLowerCase()
+                  .includes(terme);
+              }
+            )
+          : [],
+
+      notifications:
+        filtrerNavigation(
+          navigationNotifications
+        ),
     }),
     [
       estMembreKourel,
       filtrerNavigation,
+      itemAutorise,
       navigationAdministration,
       navigationActivites,
       navigationCommunication,
@@ -470,36 +639,41 @@ export default function Layout() {
       navigationMembres,
       navigationNotifications,
       navigationRelations,
-      possedePermission,
       recherche,
     ]
   );
 
-  const toutesLesRubriques = useMemo(
-    () => [
-      ...navigation.dashboard,
-      ...navigation.administration,
-      ...navigation.membres,
-      ...navigation.finances,
-      ...navigation.activites,
-      ...navigation.communication,
-      ...navigation.relations,
-      ...navigation.kourel,
-      ...navigation.notifications,
-    ],
-    [navigation]
-  );
+  // ==========================================================
+  // TOUTES LES RUBRIQUES
+  // ==========================================================
+
+  const toutesLesRubriques =
+    useMemo(
+      () => [
+        ...navigation.dashboard,
+        ...navigation.administration,
+        ...navigation.membres,
+        ...navigation.finances,
+        ...navigation.activites,
+        ...navigation.communication,
+        ...navigation.relations,
+        ...navigation.kourel,
+        ...navigation.notifications,
+      ],
+      [navigation]
+    );
 
   const aucunResultat =
     recherche.trim().length > 0 &&
     toutesLesRubriques.length === 0;
 
-  // ============================================================
+  // ==========================================================
   // TITRE DE PAGE
-  // ============================================================
+  // ==========================================================
 
   const titrePage = useMemo(() => {
-    const chemin = location.pathname;
+    const chemin =
+      location.pathname;
 
     if (
       chemin === "/mon-espace" ||
@@ -515,11 +689,6 @@ export default function Layout() {
       return "Mon profil";
     }
 
-    /*
-     * Plusieurs entrées utilisent /finances.
-     * Le titre global doit donc rester "Finances"
-     * au lieu de prendre arbitrairement "Dépenses".
-     */
     if (
       chemin === "/finances" ||
       chemin.startsWith("/finances/")
@@ -527,92 +696,134 @@ export default function Layout() {
       return "Finances";
     }
 
-    const rubrique = toutesLesRubriques.find(
-      (item) => {
-        if (item.chemin === chemin) {
-          return true;
-        }
+    const rubrique =
+      toutesLesRubriques.find(
+        (item) => {
+          if (
+            item.chemin === chemin
+          ) {
+            return true;
+          }
 
-        if (item.chemin !== "/" && chemin.startsWith(`${item.chemin}/`)) {
-          return true;
-        }
+          if (
+            item.chemin !== "/" &&
+            chemin.startsWith(
+              `${item.chemin}/`
+            )
+          ) {
+            return true;
+          }
 
-        return false;
-      }
+          return false;
+        }
+      );
+
+    return (
+      rubrique?.label ||
+      "Mon espace"
     );
-
-    return rubrique?.label || "Mon espace";
   }, [
     location.pathname,
     toutesLesRubriques,
   ]);
 
-  // ============================================================
-  // KOURÉL ACTIF
-  // ============================================================
+  // ==========================================================
+  // BADGE KOUREL
+  // ==========================================================
 
   const afficherBadgeKourel =
-    location.pathname.includes("kourel") ||
-    location.pathname.includes("khassida") ||
-    location.pathname.includes("programme-religieux") ||
-    location.pathname.includes("repetition");
+    location.pathname.includes(
+      "kourel"
+    ) ||
+    location.pathname.includes(
+      "khassida"
+    ) ||
+    location.pathname.includes(
+      "programme-religieux"
+    ) ||
+    location.pathname.includes(
+      "repetition"
+    );
 
-  // ============================================================
+  // ==========================================================
   // ACTIONS
-  // ============================================================
+  // ==========================================================
 
-  const fermerMenu = useCallback(() => {
-    setMenuOuvert(false);
-  }, []);
+  const fermerMenu = useCallback(
+    () => {
+      setMenuOuvert(false);
+    },
+    []
+  );
 
-  const ouvrirProfil = useCallback(() => {
-    fermerMenu();
-    navigate("/profil");
-  }, [fermerMenu, navigate]);
+  const ouvrirProfil =
+    useCallback(() => {
+      fermerMenu();
+      navigate("/profil");
+    }, [
+      fermerMenu,
+      navigate,
+    ]);
 
-  const retourAccueil = useCallback(() => {
-    fermerMenu();
-    navigate("/");
-  }, [fermerMenu, navigate]);
+  const retourAccueil =
+    useCallback(() => {
+      fermerMenu();
+      navigate("/");
+    }, [
+      fermerMenu,
+      navigate,
+    ]);
 
-  const gererDeconnexion = useCallback(() => {
-    fermerMenu();
-    deconnexion();
-    navigate("/login");
-  }, [
-    deconnexion,
-    fermerMenu,
-    navigate,
-  ]);
+  const gererDeconnexion =
+    useCallback(() => {
+      fermerMenu();
+      deconnexion();
+      navigate("/login");
+    }, [
+      deconnexion,
+      fermerMenu,
+      navigate,
+    ]);
 
-  // ============================================================
-  // FERMER LE MENU APRÈS CHANGEMENT DE PAGE
-  // ============================================================
+  // ==========================================================
+  // FERMETURE DU MENU APRÈS NAVIGATION
+  // ==========================================================
 
   useEffect(() => {
     setMenuOuvert(false);
   }, [location.pathname]);
 
-  // ============================================================
-  // BLOQUER LE SCROLL + ESCAPE SUR MOBILE
-  // ============================================================
+  // ==========================================================
+  // GESTION DU SCROLL DU MENU MOBILE
+  // ==========================================================
 
   useEffect(() => {
     if (!menuOuvert) {
       document.body.style.overflow = "";
+
       return undefined;
     }
 
     const ancienOverflow =
       document.body.style.overflow;
 
-    document.body.style.overflow = "hidden";
+    const ancienTouchAction =
+      document.body.style.touchAction;
 
-    const gererTouche = (event) => {
-      if (event.key === "Escape") {
-        setMenuOuvert(false);
-      }
-    };
+    document.body.style.overflow =
+      "hidden";
+
+    document.body.style.touchAction =
+      "none";
+
+    const gererTouche =
+      (event) => {
+        if (
+          event.key === "Escape"
+        ) {
+          setMenuOuvert(false);
+        }
+      };
 
     window.addEventListener(
       "keydown",
@@ -623,6 +834,9 @@ export default function Layout() {
       document.body.style.overflow =
         ancienOverflow;
 
+      document.body.style.touchAction =
+        ancienTouchAction;
+
       window.removeEventListener(
         "keydown",
         gererTouche
@@ -630,55 +844,97 @@ export default function Layout() {
     };
   }, [menuOuvert]);
 
-  // ============================================================
+  // ==========================================================
+  // REMONTER LE CONTENU EN HAUT APRÈS NAVIGATION
+  // ==========================================================
+
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: "auto",
+    });
+  }, [location.pathname]);
+
+  // ==========================================================
   // DATE
-  // ============================================================
+  // ==========================================================
 
   const dateTexte = useMemo(
     () =>
-      new Intl.DateTimeFormat("fr-FR", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-      }).format(new Date()),
+      new Intl.DateTimeFormat(
+        "fr-FR",
+        {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+        }
+      ).format(new Date()),
     []
   );
 
-  // ============================================================
+  // ==========================================================
   // RENDU
-  // ============================================================
+  // ==========================================================
 
   return (
-    <div className="min-h-screen bg-[#f6f8f7] text-slate-900">
+    <div
+      className="
+        min-h-screen
+        w-full
+        overflow-x-hidden
+        bg-[#f6f8f7]
+        text-slate-900
+      "
+    >
       {/* ======================================================
-          DÉCORATION D'ARRIÈRE-PLAN
+          DÉCORATION
       ====================================================== */}
 
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
+        className="
+          pointer-events-none
+          fixed inset-0
+          z-0
+          overflow-hidden
+        "
       >
         <div
           className="
-            absolute -left-32 -top-32
-            h-72 w-72 rounded-full
-            bg-emerald-200/20 blur-3xl
+            absolute
+            -left-32
+            -top-32
+            h-72
+            w-72
+            rounded-full
+            bg-emerald-200/20
+            blur-3xl
           "
         />
 
         <div
           className="
-            absolute -right-32 top-1/3
-            h-80 w-80 rounded-full
-            bg-teal-200/15 blur-3xl
+            absolute
+            -right-32
+            top-1/3
+            h-80
+            w-80
+            rounded-full
+            bg-teal-200/15
+            blur-3xl
           "
         />
 
         <div
           className="
-            absolute bottom-0 left-1/3
-            h-72 w-72 rounded-full
-            bg-slate-200/20 blur-3xl
+            absolute
+            bottom-0
+            left-1/3
+            h-72
+            w-72
+            rounded-full
+            bg-slate-200/20
+            blur-3xl
           "
         />
       </div>
@@ -693,7 +949,8 @@ export default function Layout() {
           aria-label="Fermer le menu"
           onClick={fermerMenu}
           className="
-            fixed inset-0 z-40
+            fixed inset-0
+            z-40
             bg-slate-950/45
             backdrop-blur-[2px]
             lg:hidden
@@ -707,20 +964,25 @@ export default function Layout() {
 
       <aside
         className={[
-          "fixed inset-y-0 left-0 z-50 w-[290px]",
+          "fixed inset-y-0 left-0 z-50",
+          "w-[290px] max-w-[88vw]",
           "overflow-hidden",
           "border-r border-emerald-900/20",
-          "bg-white shadow-2xl shadow-slate-900/10",
+          "bg-white",
+          "shadow-2xl shadow-slate-900/10",
           "transition-transform duration-300 ease-out",
+
           menuOuvert
             ? "translate-x-0"
             : "-translate-x-full lg:translate-x-0",
         ].join(" ")}
       >
         {/* Fond supérieur */}
+
         <div
           className="
-            absolute inset-x-0 top-0 h-52
+            absolute inset-x-0 top-0
+            h-52
             bg-gradient-to-br
             from-emerald-950
             via-emerald-900
@@ -730,48 +992,77 @@ export default function Layout() {
 
         <div
           className="
-            absolute -right-16 -top-16
-            h-44 w-44 rounded-full
-            bg-emerald-400/10 blur-2xl
+            absolute
+            -right-16
+            -top-16
+            h-44
+            w-44
+            rounded-full
+            bg-emerald-400/10
+            blur-2xl
           "
         />
 
         <div
           className="
-            absolute -left-10 top-28
-            h-32 w-32 rounded-full
-            bg-teal-300/10 blur-2xl
+            absolute
+            -left-10
+            top-28
+            h-32
+            w-32
+            rounded-full
+            bg-teal-300/10
+            blur-2xl
           "
         />
 
-        <div className="relative flex h-full flex-col">
+        <div
+          className="
+            relative
+            flex
+            h-full
+            min-h-0
+            flex-col
+          "
+        >
           {/* ==================================================
               HEADER SIDEBAR
           ================================================== */}
 
-          <div className="px-5 pb-4 pt-5">
+          <div className="shrink-0 px-5 pb-4 pt-5">
             <div className="flex items-start justify-between gap-3">
               <button
                 type="button"
                 onClick={retourAccueil}
                 className="
-                  group flex min-w-0 items-center gap-3
+                  group
+                  flex
+                  min-w-0
+                  items-center
+                  gap-3
+                  rounded-2xl
                   text-left
                   focus:outline-none
                   focus-visible:ring-2
                   focus-visible:ring-white/60
-                  rounded-2xl
                 "
               >
                 <div
                   className="
-                    relative flex h-12 w-12 shrink-0
-                    items-center justify-center
+                    relative
+                    flex
+                    h-12
+                    w-12
+                    shrink-0
+                    items-center
+                    justify-center
                     rounded-2xl
-                    border border-white/20
+                    border
+                    border-white/20
                     bg-white/10
                     text-white
-                    shadow-lg shadow-black/10
+                    shadow-lg
+                    shadow-black/10
                     backdrop-blur-sm
                     transition-transform
                     duration-200
@@ -785,21 +1076,41 @@ export default function Layout() {
 
                   <span
                     className="
-                      absolute -bottom-1 -right-1
-                      h-3.5 w-3.5
+                      absolute
+                      -bottom-1
+                      -right-1
+                      h-3.5
+                      w-3.5
                       rounded-full
-                      border-2 border-emerald-900
+                      border-2
+                      border-emerald-900
                       bg-amber-400
                     "
                   />
                 </div>
 
                 <div className="min-w-0">
-                  <div className="truncate text-[16px] font-extrabold tracking-tight text-white">
+                  <div
+                    className="
+                      truncate
+                      text-[16px]
+                      font-extrabold
+                      tracking-tight
+                      text-white
+                    "
+                  >
                     Dahira Mawahibou
                   </div>
 
-                  <div className="mt-0.5 truncate text-[11px] font-medium text-emerald-100/70">
+                  <div
+                    className="
+                      mt-0.5
+                      truncate
+                      text-[11px]
+                      font-medium
+                      text-emerald-100/70
+                    "
+                  >
                     Naafih de Castors
                   </div>
                 </div>
@@ -810,7 +1121,8 @@ export default function Layout() {
                 onClick={fermerMenu}
                 aria-label="Fermer le menu"
                 className="
-                  rounded-xl p-2
+                  rounded-xl
+                  p-2
                   text-white/60
                   transition
                   hover:bg-white/10
@@ -822,22 +1134,23 @@ export default function Layout() {
               </button>
             </div>
 
-            {/* ==================================================
-                PROFIL SIDEBAR
-            ================================================== */}
+            {/* PROFIL */}
 
             <button
               type="button"
               onClick={ouvrirProfil}
               className="
-                mt-5 w-full
+                mt-5
+                w-full
                 rounded-2xl
-                border border-white/10
+                border
+                border-white/10
                 bg-white/[0.08]
                 p-3
                 text-left
                 backdrop-blur-sm
-                transition-all duration-200
+                transition-all
+                duration-200
                 hover:bg-white/[0.13]
                 focus:outline-none
                 focus-visible:ring-2
@@ -847,13 +1160,18 @@ export default function Layout() {
               <div className="flex items-center gap-3">
                 <div
                   className="
-                    flex h-10 w-10 shrink-0
-                    items-center justify-center
+                    flex
+                    h-10
+                    w-10
+                    shrink-0
+                    items-center
+                    justify-center
                     rounded-xl
                     bg-gradient-to-br
                     from-amber-300
                     to-orange-500
-                    text-sm font-extrabold
+                    text-sm
+                    font-extrabold
                     text-white
                     shadow-md
                   "
@@ -862,11 +1180,28 @@ export default function Layout() {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-bold text-white">
+                  <div
+                    className="
+                      truncate
+                      text-sm
+                      font-bold
+                      text-white
+                    "
+                  >
                     {nomAffiche}
                   </div>
 
-                  <div className="mt-0.5 truncate text-[10px] font-medium uppercase tracking-wider text-emerald-100/60">
+                  <div
+                    className="
+                      mt-0.5
+                      truncate
+                      text-[10px]
+                      font-medium
+                      uppercase
+                      tracking-wider
+                      text-emerald-100/60
+                    "
+                  >
                     {fonctionPrincipale}
                   </div>
                 </div>
@@ -876,8 +1211,6 @@ export default function Layout() {
                   className="
                     shrink-0
                     text-white/40
-                    transition-transform
-                    group-hover:translate-x-0.5
                   "
                 />
               </div>
@@ -885,26 +1218,42 @@ export default function Layout() {
           </div>
 
           {/* ==================================================
-              ZONE BLANCHE NAVIGATION
+              ZONE NAVIGATION
           ================================================== */}
 
           <div
             className="
-              relative flex min-h-0 flex-1 flex-col
+              relative
+              flex
+              min-h-0
+              flex-1
+              flex-col
+              overflow-hidden
               rounded-t-[28px]
               bg-white
               shadow-[0_-10px_30px_rgba(15,23,42,0.08)]
             "
           >
-            {/* Recherche */}
+            {/* RECHERCHE */}
 
-            <div className="border-b border-slate-100 px-4 pb-3 pt-4">
+            <div
+              className="
+                shrink-0
+                border-b
+                border-slate-100
+                px-4
+                pb-3
+                pt-4
+              "
+            >
               <div className="relative">
                 <Search
                   size={16}
                   className="
                     pointer-events-none
-                    absolute left-3.5 top-1/2
+                    absolute
+                    left-3.5
+                    top-1/2
                     -translate-y-1/2
                     text-slate-400
                   "
@@ -914,16 +1263,21 @@ export default function Layout() {
                   type="text"
                   value={recherche}
                   onChange={(event) =>
-                    setRecherche(event.target.value)
+                    setRecherche(
+                      event.target.value
+                    )
                   }
                   placeholder="Rechercher..."
                   aria-label="Rechercher dans le menu"
                   className="
-                    h-10 w-full
+                    h-10
+                    w-full
                     rounded-xl
-                    border border-slate-200
+                    border
+                    border-slate-200
                     bg-slate-50
-                    pl-10 pr-10
+                    pl-10
+                    pr-10
                     text-sm
                     font-medium
                     text-slate-800
@@ -940,12 +1294,17 @@ export default function Layout() {
                 {recherche && (
                   <button
                     type="button"
-                    onClick={() => setRecherche("")}
+                    onClick={() =>
+                      setRecherche("")
+                    }
                     aria-label="Effacer la recherche"
                     className="
-                      absolute right-2.5 top-1/2
+                      absolute
+                      right-2.5
+                      top-1/2
                       -translate-y-1/2
-                      rounded-lg p-1
+                      rounded-lg
+                      p-1
                       text-slate-400
                       transition
                       hover:bg-slate-200
@@ -958,16 +1317,20 @@ export default function Layout() {
               </div>
             </div>
 
-            {/* Navigation scrollable */}
+            {/* NAVIGATION */}
 
             <nav
               className="
-                min-h-0 flex-1
+                min-h-0
+                flex-1
                 overflow-y-auto
-                px-3 pb-4 pt-2
+                overscroll-contain
+                px-3
+                pb-4
+                pt-2
               "
             >
-              {/* Dashboard */}
+              {/* DASHBOARD */}
 
               {navigation.dashboard.length > 0 && (
                 <div>
@@ -976,18 +1339,22 @@ export default function Layout() {
                   </SectionTitre>
 
                   <div className="space-y-1">
-                    {navigation.dashboard.map((item) => (
-                      <NavigationItem
-                        key={item.chemin}
-                        item={item}
-                        onNavigate={fermerMenu}
-                      />
-                    ))}
+                    {navigation.dashboard.map(
+                      (item) => (
+                        <NavigationItem
+                          key={item.chemin}
+                          item={item}
+                          onNavigate={
+                            fermerMenu
+                          }
+                        />
+                      )
+                    )}
                   </div>
                 </div>
               )}
 
-              {/* Administration */}
+              {/* ADMINISTRATION */}
 
               {navigation.administration.length > 0 && (
                 <div>
@@ -1001,7 +1368,9 @@ export default function Layout() {
                         <NavigationItem
                           key={`${item.chemin}-${item.label}`}
                           item={item}
-                          onNavigate={fermerMenu}
+                          onNavigate={
+                            fermerMenu
+                          }
                         />
                       )
                     )}
@@ -1009,7 +1378,7 @@ export default function Layout() {
                 </div>
               )}
 
-              {/* Membres */}
+              {/* MEMBRES */}
 
               {navigation.membres.length > 0 && (
                 <div>
@@ -1018,18 +1387,22 @@ export default function Layout() {
                   </SectionTitre>
 
                   <div className="space-y-1">
-                    {navigation.membres.map((item) => (
-                      <NavigationItem
-                        key={item.chemin}
-                        item={item}
-                        onNavigate={fermerMenu}
-                      />
-                    ))}
+                    {navigation.membres.map(
+                      (item) => (
+                        <NavigationItem
+                          key={item.chemin}
+                          item={item}
+                          onNavigate={
+                            fermerMenu
+                          }
+                        />
+                      )
+                    )}
                   </div>
                 </div>
               )}
 
-              {/* Finances */}
+              {/* FINANCES */}
 
               {navigation.finances.length > 0 && (
                 <div>
@@ -1039,11 +1412,13 @@ export default function Layout() {
 
                   <div className="space-y-1">
                     {navigation.finances.map(
-                      (item, index) => (
+                      (item) => (
                         <NavigationItem
-                          key={`${item.label}-${index}`}
+                          key={`${item.chemin}-${item.label}`}
                           item={item}
-                          onNavigate={fermerMenu}
+                          onNavigate={
+                            fermerMenu
+                          }
                         />
                       )
                     )}
@@ -1051,7 +1426,7 @@ export default function Layout() {
                 </div>
               )}
 
-              {/* Activités */}
+              {/* ACTIVITÉS */}
 
               {navigation.activites.length > 0 && (
                 <div>
@@ -1063,9 +1438,11 @@ export default function Layout() {
                     {navigation.activites.map(
                       (item) => (
                         <NavigationItem
-                          key={item.chemin}
+                          key={`${item.chemin}-${item.label}`}
                           item={item}
-                          onNavigate={fermerMenu}
+                          onNavigate={
+                            fermerMenu
+                          }
                         />
                       )
                     )}
@@ -1073,7 +1450,7 @@ export default function Layout() {
                 </div>
               )}
 
-              {/* Communication */}
+              {/* COMMUNICATION */}
 
               {navigation.communication.length > 0 && (
                 <div>
@@ -1087,7 +1464,9 @@ export default function Layout() {
                         <NavigationItem
                           key={item.chemin}
                           item={item}
-                          onNavigate={fermerMenu}
+                          onNavigate={
+                            fermerMenu
+                          }
                         />
                       )
                     )}
@@ -1095,7 +1474,7 @@ export default function Layout() {
                 </div>
               )}
 
-              {/* Relations */}
+              {/* RELATIONS */}
 
               {navigation.relations.length > 0 && (
                 <div>
@@ -1109,7 +1488,9 @@ export default function Layout() {
                         <NavigationItem
                           key={item.chemin}
                           item={item}
-                          onNavigate={fermerMenu}
+                          onNavigate={
+                            fermerMenu
+                          }
                         />
                       )
                     )}
@@ -1117,7 +1498,7 @@ export default function Layout() {
                 </div>
               )}
 
-              {/* Kourel */}
+              {/* KOUREL */}
 
               {navigation.kourel.length > 0 && (
                 <div>
@@ -1131,7 +1512,9 @@ export default function Layout() {
                         <NavigationItem
                           key={item.chemin}
                           item={item}
-                          onNavigate={fermerMenu}
+                          onNavigate={
+                            fermerMenu
+                          }
                         />
                       )
                     )}
@@ -1139,7 +1522,7 @@ export default function Layout() {
                 </div>
               )}
 
-              {/* Notifications */}
+              {/* NOTIFICATIONS */}
 
               {navigation.notifications.length > 0 && (
                 <div>
@@ -1153,7 +1536,9 @@ export default function Layout() {
                         <NavigationItem
                           key={item.chemin}
                           item={item}
-                          onNavigate={fermerMenu}
+                          onNavigate={
+                            fermerMenu
+                          }
                         />
                       )
                     )}
@@ -1161,13 +1546,15 @@ export default function Layout() {
                 </div>
               )}
 
-              {/* Aucun résultat */}
+              {/* AUCUN RÉSULTAT */}
 
               {aucunResultat && (
                 <div
                   className="
-                    mt-8 rounded-2xl
-                    border border-dashed
+                    mt-8
+                    rounded-2xl
+                    border
+                    border-dashed
                     border-slate-200
                     bg-slate-50
                     p-5
@@ -1176,14 +1563,30 @@ export default function Layout() {
                 >
                   <Search
                     size={22}
-                    className="mx-auto text-slate-300"
+                    className="
+                      mx-auto
+                      text-slate-300
+                    "
                   />
 
-                  <p className="mt-2 text-xs font-bold text-slate-500">
+                  <p
+                    className="
+                      mt-2
+                      text-xs
+                      font-bold
+                      text-slate-500
+                    "
+                  >
                     Aucun résultat
                   </p>
 
-                  <p className="mt-1 text-[11px] text-slate-400">
+                  <p
+                    className="
+                      mt-1
+                      text-[11px]
+                      text-slate-400
+                    "
+                  >
                     Essayez un autre terme.
                   </p>
                 </div>
@@ -1194,13 +1597,27 @@ export default function Layout() {
                 BAS SIDEBAR
             ================================================== */}
 
-            <div className="border-t border-slate-100 bg-white p-3">
+            <div
+              className="
+                shrink-0
+                border-t
+                border-slate-100
+                bg-white
+                p-3
+              "
+            >
               <button
                 type="button"
                 onClick={ouvrirProfil}
                 className="
-                  group flex w-full items-center gap-3
-                  rounded-xl px-3 py-2.5
+                  group
+                  flex
+                  w-full
+                  items-center
+                  gap-3
+                  rounded-xl
+                  px-3
+                  py-2.5
                   text-left
                   text-slate-600
                   transition
@@ -1224,8 +1641,6 @@ export default function Layout() {
                   size={14}
                   className="
                     text-slate-300
-                    transition-transform
-                    group-hover:translate-x-0.5
                   "
                 />
               </button>
@@ -1234,8 +1649,14 @@ export default function Layout() {
                 type="button"
                 onClick={retourAccueil}
                 className="
-                  group flex w-full items-center gap-3
-                  rounded-xl px-3 py-2.5
+                  group
+                  flex
+                  w-full
+                  items-center
+                  gap-3
+                  rounded-xl
+                  px-3
+                  py-2.5
                   text-left
                   text-slate-600
                   transition
@@ -1256,8 +1677,6 @@ export default function Layout() {
                   size={14}
                   className="
                     text-slate-300
-                    transition-transform
-                    group-hover:translate-x-0.5
                   "
                 />
               </button>
@@ -1266,8 +1685,15 @@ export default function Layout() {
                 type="button"
                 onClick={gererDeconnexion}
                 className="
-                  group mt-1 flex w-full items-center gap-3
-                  rounded-xl px-3 py-2.5
+                  group
+                  mt-1
+                  flex
+                  w-full
+                  items-center
+                  gap-3
+                  rounded-xl
+                  px-3
+                  py-2.5
                   text-left
                   text-rose-600
                   transition
@@ -1290,8 +1716,6 @@ export default function Layout() {
                   size={14}
                   className="
                     text-rose-200
-                    transition-transform
-                    group-hover:translate-x-0.5
                   "
                 />
               </button>
@@ -1307,7 +1731,9 @@ export default function Layout() {
       <button
         type="button"
         onClick={() =>
-          setMenuOuvert((ouvert) => !ouvert)
+          setMenuOuvert(
+            (ouvert) => !ouvert
+          )
         }
         aria-label={
           menuOuvert
@@ -1316,14 +1742,22 @@ export default function Layout() {
         }
         aria-expanded={menuOuvert}
         className="
-          fixed left-4 top-4 z-40
-          flex h-11 w-11
-          items-center justify-center
+          fixed
+          left-4
+          top-4
+          z-40
+          flex
+          h-11
+          w-11
+          items-center
+          justify-center
           rounded-2xl
-          border border-white/60
+          border
+          border-white/60
           bg-emerald-950
           text-white
-          shadow-xl shadow-emerald-950/20
+          shadow-xl
+          shadow-emerald-950/20
           transition-all
           hover:scale-105
           active:scale-95
@@ -1341,22 +1775,34 @@ export default function Layout() {
           CONTENU PRINCIPAL
       ====================================================== */}
 
-      <main className="relative z-10 min-h-screen lg:ml-[290px]">
+      <main
+        className="
+          relative
+          z-10
+          min-h-screen
+          min-w-0
+          lg:ml-[290px]
+        "
+      >
         {/* ==================================================
             HEADER
         ================================================== */}
 
         <header
           className="
-            sticky top-0 z-30
-            border-b border-slate-200/70
-            bg-white/85
+            sticky
+            top-0
+            z-30
+            border-b
+            border-slate-200/70
+            bg-white/90
             backdrop-blur-xl
           "
         >
           <div
             className="
-              flex min-h-[76px]
+              flex
+              min-h-[76px]
               items-center
               justify-between
               gap-4
@@ -1368,19 +1814,47 @@ export default function Layout() {
               lg:pl-8
             "
           >
-            {/* Partie gauche */}
+            {/* GAUCHE */}
 
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <span className="hidden h-2 w-2 rounded-full bg-emerald-500 sm:block" />
+                <span
+                  className="
+                    hidden
+                    h-2
+                    w-2
+                    rounded-full
+                    bg-emerald-500
+                    sm:block
+                  "
+                />
 
-                <span className="hidden text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400 sm:block">
+                <span
+                  className="
+                    hidden
+                    text-[10px]
+                    font-extrabold
+                    uppercase
+                    tracking-[0.18em]
+                    text-slate-400
+                    sm:block
+                  "
+                >
                   Dahira Mawahibou
                 </span>
               </div>
 
               <div className="mt-0.5 flex items-center gap-2">
-                <h1 className="truncate text-lg font-extrabold tracking-tight text-slate-900 sm:text-xl">
+                <h1
+                  className="
+                    truncate
+                    text-lg
+                    font-extrabold
+                    tracking-tight
+                    text-slate-900
+                    sm:text-xl
+                  "
+                >
                   {titrePage}
                 </h1>
 
@@ -1388,11 +1862,15 @@ export default function Layout() {
                   estMembreKourel && (
                     <span
                       className="
-                        hidden items-center gap-1
+                        hidden
+                        items-center
+                        gap-1
                         rounded-full
-                        border border-amber-200
+                        border
+                        border-amber-200
                         bg-amber-50
-                        px-2 py-1
+                        px-2
+                        py-1
                         text-[9px]
                         font-extrabold
                         uppercase
@@ -1405,24 +1883,29 @@ export default function Layout() {
                         size={10}
                         fill="currentColor"
                       />
+
                       Kourel
                     </span>
                   )}
               </div>
             </div>
 
-            {/* Partie droite */}
+            {/* DROITE */}
 
             <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-              {/* Date */}
+              {/* DATE */}
 
               <div
                 className="
-                  hidden items-center gap-2
+                  hidden
+                  items-center
+                  gap-2
                   rounded-xl
-                  border border-slate-200
+                  border
+                  border-slate-200
                   bg-slate-50
-                  px-3 py-2
+                  px-3
+                  py-2
                   text-slate-500
                   md:flex
                 "
@@ -1432,12 +1915,18 @@ export default function Layout() {
                   className="text-emerald-500"
                 />
 
-                <span className="text-[11px] font-bold capitalize">
+                <span
+                  className="
+                    text-[11px]
+                    font-bold
+                    capitalize
+                  "
+                >
                   {dateTexte}
                 </span>
               </div>
 
-              {/* Notifications */}
+              {/* NOTIFICATIONS */}
 
               {possedePermission(
                 "NOTIFICATION_CONSULTER"
@@ -1446,15 +1935,21 @@ export default function Layout() {
                   type="button"
                   onClick={() => {
                     fermerMenu();
-                    navigate("/notifications");
+                    navigate(
+                      "/notifications"
+                    );
                   }}
                   aria-label="Notifications"
                   className="
                     relative
-                    flex h-10 w-10
-                    items-center justify-center
+                    flex
+                    h-10
+                    w-10
+                    items-center
+                    justify-center
                     rounded-xl
-                    border border-slate-200
+                    border
+                    border-slate-200
                     bg-white
                     text-slate-500
                     shadow-sm
@@ -1471,20 +1966,26 @@ export default function Layout() {
                 </button>
               )}
 
-              {/* Profil */}
+              {/* PROFIL */}
 
               <button
                 type="button"
                 onClick={ouvrirProfil}
                 aria-label="Ouvrir mon profil"
                 className="
-                  group flex items-center gap-2
+                  group
+                  flex
+                  items-center
+                  gap-2
                   rounded-2xl
-                  border border-slate-200
+                  border
+                  border-slate-200
                   bg-white
-                  p-1.5 pr-2.5
+                  p-1.5
+                  pr-2.5
                   shadow-sm
-                  transition-all duration-200
+                  transition-all
+                  duration-200
                   hover:border-emerald-200
                   hover:shadow-md
                   focus:outline-none
@@ -1494,8 +1995,11 @@ export default function Layout() {
               >
                 <div
                   className="
-                    flex h-9 w-9
-                    items-center justify-center
+                    flex
+                    h-9
+                    w-9
+                    items-center
+                    justify-center
                     rounded-xl
                     bg-gradient-to-br
                     from-emerald-600
@@ -1509,12 +2013,38 @@ export default function Layout() {
                   {initiales}
                 </div>
 
-                <div className="hidden min-w-0 text-left sm:block">
-                  <div className="max-w-[130px] truncate text-xs font-extrabold text-slate-800">
+                <div
+                  className="
+                    hidden
+                    min-w-0
+                    text-left
+                    sm:block
+                  "
+                >
+                  <div
+                    className="
+                      max-w-[130px]
+                      truncate
+                      text-xs
+                      font-extrabold
+                      text-slate-800
+                    "
+                  >
                     {nomAffiche}
                   </div>
 
-                  <div className="mt-0.5 max-w-[130px] truncate text-[9px] font-bold uppercase tracking-wider text-slate-400">
+                  <div
+                    className="
+                      mt-0.5
+                      max-w-[130px]
+                      truncate
+                      text-[9px]
+                      font-bold
+                      uppercase
+                      tracking-wider
+                      text-slate-400
+                    "
+                  >
                     {fonctionPrincipale}
                   </div>
                 </div>
@@ -1522,7 +2052,8 @@ export default function Layout() {
                 <ChevronRight
                   size={14}
                   className="
-                    hidden text-slate-300
+                    hidden
+                    text-slate-300
                     transition-transform
                     group-hover:translate-x-0.5
                     sm:block
@@ -1534,15 +2065,35 @@ export default function Layout() {
         </header>
 
         {/* ==================================================
-            CONTENU
+            ZONE DE CONTENU
         ================================================== */}
 
-        <div className="px-4 pb-8 pt-4 sm:px-6 sm:pt-5 lg:px-8 lg:pt-6">
-          {/* ==================================================
-              BREADCRUMB
-          ================================================== */}
+        <div
+          className="
+            w-full
+            px-4
+            pb-8
+            pt-4
+            sm:px-6
+            sm:pt-5
+            lg:px-8
+            lg:pt-6
+          "
+        >
+          {/* BREADCRUMB */}
 
-          <div className="mb-5 hidden items-center gap-2 text-[10px] font-bold text-slate-400 sm:flex">
+          <div
+            className="
+              mb-5
+              hidden
+              items-center
+              gap-2
+              text-[10px]
+              font-bold
+              text-slate-400
+              sm:flex
+            "
+          >
             <button
               type="button"
               onClick={retourAccueil}
@@ -1562,20 +2113,30 @@ export default function Layout() {
           </div>
 
           {/* ==================================================
-              PAGE
+              CONTENEUR PAGE
           ================================================== */}
 
           <section
             className="
-              min-h-[calc(100vh-150px)]
+              w-full
+              min-w-0
+              overflow-visible
               rounded-[26px]
-              border border-slate-200/70
+              border
+              border-slate-200/70
               bg-white/70
               shadow-sm
               backdrop-blur-sm
             "
           >
-            <div className="min-h-[calc(100vh-150px)] p-4 sm:p-6 lg:p-8">
+            <div
+              className="
+                min-w-0
+                p-4
+                sm:p-6
+                lg:p-8
+              "
+            >
               <Outlet />
             </div>
           </section>
@@ -1585,10 +2146,18 @@ export default function Layout() {
             FOOTER
         ================================================== */}
 
-        <footer className="px-4 pb-6 sm:px-6 lg:px-8">
+        <footer
+          className="
+            px-4
+            pb-6
+            sm:px-6
+            lg:px-8
+          "
+        >
           <div
             className="
-              flex flex-col
+              flex
+              flex-col
               items-center
               justify-between
               gap-2
@@ -1606,13 +2175,26 @@ export default function Layout() {
                 className="text-emerald-500"
               />
 
-              <span className="text-[10px] font-bold text-slate-400">
+              <span
+                className="
+                  text-[10px]
+                  font-bold
+                  text-slate-400
+                "
+              >
                 Dahira Mawahibou • Naafih de Castors
               </span>
             </div>
 
-            <span className="text-[10px] font-medium text-slate-400">
-              © {new Date().getFullYear()} — Tous droits réservés
+            <span
+              className="
+                text-[10px]
+                font-medium
+                text-slate-400
+              "
+            >
+              © {new Date().getFullYear()} —
+              Tous droits réservés
             </span>
           </div>
         </footer>
@@ -1623,6 +2205,12 @@ export default function Layout() {
       ====================================================== */}
 
       <style>{`
+        html,
+        body {
+          max-width: 100%;
+          overflow-x: hidden;
+        }
+
         * {
           scrollbar-width: thin;
           scrollbar-color: #cbd5e1 transparent;
@@ -1644,6 +2232,13 @@ export default function Layout() {
 
         *::-webkit-scrollbar-thumb:hover {
           background: #94a3b8;
+        }
+
+        @media (max-width: 1023px) {
+          html,
+          body {
+            overflow-x: hidden;
+          }
         }
       `}</style>
     </div>

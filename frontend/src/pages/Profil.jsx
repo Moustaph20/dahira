@@ -1,4 +1,6 @@
+
 import {
+  useRef,
   useState,
 } from "react";
 
@@ -226,6 +228,10 @@ function Profil() {
       setNouveauMotDePasse("");
       setConfirmationMotDePasse("");
 
+      // On masque les mots de passe après modification.
+      setAfficherAncien(false);
+      setAfficherNouveau(false);
+      setAfficherConfirmation(false);
 
     } catch (error) {
 
@@ -263,8 +269,30 @@ function Profil() {
     setAfficher,
     placeholder,
   }) {
+    const inputRef = useRef(null);
+
+
+    function basculerAffichage() {
+      setAfficher(
+        (precedent) => !precedent
+      );
+
+      /*
+       * On rend le focus au champ après
+       * le changement password/text.
+       *
+       * Cela évite que le clavier mobile
+       * se ferme lors du clic sur l'œil.
+       */
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+    }
+
+
     return (
       <div>
+
         <label
           className="
             mb-2 block
@@ -275,11 +303,13 @@ function Profil() {
           {label}
         </label>
 
+
         <div
           className="
             relative
           "
         >
+
           <LockKeyhole
             size={17}
             className="
@@ -289,7 +319,9 @@ function Profil() {
             "
           />
 
+
           <input
+            ref={inputRef}
             type={
               afficher
                 ? "text"
@@ -319,13 +351,30 @@ function Profil() {
             "
           />
 
+
           <button
             type="button"
-            onClick={() =>
-              setAfficher(
-                !afficher
-              )
+
+            /*
+             * Empêche le bouton de prendre
+             * le focus du champ sur desktop.
+             */
+            onMouseDown={(event) => {
+              event.preventDefault();
+            }}
+
+            /*
+             * Empêche la perte de focus
+             * lors du toucher sur mobile.
+             */
+            onTouchStart={(event) => {
+              event.preventDefault();
+            }}
+
+            onClick={
+              basculerAffichage
             }
+
             className="
               absolute right-3
               top-1/2
@@ -338,7 +387,9 @@ function Profil() {
               transition
               hover:bg-slate-100
               hover:text-slate-700
+              active:bg-slate-200
             "
+
             aria-label={
               afficher
                 ? "Masquer le mot de passe"
@@ -351,7 +402,9 @@ function Profil() {
               <Eye size={17} />
             )}
           </button>
+
         </div>
+
       </div>
     );
   }
@@ -385,12 +438,14 @@ function Profil() {
       >
 
         <div>
+
           <div
             className="
               mb-2
               flex items-center gap-2
             "
           >
+
             <div
               className="
                 flex h-9 w-9
@@ -404,6 +459,7 @@ function Profil() {
               <UserRound size={18} />
             </div>
 
+
             <span
               className="
                 text-[10px]
@@ -415,7 +471,9 @@ function Profil() {
             >
               Espace personnel
             </span>
+
           </div>
+
 
           <h1
             className="
@@ -429,6 +487,7 @@ function Profil() {
             Mon profil
           </h1>
 
+
           <p
             className="
               mt-2
@@ -440,6 +499,7 @@ function Profil() {
             Consultez vos informations personnelles
             et gérez la sécurité de votre compte.
           </p>
+
         </div>
 
       </div>
@@ -509,11 +569,13 @@ function Profil() {
                 {initiales}
               </div>
 
+
               <div
                 className="
                   min-w-0
                 "
               >
+
                 <h2
                   className="
                     truncate
@@ -525,6 +587,7 @@ function Profil() {
                   {nomComplet}
                 </h2>
 
+
                 <p
                   className="
                     mt-1
@@ -534,6 +597,7 @@ function Profil() {
                 >
                   @{utilisateur?.identifiant}
                 </p>
+
               </div>
 
             </div>
@@ -560,6 +624,7 @@ function Profil() {
                 hover:bg-slate-50
               "
             >
+
               <div
                 className="
                   flex h-10 w-10
@@ -574,7 +639,9 @@ function Profil() {
                 <UserRound size={17} />
               </div>
 
+
               <div>
+
                 <p
                   className="
                     text-[10px]
@@ -587,6 +654,7 @@ function Profil() {
                   Prénom
                 </p>
 
+
                 <p
                   className="
                     mt-1
@@ -597,7 +665,9 @@ function Profil() {
                 >
                   {prenom || "Non renseigné"}
                 </p>
+
               </div>
+
             </div>
 
 
@@ -612,6 +682,7 @@ function Profil() {
                 hover:bg-slate-50
               "
             >
+
               <div
                 className="
                   flex h-10 w-10
@@ -626,7 +697,9 @@ function Profil() {
                 <BadgeCheck size={17} />
               </div>
 
+
               <div>
+
                 <p
                   className="
                     text-[10px]
@@ -639,6 +712,7 @@ function Profil() {
                   Nom
                 </p>
 
+
                 <p
                   className="
                     mt-1
@@ -649,7 +723,9 @@ function Profil() {
                 >
                   {nom || "Non renseigné"}
                 </p>
+
               </div>
+
             </div>
 
 
@@ -664,6 +740,7 @@ function Profil() {
                 hover:bg-slate-50
               "
             >
+
               <div
                 className="
                   flex h-10 w-10
@@ -678,7 +755,9 @@ function Profil() {
                 <Phone size={17} />
               </div>
 
+
               <div>
+
                 <p
                   className="
                     text-[10px]
@@ -691,6 +770,7 @@ function Profil() {
                   Téléphone
                 </p>
 
+
                 <p
                   className="
                     mt-1
@@ -702,7 +782,9 @@ function Profil() {
                   {utilisateur?.telephone ||
                     "Non renseigné"}
                 </p>
+
               </div>
+
             </div>
 
 
@@ -717,6 +799,7 @@ function Profil() {
                 hover:bg-slate-50
               "
             >
+
               <div
                 className="
                   flex h-10 w-10
@@ -731,7 +814,9 @@ function Profil() {
                 <MapPin size={17} />
               </div>
 
+
               <div>
+
                 <p
                   className="
                     text-[10px]
@@ -744,6 +829,7 @@ function Profil() {
                   Résidence
                 </p>
 
+
                 <p
                   className="
                     mt-1
@@ -755,7 +841,9 @@ function Profil() {
                   {utilisateur?.lieu_residence ||
                     "Non renseignée"}
                 </p>
+
               </div>
+
             </div>
 
 
@@ -770,6 +858,7 @@ function Profil() {
                 hover:bg-slate-50
               "
             >
+
               <div
                 className="
                   flex h-10 w-10
@@ -784,7 +873,9 @@ function Profil() {
                 <KeyRound size={17} />
               </div>
 
+
               <div>
+
                 <p
                   className="
                     text-[10px]
@@ -797,6 +888,7 @@ function Profil() {
                   Identifiant
                 </p>
 
+
                 <p
                   className="
                     mt-1
@@ -807,7 +899,9 @@ function Profil() {
                 >
                   {utilisateur?.identifiant}
                 </p>
+
               </div>
+
             </div>
 
 
@@ -835,11 +929,13 @@ function Profil() {
                 Fonction(s)
               </p>
 
+
               <div
                 className="
                   flex flex-wrap gap-2
                 "
               >
+
                 {fonctions.length > 0 ? (
                   fonctions.map(
                     (fonction) => (
@@ -868,6 +964,7 @@ function Profil() {
                     Membre
                   </span>
                 )}
+
               </div>
 
             </div>
@@ -898,11 +995,13 @@ function Profil() {
                   Mes Kourels
                 </p>
 
+
                 <div
                   className="
                     flex flex-wrap gap-2
                   "
                 >
+
                   {kourels.map(
                     (kourel) => (
                       <span
@@ -920,6 +1019,7 @@ function Profil() {
                       </span>
                     )
                   )}
+
                 </div>
 
               </div>
@@ -979,7 +1079,9 @@ function Profil() {
                 />
               </div>
 
+
               <div>
+
                 <h2
                   className="
                     text-lg
@@ -988,6 +1090,7 @@ function Profil() {
                 >
                   Sécurité du compte
                 </h2>
+
 
                 <p
                   className="
@@ -998,6 +1101,7 @@ function Profil() {
                 >
                   Modifiez régulièrement votre mot de passe.
                 </p>
+
               </div>
 
             </div>
@@ -1031,6 +1135,7 @@ function Profil() {
                   text-emerald-800
                 "
               >
+
                 <CheckCircle2
                   size={18}
                   className="
@@ -1039,9 +1144,11 @@ function Profil() {
                   "
                 />
 
+
                 <p>
                   {messageSucces}
                 </p>
+
               </div>
             )}
 
@@ -1061,6 +1168,7 @@ function Profil() {
                   text-rose-800
                 "
               >
+
                 <AlertCircle
                   size={18}
                   className="
@@ -1069,9 +1177,11 @@ function Profil() {
                   "
                 />
 
+
                 <p>
                   {messageErreur}
                 </p>
+
               </div>
             )}
 
@@ -1112,6 +1222,7 @@ function Profil() {
               >
                 Nouveau mot de passe
               </p>
+
 
               <div
                 className="
@@ -1185,7 +1296,9 @@ function Profil() {
                   "
                 />
 
+
                 <div>
+
                   <p
                     className="
                       text-xs
@@ -1195,6 +1308,7 @@ function Profil() {
                   >
                     Conseil de sécurité
                   </p>
+
 
                   <p
                     className="
@@ -1208,6 +1322,7 @@ function Profil() {
                     que vous n'utilisez pas sur d'autres
                     services.
                   </p>
+
                 </div>
 
               </div>
