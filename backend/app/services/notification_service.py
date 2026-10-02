@@ -12,12 +12,14 @@ def creer_notification(
     route: str | None = None,
 ):
     """
-    Crée une notification pour un utilisateur.
+    Crée une notification personnelle pour un utilisateur.
 
-    Cette fonction ne fait pas de commit.
-    Le commit est laissé au router/service appelant afin
-    de pouvoir intégrer la notification dans la même
-    transaction que l'action principale.
+    IMPORTANT :
+    - Cette fonction ne fait volontairement aucun commit.
+    - Le commit reste sous la responsabilité du service/router
+      qui effectue l'action principale.
+    - Le push Firebase n'est pas envoyé ici afin de ne pas
+      mélanger la création en base et l'envoi externe.
     """
 
     notification = Notification(
@@ -43,7 +45,14 @@ def creer_notifications_utilisateurs(
     route: str | None = None,
 ):
     """
-    Crée la même notification pour plusieurs utilisateurs.
+    Crée la même notification personnelle pour plusieurs utilisateurs.
+
+    Cette fonction ne fait aucun commit et n'envoie pas directement
+    de push Firebase.
+
+    Elle est principalement destinée aux notifications automatiques
+    internes lorsqu'une même notification doit être créée pour
+    plusieurs utilisateurs distincts.
     """
 
     notifications = []
@@ -64,4 +73,3 @@ def creer_notifications_utilisateurs(
         notifications.append(notification)
 
     return notifications
-    

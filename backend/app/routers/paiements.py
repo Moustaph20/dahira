@@ -11,6 +11,9 @@ from app.models.paiement import Paiement
 from app.models.cotisation import Cotisation
 from app.models.membre import Membre
 
+from app.services.notification_service import creer_notification
+from app.services.notifications_push import envoyer_notification_push
+
 
 router = APIRouter(
     prefix="/paiements",
@@ -26,6 +29,10 @@ def calculer_statut(
     montant: float,
     montant_du: float,
 ) -> str:
+    """
+    Détermine le statut d'une cotisation à partir du
+    montant initial et du reste à payer.
+    """
 
     montant_paye = montant - montant_du
 
@@ -36,6 +43,144 @@ def calculer_statut(
         return "Payée"
 
     return "Partiellement payée"
+
+
+# ============================================================
+# NOTIFICATION DU PAIEMENT
+# ============================================================
+
+def notifier_paiement(
+    db: Session,
+    paiement: Paiement,
+    cotisation: Cotisation,
+    membre: Membre,
+) -> dict | None:
+    """
+    Crée une notification personnelle après l'enregistrement
+    d'un paiement puis tente d'envoyer le push Firebase.
+
+    IMPORTANT :
+    - Le paiement doit déjà être enregistré en base.
+    - Une erreur Firebase ne doit jamais annuler le paiement.
+    - La notification reste disponible dans l'application
+      même si le push échoue.
+    """
+
+    utilisateur = getattr(
+        membre,
+        "utilisateur",
+        None,
+    )
+
+    if not utilisateur:
+        return None
+
+    if not utilisateur.actif:
+        return None
+
+    montant_paiement = float(
+        paiement.montant or 0
+    )
+
+    montant_du = float(
+        cotisation.montant_du or 0
+    )
+
+    mois = cotisation.mois_concerne
+    annee = cotisation.annee
+
+    # --------------------------------------------------------
+    # COTISATION ENTIÈREMENT SOLDÉE
+    # --------------------------------------------------------
+
+    if montant_du <= 0:
+
+        titre = "Cotisation soldée"
+
+        message = (
+            f"Votre paiement de "
+            f"{montant_paiement:.0f} FCFA a bien été enregistré. "
+            f"Votre cotisation de {mois} {annee} "
+            f"est maintenant entièrement soldée. "
+            f"Merci."
+        )
+
+    # --------------------------------------------------------
+    # COTISATION ENCORE PARTIELLEMENT PAYÉE
+    # --------------------------------------------------------
+
+    else:
+
+        titre = "Paiement enregistré"
+
+        message = (
+            f"Votre paiement de "
+            f"{montant_paiement:.0f} FCFA pour votre "
+            f"cotisation de {mois} {annee} "
+            f"a bien été enregistré. "
+            f"Reste à payer : {montant_du:.0f} FCFA."
+        )
+
+    # --------------------------------------------------------
+    # CRÉER LA NOTIFICATION
+    # --------------------------------------------------------
+
+    notification = creer_notification(
+        db=db,
+        utilisateur_id=utilisateur.id,
+        titre=titre,
+        message=message,
+        type="COTISATION",
+        route="/cotisations",
+    )
+
+    try:
+
+        # La notification doit être enregistrée avant
+        # de tenter le push Firebase.
+        db.commit()
+
+        db.refresh(notification)
+
+    except Exception as error:
+
+        db.rollback()
+
+        print(
+            "ERREUR CRÉATION NOTIFICATION PAIEMENT :",
+            error,
+        )
+
+        return None
+
+    # --------------------------------------------------------
+    # ENVOYER LE PUSH
+    # --------------------------------------------------------
+
+    try:
+
+        resultat_push = envoyer_notification_push(
+            notification=notification,
+            db=db,
+        )
+
+        return resultat_push
+
+    except Exception as error:
+
+        # IMPORTANT :
+        # Le paiement et la notification restent enregistrés.
+        print(
+            "ERREUR PUSH NOTIFICATION PAIEMENT :",
+            error,
+        )
+
+        return {
+            "envoyes": 0,
+            "echecs": 1,
+            "appareils": 0,
+            "message": "Notification enregistrée, mais push Firebase échoué.",
+        }
 
 
 # ============================================================
@@ -63,6 +208,7 @@ def creer_paiement(
     # --------------------------------------------------------
 
     if montant <= 0:
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
@@ -82,6 +228,7 @@ def creer_paiement(
     )
 
     if not mode_paiement:
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Le mode de paiement est obligatoire.",
@@ -101,6 +248,7 @@ def creer_paiement(
     )
 
     if not cotisation:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cotisation introuvable.",
@@ -120,13 +268,14 @@ def creer_paiement(
     )
 
     if not membre:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Membre actif introuvable.",
         )
 
     # --------------------------------------------------------
-    # CALCUL DU RESTE
+    # CALCUL DU RESTE ACTUEL
     # --------------------------------------------------------
 
     montant_du_actuel = float(
@@ -138,6 +287,7 @@ def creer_paiement(
     # --------------------------------------------------------
 
     if montant_du_actuel <= 0:
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
@@ -151,6 +301,7 @@ def creer_paiement(
     # --------------------------------------------------------
 
     if montant > montant_du_actuel:
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
@@ -198,6 +349,10 @@ def creer_paiement(
         nouveau_montant_du
     )
 
+    # --------------------------------------------------------
+    # ENREGISTRER LE PAIEMENT
+    # --------------------------------------------------------
+
     try:
 
         db.commit()
@@ -229,6 +384,17 @@ def creer_paiement(
     statut = calculer_statut(
         float(cotisation.montant),
         float(cotisation.montant_du),
+    )
+
+    # --------------------------------------------------------
+    # NOTIFICATION PERSONNELLE + PUSH
+    # --------------------------------------------------------
+
+    resultat_notification = notifier_paiement(
+        db=db,
+        paiement=paiement,
+        cotisation=cotisation,
+        membre=membre,
     )
 
     # --------------------------------------------------------
@@ -288,6 +454,13 @@ def creer_paiement(
 
             "statut":
                 statut,
+        },
+
+        "notification": {
+            "envoyee": (
+                resultat_notification is not None
+            ),
+            "push": resultat_notification,
         },
     }
 
