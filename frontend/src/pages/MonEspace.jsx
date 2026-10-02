@@ -8,25 +8,21 @@ import {
   BookOpen,
   Calendar,
   CalendarDays,
-  ChevronDown,
   ChevronRight,
   Clock3,
   Compass,
   Heart,
-  Landmark,
   MapPin,
   Megaphone,
-  Menu,
-  Moon,
   RefreshCw,
   Sparkles,
   Sun,
   Sunrise,
   Sunset,
   Users,
-  Wallet,
   Volume2,
-  X,
+  Wallet,
+  Moon,
 } from "lucide-react";
 
 import { useAuth } from "../context/AuthContext";
@@ -42,7 +38,7 @@ const VILLE = "Dakar";
 const PAYS = "Sénégal";
 
 // ============================================================
-// DUAS DE LA SEMAINE
+// DUAS
 // ============================================================
 
 const DUAS = [
@@ -166,85 +162,6 @@ const KHASSIDAS_DU_JOUR = [
 ];
 
 // ============================================================
-// RUBRIQUES DU MENU
-// ============================================================
-
-const RUBRIQUES = [
-  {
-    id: "dashboard",
-    nom: "Tableau de bord",
-    description: "Vue générale du Dahira",
-    route: "/dashboard",
-    permission: "DASHBOARD_CONSULTER",
-    icon: Landmark,
-  },
-  {
-    id: "membres",
-    nom: "Membres",
-    description: "Gestion des membres",
-    route: "/membres",
-    permission: "MEMBRE_CONSULTER",
-    icon: Users,
-  },
-  {
-    id: "cotisations",
-    nom: "Cotisations",
-    description: "Gestion des cotisations",
-    route: "/cotisations",
-    permission: "COTISATION_CONSULTER",
-    icon: Wallet,
-  },
-  {
-    id: "finances",
-    nom: "Finances",
-    description: "Gestion financière",
-    route: "/finances",
-    permission: "FINANCE_CONSULTER",
-    icon: Landmark,
-  },
-  {
-    id: "reunions",
-    nom: "Réunions",
-    description: "Gestion des réunions",
-    route: "/reunions",
-    permission: "REUNION_CONSULTER",
-    icon: Calendar,
-  },
-  {
-    id: "programme-religieux",
-    nom: "Programme religieux",
-    description: "Programmes religieux",
-    route: "/programme-religieux",
-    permission: "KOUREL_CONSULTER",
-    icon: CalendarDays,
-  },
-  {
-    id: "communications",
-    nom: "Communications",
-    description: "Informations et annonces",
-    route: "/communications",
-    permission: "COMMUNICATION_CONSULTER",
-    icon: Megaphone,
-  },
-  {
-    id: "khassidas",
-    nom: "Khassidas",
-    description: "Bibliothèque des Khassidas",
-    route: "/khassidas",
-    permission: "KOUREL_CONSULTER",
-    icon: BookOpen,
-  },
-  {
-    id: "notifications",
-    nom: "Notifications",
-    description: "Vos notifications",
-    route: "/notifications",
-    permission: "NOTIFICATION_CONSULTER",
-    icon: Bell,
-  },
-];
-
-// ============================================================
 // OUTILS
 // ============================================================
 
@@ -259,25 +176,19 @@ const obtenirCleJour = () => {
 };
 
 const obtenirIndexDuJour = (longueur) => {
-  if (!longueur) {
-    return 0;
-  }
+  if (!longueur) return 0;
 
   return obtenirCleJour() % longueur;
 };
 
 const formaterHeure = (heure) => {
-  if (!heure) {
-    return "--:--";
-  }
+  if (!heure) return "--:--";
 
   return heure.substring(0, 5);
 };
 
 const convertirHeureEnDate = (heure, date = new Date()) => {
-  if (!heure) {
-    return null;
-  }
+  if (!heure) return null;
 
   const [h, m] = heure
     .substring(0, 5)
@@ -295,32 +206,27 @@ const convertirHeureEnDate = (heure, date = new Date()) => {
   return resultat;
 };
 
-const formaterDateComplete = (date) => {
-  return new Intl.DateTimeFormat("fr-FR", {
+const formaterDateComplete = (date) =>
+  new Intl.DateTimeFormat("fr-FR", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   }).format(date);
-};
 
-const formaterDateCourte = (date) => {
-  return new Intl.DateTimeFormat("fr-FR", {
+const formaterDateCourte = (date) =>
+  new Intl.DateTimeFormat("fr-FR", {
     day: "numeric",
     month: "long",
     year: "numeric",
   }).format(date);
-};
 
-const obtenirPrenom = (utilisateur) => {
-  return (
-    utilisateur?.membre?.prenom ||
-    utilisateur?.prenom ||
-    utilisateur?.nom_complet?.split(" ")[0] ||
-    utilisateur?.identifiant ||
-    "Membre"
-  );
-};
+const obtenirPrenom = (utilisateur) =>
+  utilisateur?.membre?.prenom ||
+  utilisateur?.prenom ||
+  utilisateur?.nom_complet?.split(" ")[0] ||
+  utilisateur?.identifiant ||
+  "Membre";
 
 const obtenirMessageErreur = (erreur) => {
   const detail = erreur?.response?.data?.detail;
@@ -339,7 +245,76 @@ const obtenirMessageErreur = (erreur) => {
 };
 
 // ============================================================
-// COMPOSANT
+// PETITS COMPOSANTS UI
+// ============================================================
+
+function SectionHeader({
+  eyebrow,
+  title,
+  description,
+  action,
+}) {
+  return (
+    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="min-w-0">
+        {eyebrow && (
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#a77919] sm:text-xs">
+            {eyebrow}
+          </p>
+        )}
+
+        <h2 className="mt-1.5 text-xl font-black tracking-tight text-emerald-950 sm:text-2xl">
+          {title}
+        </h2>
+
+        {description && (
+          <p className="mt-1 text-sm leading-6 text-slate-500">
+            {description}
+          </p>
+        )}
+      </div>
+
+      {action}
+    </div>
+  );
+}
+
+function AccessCard({
+  icon: Icon,
+  title,
+  description,
+  onClick,
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group min-w-0 rounded-2xl border border-slate-200/80 bg-white p-4 text-left shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md sm:p-5"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-950 group-hover:text-[#d6ac47]">
+          <Icon size={18} />
+        </div>
+
+        <ArrowRight
+          size={16}
+          className="mt-1 shrink-0 text-slate-300 transition group-hover:text-[#b88b28]"
+        />
+      </div>
+
+      <h3 className="mt-4 font-black text-emerald-950">
+        {title}
+      </h3>
+
+      <p className="mt-1 text-sm leading-6 text-slate-500">
+        {description}
+      </p>
+    </button>
+  );
+}
+
+// ============================================================
+// COMPOSANT PRINCIPAL
 // ============================================================
 
 function MonEspace() {
@@ -358,17 +333,14 @@ function MonEspace() {
   const [maintenant, setMaintenant] = useState(new Date());
 
   const [horaires, setHoraires] = useState(null);
-
   const [chargementHoraires, setChargementHoraires] =
     useState(true);
-
-  const [erreurHoraires, setErreurHoraires] = useState("");
+  const [erreurHoraires, setErreurHoraires] =
+    useState("");
 
   const [communications, setCommunications] = useState([]);
-
   const [chargementCommunications, setChargementCommunications] =
     useState(false);
-
   const [erreurCommunications, setErreurCommunications] =
     useState("");
 
@@ -376,34 +348,14 @@ function MonEspace() {
     obtenirIndexDuJour(DUAS.length)
   );
 
-  const [menuOuvert, setMenuOuvert] = useState(false);
+  const [activationNotifications, setActivationNotifications] =
+    useState(false);
 
-  const [
-    activationNotifications,
-    setActivationNotifications,
-  ] = useState(false);
-
-  const [
-    notificationsActivees,
-    setNotificationsActivees,
-  ] = useState(false);
+  const [notificationsActivees, setNotificationsActivees] =
+    useState(false);
 
   const [erreurNotifications, setErreurNotifications] =
     useState("");
-
-  // ==========================================================
-  // MENU SELON LES PERMISSIONS
-  // ==========================================================
-
-  const rubriquesAutorisees = useMemo(() => {
-    if (!utilisateur) {
-      return [];
-    }
-
-    return RUBRIQUES.filter((rubrique) =>
-      aPermission(rubrique.permission)
-    );
-  }, [utilisateur, aPermission]);
 
   // ==========================================================
   // HORLOGE
@@ -751,14 +703,14 @@ function MonEspace() {
 
   if (chargement) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f8f7f2] px-4">
-        <div className="text-center">
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="rounded-2xl border border-slate-200 bg-white px-8 py-7 text-center shadow-sm">
           <RefreshCw
-            size={32}
+            size={30}
             className="mx-auto animate-spin text-emerald-700"
           />
 
-          <p className="mt-3 text-sm text-slate-500 sm:text-base">
+          <p className="mt-3 text-sm font-medium text-slate-500">
             Chargement de votre espace...
           </p>
         </div>
@@ -784,494 +736,104 @@ function MonEspace() {
   // ==========================================================
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#f8f7f2] text-slate-900">
+    <div className="w-full min-w-0">
 
       {/* ======================================================
-          NAVBAR
+          EN-TETE DE PAGE
       ====================================================== */}
 
-      <header className="sticky top-0 z-50 border-b border-emerald-900/10 bg-white/95 backdrop-blur-xl">
+      <section className="mb-6 overflow-hidden rounded-2xl border border-emerald-900/10 bg-emerald-950 text-white shadow-sm sm:mb-7 lg:rounded-3xl">
 
-        <div className="mx-auto max-w-7xl px-3 sm:px-5">
+        <div className="relative overflow-hidden">
 
-          <div className="flex min-h-[68px] items-center justify-between gap-2 sm:h-[76px]">
+          <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full border border-[#d6ac47]/20" />
 
-            {/* LOGO */}
+          <div className="absolute -bottom-32 left-1/3 h-72 w-72 rounded-full border border-white/5" />
 
-            <button
-              type="button"
-              onClick={() => navigate("/")}
-              className="flex min-w-0 items-center gap-2 sm:gap-3"
-            >
+          <div className="relative p-5 sm:p-7 lg:p-8">
 
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-emerald-950 shadow-sm sm:h-11 sm:w-11 sm:rounded-2xl">
+            <div className="flex flex-col gap-7 xl:flex-row xl:items-center xl:justify-between">
 
-                <img
-                  src="/logo.png"
-                  alt="Dahira Mawahibou Naafih"
-                  className="h-full w-full object-contain"
-                />
+              {/* IDENTITE */}
 
-              </div>
+              <div className="min-w-0">
 
-              <div className="hidden min-w-0 text-left sm:block">
-
-                <p className="truncate text-[14px] font-black tracking-tight text-emerald-950 md:text-[15px]">
-                  Dahira Mawahibou Naafih
-                </p>
-
-                <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 sm:text-[11px]">
-                  Espace membre
-                </p>
-
-              </div>
-
-            </button>
-
-            {/* MENU DESKTOP */}
-
-            <nav className="hidden items-center gap-0.5 xl:flex">
-
-              {rubriquesAutorisees
-                .slice(0, 6)
-                .map((rubrique) => {
-
-                  const Icon =
-                    rubrique.icon;
-
-                  return (
-                    <button
-                      key={rubrique.id}
-                      type="button"
-                      onClick={() =>
-                        navigate(
-                          rubrique.route
-                        )
-                      }
-                      className="group inline-flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-semibold text-slate-500 transition hover:bg-emerald-50 hover:text-emerald-800 2xl:px-3 2xl:py-2.5 2xl:text-sm"
-                    >
-
-                      <Icon
-                        size={15}
-                        className="shrink-0 transition group-hover:text-[#b88b28]"
-                      />
-
-                      <span className="whitespace-nowrap">
-                        {rubrique.nom}
-                      </span>
-
-                    </button>
-                  );
-                })}
-
-              {rubriquesAutorisees.length > 6 && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setMenuOuvert(
-                      !menuOuvert
-                    )
-                  }
-                  className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-2 text-xs font-semibold transition 2xl:px-3 2xl:py-2.5 2xl:text-sm ${
-                    menuOuvert
-                      ? "bg-emerald-950 text-white"
-                      : "text-slate-500 hover:bg-emerald-50 hover:text-emerald-800"
-                  }`}
-                >
-
-                  <Menu size={16} />
-
-                  Menu
-
-                  <ChevronDown
-                    size={13}
-                    className={
-                      menuOuvert
-                        ? "rotate-180 transition"
-                        : "transition"
-                    }
-                  />
-
-                </button>
-              )}
-
-            </nav>
-
-            {/* PROFIL + MOBILE */}
-
-            <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-
-              <button
-                type="button"
-                onClick={() =>
-                  navigate("/mon-espace")
-                }
-                className="hidden items-center gap-2 rounded-2xl px-2 py-2 transition hover:bg-emerald-50 md:flex lg:px-3"
-              >
-
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-950 text-xs font-black text-[#d6ac47] lg:h-9 lg:w-9 lg:text-sm">
-
-                  {prenom
-                    ?.charAt(0)
-                    ?.toUpperCase()}
-
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-[#e7c96b]">
+                  <Sparkles size={13} />
+                  Mon espace
                 </div>
 
-                <div className="hidden text-left lg:block">
-
-                  <p className="max-w-[120px] truncate text-sm font-bold text-emerald-950">
+                <h1 className="mt-4 break-words text-2xl font-black tracking-tight sm:text-3xl lg:text-4xl">
+                  As Salam 'Aleykum{" "}
+                  <span className="text-[#d6ac47]">
                     {prenom}
-                  </p>
+                  </span>
+                </h1>
+
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-white/60 sm:text-base">
+                  Bienvenue dans votre espace personnel.
+                  Retrouvez ici les informations essentielles
+                  de votre Dahira et les services auxquels
+                  vous avez accès.
+                </p>
+
+                <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-white/55 sm:text-sm">
+
+                  <span className="inline-flex items-center gap-2">
+                    <CalendarDays
+                      size={15}
+                      className="text-[#d6ac47]"
+                    />
 
-                  <p className="text-[11px] text-slate-400">
-                    Mon espace
-                  </p>
-
-                </div>
-
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setMenuOuvert(
-                    !menuOuvert
-                  )
-                }
-                className="flex h-10 w-10 items-center justify-center rounded-xl text-emerald-950 transition hover:bg-emerald-50 sm:h-11 sm:w-11 sm:rounded-2xl xl:hidden"
-                aria-label={
-                  menuOuvert
-                    ? "Fermer le menu"
-                    : "Ouvrir le menu"
-                }
-              >
-
-                {menuOuvert ? (
-                  <X size={21} />
-                ) : (
-                  <Menu size={21} />
-                )}
-
-              </button>
-
-            </div>
-
-          </div>
-
-          {/* ==================================================
-              MENU MOBILE / TABLETTE
-          ================================================== */}
-
-          {menuOuvert && (
-            <div className="border-t border-slate-100 py-3 sm:py-4 xl:hidden">
-
-              <div className="mb-3 flex min-w-0 items-center gap-3 rounded-2xl bg-emerald-950 p-3.5 text-white sm:mb-4 sm:p-4">
-
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/10 font-black text-[#d6ac47] sm:h-11 sm:w-11">
-
-                  {prenom
-                    ?.charAt(0)
-                    ?.toUpperCase()}
-
-                </div>
-
-                <div className="min-w-0">
-
-                  <p className="truncate text-sm font-bold sm:text-base">
-                    As Salam 'Aleykum {prenom}
-                  </p>
-
-                  <p className="mt-0.5 text-xs text-white/60">
-                    Votre espace membre
-                  </p>
-
-                </div>
-
-              </div>
-
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-
-                {rubriquesAutorisees.map(
-                  (rubrique) => {
-
-                    const Icon =
-                      rubrique.icon;
-
-                    return (
-                      <button
-                        key={rubrique.id}
-                        type="button"
-                        onClick={() => {
-                          navigate(
-                            rubrique.route
-                          );
-
-                          setMenuOuvert(false);
-                        }}
-                        className="group flex min-w-0 items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 text-left shadow-sm transition hover:border-emerald-200 hover:shadow-md sm:p-3.5"
-                      >
-
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-950 group-hover:text-[#d6ac47]">
-
-                          <Icon size={18} />
-
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-
-                          <p className="truncate text-sm font-bold text-emerald-950">
-                            {rubrique.nom}
-                          </p>
-
-                          <p className="mt-0.5 truncate text-xs text-slate-400">
-                            {rubrique.description}
-                          </p>
-
-                        </div>
-
-                        <ChevronRight
-                          size={16}
-                          className="ml-auto shrink-0 text-slate-300"
-                        />
-
-                      </button>
-                    );
-                  }
-                )}
-
-              </div>
-
-            </div>
-          )}
-
-        </div>
-
-        {/* ==================================================
-            MENU COMPLET DESKTOP
-        ================================================== */}
-
-        {menuOuvert &&
-          rubriquesAutorisees.length > 6 && (
-            <div className="hidden border-t border-emerald-900/10 bg-[#fafaf7] xl:block">
-
-              <div className="mx-auto max-w-7xl px-5 py-5 lg:py-6">
-
-                <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-
-                  <div>
-
-                    <p className="text-xs font-black uppercase tracking-[0.22em] text-[#b88b28]">
-                      Navigation
-                    </p>
-
-                    <h2 className="mt-2 text-xl font-black text-emerald-950 sm:text-2xl">
-                      Toutes les rubriques
-                    </h2>
-
-                  </div>
-
-                  <p className="max-w-sm text-left text-sm text-slate-400 sm:text-right">
-                    Accédez aux fonctionnalités disponibles
-                    selon vos droits.
-                  </p>
-
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 2xl:grid-cols-5">
-
-                  {rubriquesAutorisees.map(
-                    (rubrique) => {
-
-                      const Icon =
-                        rubrique.icon;
-
-                      return (
-                        <button
-                          key={rubrique.id}
-                          type="button"
-                          onClick={() => {
-                            navigate(
-                              rubrique.route
-                            );
-
-                            setMenuOuvert(false);
-                          }}
-                          className="group min-w-0 rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg"
-                        >
-
-                          <div className="flex items-start justify-between gap-2">
-
-                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-950 group-hover:text-[#d6ac47]">
-
-                              <Icon size={20} />
-
-                            </div>
-
-                            <ArrowRight
-                              size={16}
-                              className="shrink-0 text-slate-200 transition group-hover:text-[#b88b28]"
-                            />
-
-                          </div>
-
-                          <p className="mt-4 truncate font-bold text-emerald-950">
-                            {rubrique.nom}
-                          </p>
-
-                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">
-                            {rubrique.description}
-                          </p>
-
-                        </button>
-                      );
-                    }
-                  )}
-
-                </div>
-
-              </div>
-
-            </div>
-          )}
-
-      </header>
-
-      {/* ======================================================
-          HERO
-      ====================================================== */}
-
-      <section className="relative overflow-hidden bg-emerald-950 text-white">
-
-        <div className="absolute inset-0 opacity-20">
-
-          <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full border border-[#d6ac47]/30 sm:h-80 sm:w-80" />
-
-          <div className="absolute right-10 top-20 h-72 w-72 rounded-full border border-white/10 sm:right-20 sm:h-96 sm:w-96" />
-
-          <div className="absolute -bottom-40 -left-20 h-80 w-80 rounded-full border border-[#d6ac47]/20 sm:h-96 sm:w-96" />
-
-        </div>
-
-        <div className="relative mx-auto max-w-7xl px-4 py-10 sm:px-5 sm:py-14 lg:py-16 xl:py-20">
-
-          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center lg:gap-10">
-
-            {/* TEXTE */}
-
-            <div className="min-w-0 max-w-3xl">
-
-              <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#e7c96b] sm:px-4 sm:py-2 sm:text-xs sm:tracking-[0.16em]">
-
-                <Sparkles size={13} />
-
-                Espace membre
-
-              </div>
-
-              <h1 className="mt-5 break-words text-3xl font-black leading-tight tracking-tight sm:mt-6 sm:text-4xl md:text-5xl lg:text-6xl">
-
-                As Salam
-                <span className="text-[#d6ac47]">
-                  {" "}‘Aleykum
-                </span>
-
-                <span className="block">
-                  {prenom}
-                </span>
-
-              </h1>
-
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-white/65 sm:mt-5 sm:text-base sm:leading-8 lg:text-lg">
-
-                Bienvenue dans votre espace personnel.
-                Retrouvez les informations essentielles
-                du Dahira, les horaires de prière,
-                les rappels et les communications
-                de notre communauté.
-
-              </p>
-
-              <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2.5 text-xs text-white/60 sm:mt-7 sm:gap-x-5 sm:text-sm">
-
-                <span className="inline-flex min-w-0 items-center gap-2">
-
-                  <CalendarDays
-                    size={15}
-                    className="shrink-0 text-[#d6ac47]"
-                  />
-
-                  <span className="break-words">
                     {formaterDateComplete(
                       maintenant
                     )}
                   </span>
 
-                </span>
+                  <span className="hidden text-white/20 sm:block">
+                    •
+                  </span>
 
-                <span className="hidden text-white/20 sm:block">
-                  •
-                </span>
+                  <span className="inline-flex items-center gap-2">
+                    <MapPin
+                      size={15}
+                      className="text-[#d6ac47]"
+                    />
 
-                <span className="inline-flex items-center gap-2">
-
-                  <MapPin
-                    size={15}
-                    className="shrink-0 text-[#d6ac47]"
-                  />
-
-                  Dakar, Sénégal
-
-                </span>
-
-              </div>
-
-            </div>
-
-            {/* HORLOGE */}
-
-            <div className="w-full min-w-0">
-
-              <div className="rounded-[1.5rem] border border-white/10 bg-white/10 p-5 backdrop-blur sm:rounded-[2rem] sm:p-6">
-
-                <div className="flex items-center gap-2 text-sm font-medium text-[#e7c96b]">
-
-                  <Clock3 size={17} />
-
-                  Heure locale
+                    Dakar, Sénégal
+                  </span>
 
                 </div>
 
-                <p className="mt-3 text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
+              </div>
 
-                  {maintenant.toLocaleTimeString(
-                    "fr-FR",
-                    {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      second: "2-digit",
-                    }
-                  )}
+              {/* HEURE */}
 
-                </p>
+              <div className="w-full shrink-0 xl:w-[270px]">
 
-                <p className="mt-2 text-xs text-white/50 sm:text-sm">
-                  {formaterDateCourte(
-                    maintenant
-                  )}
-                </p>
+                <div className="rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur sm:p-5">
 
-                <div className="mt-4 h-px bg-white/10 sm:mt-5" />
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-[#e7c96b]">
+                    <Clock3 size={15} />
+                    Heure locale
+                  </div>
 
-                <div className="mt-3 flex items-start gap-2 text-xs leading-5 text-white/50 sm:mt-4">
+                  <p className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
+                    {maintenant.toLocaleTimeString(
+                      "fr-FR",
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      }
+                    )}
+                  </p>
 
-                  <Compass
-                    size={14}
-                    className="mt-0.5 shrink-0 text-[#d6ac47]"
-                  />
-
-                  <span>
-                    Horaires calculés pour Dakar
-                  </span>
+                  <p className="mt-1 text-xs text-white/40">
+                    {formaterDateCourte(
+                      maintenant
+                    )}
+                  </p>
 
                 </div>
 
@@ -1286,269 +848,176 @@ function MonEspace() {
       </section>
 
       {/* ======================================================
-          CONTENU
+          NOTIFICATIONS
       ====================================================== */}
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-5 sm:py-12 lg:py-14">
+      <section className="mb-6">
 
-        {/* ====================================================
-            NOTIFICATIONS
-        ==================================================== */}
+        <div className="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-5 lg:flex-row lg:items-center lg:justify-between">
 
-        <section className="mb-6 sm:mb-7">
+          <div className="flex min-w-0 items-start gap-3">
 
-          <div className="rounded-[1.5rem] border border-emerald-900/10 bg-white p-4 shadow-sm sm:rounded-[2rem] sm:p-5 md:p-6">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+              <Bell size={18} />
+            </div>
 
-            <div className="flex flex-col gap-4 sm:gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="min-w-0">
 
-              <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#a77919]">
+                Notifications
+              </p>
 
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 sm:h-12 sm:w-12 sm:rounded-2xl">
+              <h2 className="mt-1 font-black text-emerald-950">
+                Rester informé
+              </h2>
 
-                  <Bell size={20} />
+              <p className="mt-1 text-sm leading-6 text-slate-500">
+                Recevez directement les nouvelles
+                communications du Dahira.
+              </p>
 
-                </div>
+              {notificationsActivees && (
+                <p className="mt-2 text-xs font-bold text-emerald-600">
+                  ✓ Notifications activées
+                </p>
+              )}
 
-                <div className="min-w-0">
-
-                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#b88b28] sm:text-xs sm:tracking-[0.16em]">
-                    Rester informé
-                  </p>
-
-                  <h2 className="mt-1 text-base font-black text-emerald-950 sm:text-lg">
-                    Notifications du Dahira
-                  </h2>
-
-                  <p className="mt-1 text-sm leading-6 text-slate-500">
-                    Recevez les nouvelles communications
-                    directement sur votre appareil.
-                  </p>
-
-                  {notificationsActivees && (
-                    <p className="mt-2 text-sm font-semibold text-emerald-600">
-                      ✓ Notifications activées
-                    </p>
-                  )}
-
-                  {erreurNotifications && (
-                    <p className="mt-2 break-words text-sm text-red-600">
-                      {erreurNotifications}
-                    </p>
-                  )}
-
-                </div>
-
-              </div>
-
-              {!notificationsActivees && (
-                <button
-                  type="button"
-                  onClick={activerNotifications}
-                  disabled={activationNotifications}
-                  className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-                >
-
-                  {activationNotifications ? (
-                    <>
-                      <RefreshCw
-                        size={17}
-                        className="animate-spin"
-                      />
-
-                      Activation...
-                    </>
-                  ) : (
-                    <>
-                      <Bell size={17} />
-
-                      Activer les notifications
-                    </>
-                  )}
-
-                </button>
+              {erreurNotifications && (
+                <p className="mt-2 break-words text-xs text-red-600">
+                  {erreurNotifications}
+                </p>
               )}
 
             </div>
 
           </div>
 
-        </section>
+          {!notificationsActivees && (
+            <button
+              type="button"
+              onClick={activerNotifications}
+              disabled={activationNotifications}
+              className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto"
+            >
+              {activationNotifications ? (
+                <>
+                  <RefreshCw
+                    size={16}
+                    className="animate-spin"
+                  />
+                  Activation...
+                </>
+              ) : (
+                <>
+                  <Bell size={16} />
+                  Activer les notifications
+                </>
+              )}
+            </button>
+          )}
 
-        {/* ====================================================
-            PROCHAINE PRIERE
-        ==================================================== */}
+        </div>
 
-        <section className="mb-7 sm:mb-8">
+      </section>
 
-          <div className="grid min-w-0 gap-4 sm:gap-5 lg:grid-cols-3">
+      {/* ======================================================
+          PROCHAINE PRIERE
+      ====================================================== */}
 
-            {/* PRIERE */}
+      <section className="mb-6">
 
-            <div className="relative min-w-0 overflow-hidden rounded-[1.5rem] bg-white shadow-sm ring-1 ring-emerald-900/10 sm:rounded-[2rem] lg:col-span-2">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
 
-              <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-emerald-50 sm:h-64 sm:w-64" />
+          {/* PRIERE */}
 
-              <div className="relative p-5 sm:p-6 md:p-8">
+          <div className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
 
-                <div className="flex min-w-0 flex-col justify-between gap-6 md:flex-row md:items-center md:gap-7">
+            <div className="absolute -right-20 -top-20 h-48 w-48 rounded-full bg-emerald-50" />
 
-                  <div className="min-w-0">
+            <div className="relative p-5 sm:p-6 lg:p-7">
 
-                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-[#b88b28] sm:text-xs sm:tracking-[0.18em]">
-
-                      <Compass size={16} />
-
-                      Prochaine prière
-
-                    </div>
-
-                    {chargementHoraires ? (
-                      <div className="mt-5">
-
-                        <RefreshCw
-                          size={30}
-                          className="animate-spin text-emerald-700"
-                        />
-
-                        <p className="mt-3 text-sm text-slate-500">
-                          Chargement des horaires...
-                        </p>
-
-                      </div>
-                    ) : erreurHoraires ? (
-                      <div className="mt-5">
-
-                        <div className="flex items-start gap-2 text-red-600">
-
-                          <AlertCircle
-                            size={19}
-                            className="mt-0.5 shrink-0"
-                          />
-
-                          <span className="break-words text-sm">
-                            {erreurHoraires}
-                          </span>
-
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={
-                            chargerHoraires
-                          }
-                          className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-900"
-                        >
-
-                          <RefreshCw size={15} />
-
-                          Réessayer
-
-                        </button>
-
-                      </div>
-                    ) : prochainePriereFinale ? (
-                      <>
-
-                        <h2 className="mt-3 text-2xl font-black text-emerald-950 sm:text-3xl md:text-4xl">
-
-                          {
-                            prochainePriereFinale.nom
-                          }
-
-                        </h2>
-
-                        <div className="mt-2 flex flex-wrap items-baseline gap-2 sm:gap-3">
-
-                          <span className="text-4xl font-black tracking-tight text-emerald-800 sm:text-5xl md:text-6xl">
-
-                            {
-                              prochainePriereFinale.heure
-                            }
-
-                          </span>
-
-                          <span className="text-xs text-slate-400 sm:text-sm">
-                            à Dakar
-                          </span>
-
-                        </div>
-
-                      </>
-                    ) : (
-                      <p className="mt-4 text-sm text-slate-500">
-                        Horaires indisponibles.
-                      </p>
-                    )}
-
-                  </div>
-
-                  {prochainePriereFinale &&
-                    !erreurHoraires && (
-                      <div className="w-full shrink-0 rounded-2xl border border-emerald-900/10 bg-emerald-950 px-5 py-4 text-center text-white md:w-auto md:px-6 md:py-5">
-
-                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#d6ac47]">
-                          Dans
-                        </p>
-
-                        <p className="mt-1 font-mono text-xl font-black sm:text-2xl md:text-3xl">
-                          {compteARebours}
-                        </p>
-
-                      </div>
-                    )}
-
-                </div>
-
-              </div>
-
-            </div>
-
-            {/* LOCALISATION */}
-
-            <div className="min-w-0 rounded-[1.5rem] bg-emerald-950 p-5 text-white shadow-sm sm:rounded-[2rem] sm:p-6">
-
-              <div className="flex items-center gap-3">
-
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[#d6ac47]">
-
-                  <MapPin size={20} />
-
-                </div>
+              <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
 
                 <div className="min-w-0">
 
-                  <p className="text-[10px] uppercase tracking-[0.14em] text-white/40 sm:text-xs sm:tracking-[0.16em]">
-                    Localisation
-                  </p>
+                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.17em] text-[#a77919] sm:text-xs">
+                    <Compass size={15} />
+                    Prochaine prière
+                  </div>
 
-                  <p className="mt-1 font-bold">
-                    Dakar, Sénégal
-                  </p>
+                  {chargementHoraires ? (
+                    <div className="mt-5 flex items-center gap-3">
+                      <RefreshCw
+                        size={24}
+                        className="animate-spin text-emerald-700"
+                      />
+
+                      <p className="text-sm text-slate-500">
+                        Chargement des horaires...
+                      </p>
+                    </div>
+                  ) : erreurHoraires ? (
+                    <div className="mt-5">
+
+                      <div className="flex items-start gap-2 text-red-600">
+                        <AlertCircle
+                          size={18}
+                          className="mt-0.5 shrink-0"
+                        />
+
+                        <span className="text-sm">
+                          {erreurHoraires}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={chargerHoraires}
+                        className="mt-3 inline-flex items-center gap-2 rounded-xl bg-emerald-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-900"
+                      >
+                        <RefreshCw size={14} />
+                        Réessayer
+                      </button>
+
+                    </div>
+                  ) : prochainePriereFinale ? (
+                    <>
+                      <h2 className="mt-3 text-2xl font-black text-emerald-950 sm:text-3xl">
+                        {prochainePriereFinale.nom}
+                      </h2>
+
+                      <div className="mt-1 flex flex-wrap items-baseline gap-2">
+                        <span className="text-4xl font-black tracking-tight text-emerald-800 sm:text-5xl">
+                          {prochainePriereFinale.heure}
+                        </span>
+
+                        <span className="text-sm text-slate-400">
+                          à Dakar
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="mt-4 text-sm text-slate-500">
+                      Horaires indisponibles.
+                    </p>
+                  )}
 
                 </div>
 
-              </div>
+                {prochainePriereFinale &&
+                  !erreurHoraires && (
+                    <div className="shrink-0 rounded-2xl bg-emerald-950 px-6 py-4 text-center text-white">
 
-              <div className="mt-6 border-t border-white/10 pt-5 sm:mt-7 sm:pt-6">
+                      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#d6ac47]">
+                        Dans
+                      </p>
 
-                <p className="text-xs uppercase tracking-[0.16em] text-[#d6ac47]">
-                  Aujourd'hui
-                </p>
+                      <p className="mt-1 font-mono text-2xl font-black">
+                        {compteARebours}
+                      </p>
 
-                <p className="mt-2 text-lg font-black sm:text-xl">
-                  {new Intl.DateTimeFormat(
-                    "fr-FR",
-                    {
-                      day: "numeric",
-                      month: "long",
-                    }
-                  ).format(maintenant)}
-                </p>
-
-                <p className="mt-3 text-sm leading-6 text-white/50">
-                  Les horaires de prière sont
-                  calculés pour la ville de Dakar.
-                </p>
+                    </div>
+                  )}
 
               </div>
 
@@ -1556,41 +1025,75 @@ function MonEspace() {
 
           </div>
 
-        </section>
+          {/* LOCALISATION */}
 
-        {/* ====================================================
-            HORAIRES
-        ==================================================== */}
+          <div className="rounded-2xl bg-emerald-950 p-5 text-white shadow-sm sm:p-6">
 
-        <section className="mb-7 sm:mb-8">
+            <div className="flex items-center gap-3">
 
-          <div className="mb-4 flex items-end justify-between gap-3 sm:gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[#d6ac47]">
+                <MapPin size={18} />
+              </div>
 
-            <div className="min-w-0">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.16em] text-white/40">
+                  Localisation
+                </p>
 
-              <p className="text-[10px] font-black uppercase tracking-[0.17em] text-[#b88b28] sm:text-xs sm:tracking-[0.2em]">
-                Spiritualité
+                <p className="mt-1 font-bold">
+                  Dakar, Sénégal
+                </p>
+              </div>
+
+            </div>
+
+            <div className="mt-5 border-t border-white/10 pt-5">
+
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#d6ac47]">
+                Aujourd'hui
               </p>
 
-              <h2 className="mt-2 text-xl font-black text-emerald-950 sm:text-2xl">
-                Horaires des prières
-              </h2>
+              <p className="mt-2 text-lg font-black">
+                {new Intl.DateTimeFormat(
+                  "fr-FR",
+                  {
+                    day: "numeric",
+                    month: "long",
+                  }
+                ).format(maintenant)}
+              </p>
 
-              <p className="mt-1 text-xs text-slate-400 sm:text-sm">
-                Les cinq prières quotidiennes
+              <p className="mt-2 text-xs leading-5 text-white/45">
+                Horaires calculés pour la ville de Dakar.
               </p>
 
             </div>
 
+          </div>
+
+        </div>
+
+      </section>
+
+      {/* ======================================================
+          HORAIRES DES PRIERES
+      ====================================================== */}
+
+      <section className="mb-6">
+
+        <SectionHeader
+          eyebrow="Spiritualité"
+          title="Horaires des prières"
+          description="Les cinq prières quotidiennes."
+          action={
             <button
               type="button"
               onClick={chargerHoraires}
               disabled={chargementHoraires}
-              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-emerald-900/10 bg-white px-3 py-2 text-sm font-semibold text-slate-500 transition hover:border-emerald-200 hover:text-emerald-800 disabled:opacity-50"
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 transition hover:border-emerald-200 hover:text-emerald-800 disabled:opacity-50"
             >
-
               <RefreshCw
-                size={15}
+                size={14}
                 className={
                   chargementHoraires
                     ? "animate-spin"
@@ -1601,672 +1104,528 @@ function MonEspace() {
               <span className="hidden sm:inline">
                 Actualiser
               </span>
-
             </button>
-
-          </div>
-
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5">
-
-            {prieres.map(
-              (priere, index) => {
-
-                const Icon =
-                  priere.icone;
-
-                const estProchaine =
-                  index ===
-                  indexProchainePriere;
-
-                return (
-                  <div
-                    key={priere.nom}
-                    className={`min-w-0 rounded-2xl border p-3 transition sm:p-4 ${
-                      estProchaine
-                        ? "border-emerald-950 bg-emerald-950 text-white shadow-lg shadow-emerald-900/10"
-                        : "border-slate-100 bg-white text-slate-900 shadow-sm hover:-translate-y-1 hover:border-emerald-200 hover:shadow-md"
-                    }`}
-                  >
-
-                    <div className="flex items-center justify-between gap-2">
-
-                      <span
-                        className={`text-[11px] font-bold sm:text-xs ${
-                          estProchaine
-                            ? "text-white/50"
-                            : "text-slate-400"
-                        }`}
-                      >
-                        {priere.nom}
-                      </span>
-
-                      <Icon
-                        size={16}
-                        className={
-                          estProchaine
-                            ? "shrink-0 text-[#d6ac47]"
-                            : "shrink-0 text-emerald-700"
-                        }
-                      />
-
-                    </div>
-
-                    <p
-                      className={`mt-2 text-xl font-black sm:mt-3 sm:text-2xl ${
-                        estProchaine
-                          ? "text-white"
-                          : "text-emerald-950"
-                      }`}
-                    >
-                      {priere.heure}
-                    </p>
-
-                    {estProchaine && (
-                      <p className="mt-1 text-[9px] font-bold uppercase tracking-wide text-[#d6ac47]">
-                        Prochaine
-                      </p>
-                    )}
-
-                  </div>
-                );
-              }
-            )}
-
-            {!prieres.length &&
-              !chargementHoraires && (
-                <div className="col-span-full rounded-2xl border border-slate-100 bg-white p-6 text-center text-sm text-slate-400">
-                  Aucun horaire disponible.
-                </div>
-              )}
-
-          </div>
-
-        </section>
-
-        {/* ====================================================
-            DU'A + RAPPEL
-        ==================================================== */}
-
-        <section className="mb-7 grid gap-4 sm:gap-5 lg:grid-cols-2">
-
-          {/* DU'A */}
-
-          <div className="min-w-0 overflow-hidden rounded-[1.5rem] bg-white shadow-sm ring-1 ring-emerald-900/10 sm:rounded-[2rem]">
-
-            <div className="bg-emerald-950 p-5 text-white sm:p-6">
-
-              <div className="flex items-center gap-3">
-
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[#d6ac47]">
-
-                  <Heart size={20} />
-
-                </div>
-
-                <div className="min-w-0">
-
-                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#d6ac47]">
-                    Invocation
-                  </p>
-
-                  <h2 className="mt-1 text-lg font-black sm:text-xl">
-                    Du'a de la semaine
-                  </h2>
-
-                </div>
-
-              </div>
-
-            </div>
-
-            <div className="p-5 sm:p-6">
-
-              <div className="min-w-0 overflow-hidden rounded-2xl bg-[#f8f7f2] p-4 sm:p-5">
-
-                <p
-                  dir="rtl"
-                  className="break-words text-right font-serif text-xl leading-[2.1] text-emerald-950 sm:text-2xl md:text-3xl"
-                >
-                  {dua.arabe}
-                </p>
-
-              </div>
-
-              <p className="mt-4 break-words text-sm italic leading-relaxed text-slate-500 sm:mt-5">
-                {dua.transliteration}
-              </p>
-
-              <div className="mt-4 border-l-4 border-[#b88b28] pl-3 sm:pl-4">
-
-                <p className="break-words text-sm leading-relaxed text-slate-600 sm:text-base">
-                  {dua.traduction}
-                </p>
-
-              </div>
-
-              <div className="mt-5 flex justify-end">
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setDuaIndex(
-                      (duaIndex + 1) %
-                        DUAS.length
-                    )
-                  }
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-900 sm:w-auto"
-                >
-
-                  Nouvelle invocation
-
-                  <ChevronRight size={16} />
-
-                </button>
-
-              </div>
-
-            </div>
-
-          </div>
-
-          {/* RAPPEL */}
-
-          <div className="relative min-w-0 overflow-hidden rounded-[1.5rem] border border-[#d6ac47]/20 bg-[#f7f1df] p-5 sm:rounded-[2rem] sm:p-6">
-
-            <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full border border-[#b88b28]/20" />
-
-            <div className="relative">
-
-              <div className="flex items-start gap-3">
-
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-950 text-[#d6ac47]">
-
-                  <Sparkles size={20} />
-
-                </div>
-
-                <div className="min-w-0">
-
-                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#a77919]">
-                    Méditation
-                  </p>
-
-                  <h2 className="mt-1 break-words text-lg font-black text-emerald-950 sm:text-xl">
-                    {rappelDuJour.titre}
-                  </h2>
-
-                </div>
-
-              </div>
-
-              <p className="mt-6 text-sm leading-7 text-slate-600 sm:mt-7 sm:text-base sm:leading-8">
-                {rappelDuJour.texte}
-              </p>
-
-              <div className="mt-6 flex items-start gap-2 text-sm font-semibold leading-6 text-emerald-800 sm:mt-8">
-
-                <Heart
-                  size={16}
-                  className="mt-1 shrink-0"
-                />
-
-                <span>
-                  Qu'Allah nous accorde
-                  la constance et la sincérité.
-                </span>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </section>
-
-        {/* ====================================================
-            KHASSIDA
-        ==================================================== */}
-
-        <section className="mb-7 sm:mb-8">
-
-          <div className="rounded-[1.5rem] bg-emerald-950 p-5 text-white shadow-sm sm:rounded-[2rem] sm:p-6 md:p-7">
-
-            <div className="flex min-w-0 flex-col gap-5 sm:gap-6 md:flex-row md:items-center md:justify-between">
-
-              <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[#d6ac47] sm:h-14 sm:w-14 sm:rounded-2xl">
-
-                  <BookOpen size={23} />
-
-                </div>
-
-                <div className="min-w-0">
-
-                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#d6ac47]">
-                    Lecture spirituelle
-                  </p>
-
-                  <h2 className="mt-1 break-words text-lg font-black sm:text-xl md:text-2xl">
-                    {khassidaDuJour.titre}
-                  </h2>
-
-                  <p className="mt-2 max-w-2xl break-words text-sm leading-6 text-white/55 sm:text-base sm:leading-7">
-                    {khassidaDuJour.description}
-                  </p>
-
-                </div>
-
-              </div>
-
-              <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate("/khassidas")
-                  }
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-bold text-white transition hover:bg-white/10 sm:px-4 sm:text-sm"
-                >
-
-                  <BookOpen size={16} />
-
-                  Consulter
-
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate("/khassidas")
-                  }
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#d6ac47] px-3 py-2.5 text-xs font-black text-emerald-950 transition hover:bg-[#e3c15f] sm:px-4 sm:text-sm"
-                >
-
-                  <Volume2 size={16} />
-
-                  Écouter
-
-                </button>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </section>
-
-        {/* ====================================================
-            COMMUNICATIONS
-        ==================================================== */}
-
-        {aPermission(
-          "COMMUNICATION_CONSULTER"
-        ) && (
-          <section className="mb-7 sm:mb-8">
-
-            <div className="mb-4 flex items-end justify-between gap-3 sm:mb-5 sm:gap-4">
-
-              <div className="min-w-0">
-
-                <p className="text-[10px] font-black uppercase tracking-[0.17em] text-[#b88b28] sm:text-xs sm:tracking-[0.2em]">
-                  Vie du Dahira
-                </p>
-
-                <h2 className="mt-2 text-xl font-black text-emerald-950 sm:text-2xl">
-                  Communications
-                </h2>
-
-                <p className="mt-1 text-xs text-slate-400 sm:text-sm">
-                  Les dernières informations du Dahira
-                </p>
-
-              </div>
-
-              <button
-                type="button"
-                onClick={() =>
-                  navigate(
-                    "/communications"
-                  )
-                }
-                className="inline-flex shrink-0 items-center gap-1 text-xs font-bold text-emerald-800 transition hover:text-[#a77919] sm:text-sm"
+          }
+        />
+
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+
+          {prieres.map((priere, index) => {
+            const Icon = priere.icone;
+
+            const estProchaine =
+              index === indexProchainePriere;
+
+            return (
+              <div
+                key={priere.nom}
+                className={`rounded-2xl border p-4 transition ${
+                  estProchaine
+                    ? "border-emerald-950 bg-emerald-950 text-white shadow-md"
+                    : "border-slate-200/80 bg-white shadow-sm hover:border-emerald-200 hover:shadow-md"
+                }`}
               >
 
-                Tout voir
+                <div className="flex items-center justify-between gap-2">
 
-                <ArrowRight size={15} />
+                  <span
+                    className={`text-xs font-bold ${
+                      estProchaine
+                        ? "text-white/55"
+                        : "text-slate-400"
+                    }`}
+                  >
+                    {priere.nom}
+                  </span>
 
-              </button>
-
-            </div>
-
-            {chargementCommunications ? (
-              <div className="rounded-2xl border border-slate-100 bg-white p-8 text-center">
-
-                <RefreshCw
-                  size={25}
-                  className="mx-auto animate-spin text-emerald-700"
-                />
-
-                <p className="mt-3 text-sm text-slate-400">
-                  Chargement des communications...
-                </p>
-
-              </div>
-            ) : erreurCommunications ? (
-              <div className="rounded-2xl border border-red-100 bg-white p-5">
-
-                <div className="flex items-start gap-3 text-red-600">
-
-                  <AlertCircle
-                    size={19}
-                    className="mt-0.5 shrink-0"
+                  <Icon
+                    size={16}
+                    className={
+                      estProchaine
+                        ? "text-[#d6ac47]"
+                        : "text-emerald-700"
+                    }
                   />
-
-                  <p className="break-words text-sm">
-                    {erreurCommunications}
-                  </p>
 
                 </div>
 
-              </div>
-            ) : communications.length === 0 ? (
-              <div className="rounded-2xl border border-slate-100 bg-white p-7 text-center">
-
-                <Megaphone
-                  size={30}
-                  className="mx-auto text-slate-200"
-                />
-
-                <p className="mt-3 text-sm text-slate-400">
-                  Aucune communication récente.
+                <p
+                  className={`mt-3 text-2xl font-black ${
+                    estProchaine
+                      ? "text-white"
+                      : "text-emerald-950"
+                  }`}
+                >
+                  {priere.heure}
                 </p>
 
-              </div>
-            ) : (
-              <div className="grid gap-3 sm:gap-4 md:grid-cols-3">
-
-                {communications.map(
-                  (communication) => (
-                    <button
-                      type="button"
-                      key={communication.id}
-                      onClick={() =>
-                        navigate(
-                          `/communications/${communication.id}`
-                        )
-                      }
-                      className="group min-w-0 rounded-[1.5rem] border border-slate-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg sm:rounded-[1.75rem] sm:p-5"
-                    >
-
-                      <div className="flex items-center justify-between">
-
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
-
-                          <Megaphone size={18} />
-
-                        </div>
-
-                        <ArrowRight
-                          size={17}
-                          className="shrink-0 text-slate-200 transition group-hover:text-[#b88b28]"
-                        />
-
-                      </div>
-
-                      <h3 className="mt-4 line-clamp-2 break-words font-bold text-emerald-950">
-                        {communication.titre}
-                      </h3>
-
-                      <p className="mt-2 line-clamp-3 break-words text-sm leading-6 text-slate-500">
-                        {communication.contenu}
-                      </p>
-
-                      <div className="mt-4 flex items-center gap-2 text-xs text-slate-300">
-
-                        <Calendar size={13} />
-
-                        {communication.date_publication
-                          ? new Intl.DateTimeFormat(
-                              "fr-FR",
-                              {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                              }
-                            ).format(
-                              new Date(
-                                communication.date_publication
-                              )
-                            )
-                          : "-"}
-
-                      </div>
-
-                    </button>
-                  )
+                {estProchaine && (
+                  <p className="mt-1 text-[9px] font-black uppercase tracking-wide text-[#d6ac47]">
+                    Prochaine
+                  </p>
                 )}
 
               </div>
+            );
+          })}
+
+          {!prieres.length &&
+            !chargementHoraires && (
+              <div className="col-span-full rounded-2xl border border-slate-200 bg-white p-7 text-center text-sm text-slate-400">
+                Aucun horaire disponible.
+              </div>
             )}
 
-          </section>
-        )}
+        </div>
 
-        {/* ====================================================
-            ACCES RAPIDES
-        ==================================================== */}
+      </section>
 
-        <section className="mb-7 sm:mb-8">
+      {/* ======================================================
+          DU'A + RAPPEL
+      ====================================================== */}
 
-          <div className="mb-4 sm:mb-5">
+      <section className="mb-6 grid gap-4 lg:grid-cols-2">
 
-            <p className="text-[10px] font-black uppercase tracking-[0.17em] text-[#b88b28] sm:text-xs sm:tracking-[0.2em]">
-              Mon espace
-            </p>
+        {/* DU'A */}
 
-            <h2 className="mt-2 text-xl font-black text-emerald-950 sm:text-2xl">
-              Accès rapides
-            </h2>
+        <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
 
-            <p className="mt-1 text-xs text-slate-400 sm:text-sm">
-              Retrouvez rapidement les services qui vous sont accessibles.
-            </p>
+          <div className="border-b border-slate-100 bg-emerald-950 p-5 text-white sm:p-6">
+
+            <div className="flex items-center gap-3">
+
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[#d6ac47]">
+                <Heart size={18} />
+              </div>
+
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#d6ac47]">
+                  Invocation
+                </p>
+
+                <h2 className="mt-1 font-black">
+                  Du'a de la semaine
+                </h2>
+              </div>
+
+            </div>
 
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+          <div className="p-5 sm:p-6">
 
-            {aPermission(
-              "REUNION_CONSULTER"
-            ) && (
-              <button
-                type="button"
-                onClick={() =>
-                  navigate("/reunions")
-                }
-                className="group min-w-0 rounded-[1.5rem] border border-slate-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg sm:rounded-[1.75rem] sm:p-5"
+            <div className="rounded-xl bg-[#f8f7f2] p-4 sm:p-5">
+
+              <p
+                dir="rtl"
+                className="break-words text-right font-serif text-xl leading-[2.1] text-emerald-950 sm:text-2xl"
               >
+                {dua.arabe}
+              </p>
 
-                <div className="flex items-center justify-between">
+            </div>
 
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+            <p className="mt-4 text-sm italic leading-6 text-slate-500">
+              {dua.transliteration}
+            </p>
 
-                    <Calendar size={19} />
+            <div className="mt-4 border-l-4 border-[#b88b28] pl-4">
 
-                  </div>
+              <p className="text-sm leading-6 text-slate-600">
+                {dua.traduction}
+              </p>
 
-                  <ArrowRight
-                    size={17}
-                    className="shrink-0 text-slate-200 transition group-hover:text-[#b88b28]"
-                  />
+            </div>
 
-                </div>
+            <div className="mt-5 flex justify-end">
 
-                <h3 className="mt-4 font-black text-emerald-950 sm:mt-5">
-                  Réunions
-                </h3>
-
-                <p className="mt-1 text-sm leading-6 text-slate-400">
-                  Consultez les prochaines réunions.
-                </p>
-
-              </button>
-            )}
-
-            {aPermission(
-              "COMMUNICATION_CONSULTER"
-            ) && (
               <button
                 type="button"
                 onClick={() =>
-                  navigate(
-                    "/communications"
+                  setDuaIndex(
+                    (duaIndex + 1) %
+                      DUAS.length
                   )
                 }
-                className="group min-w-0 rounded-[1.5rem] border border-slate-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg sm:rounded-[1.75rem] sm:p-5"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-950 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-900 sm:w-auto"
               >
+                Nouvelle invocation
+                <ChevronRight size={15} />
+              </button>
 
-                <div className="flex items-center justify-between">
+            </div>
 
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+          </div>
 
-                    <Megaphone size={19} />
+        </div>
 
-                  </div>
+        {/* RAPPEL */}
 
-                  <ArrowRight
-                    size={17}
-                    className="shrink-0 text-slate-200 transition group-hover:text-[#b88b28]"
-                  />
+        <div className="relative overflow-hidden rounded-2xl border border-[#d6ac47]/20 bg-[#f7f1df] p-5 shadow-sm sm:p-6">
 
-                </div>
+          <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full border border-[#b88b28]/20" />
 
-                <h3 className="mt-4 font-black text-emerald-950 sm:mt-5">
-                  Communications
-                </h3>
+          <div className="relative">
 
-                <p className="mt-1 text-sm leading-6 text-slate-400">
-                  Consultez les annonces du Dahira.
+            <div className="flex items-start gap-3">
+
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-950 text-[#d6ac47]">
+                <Sparkles size={18} />
+              </div>
+
+              <div className="min-w-0">
+
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#a77919]">
+                  Méditation
                 </p>
 
-              </button>
-            )}
+                <h2 className="mt-1 text-lg font-black text-emerald-950 sm:text-xl">
+                  {rappelDuJour.titre}
+                </h2>
 
-            {aPermission(
-              "KOUREL_CONSULTER"
-            ) && (
+              </div>
+
+            </div>
+
+            <p className="mt-6 text-sm leading-7 text-slate-600 sm:text-base">
+              {rappelDuJour.texte}
+            </p>
+
+            <div className="mt-6 flex items-start gap-2 text-sm font-semibold leading-6 text-emerald-800">
+
+              <Heart
+                size={16}
+                className="mt-1 shrink-0"
+              />
+
+              <span>
+                Qu'Allah nous accorde la constance
+                et la sincérité.
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </section>
+
+      {/* ======================================================
+          KHASSIDA
+      ====================================================== */}
+
+      <section className="mb-6">
+
+        <div className="rounded-2xl bg-emerald-950 p-5 text-white shadow-sm sm:p-6 lg:p-7">
+
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+
+            <div className="flex min-w-0 items-start gap-3">
+
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-[#d6ac47]">
+                <BookOpen size={21} />
+              </div>
+
+              <div className="min-w-0">
+
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#d6ac47]">
+                  Lecture spirituelle
+                </p>
+
+                <h2 className="mt-1 text-lg font-black sm:text-xl">
+                  {khassidaDuJour.titre}
+                </h2>
+
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-white/55">
+                  {khassidaDuJour.description}
+                </p>
+
+              </div>
+
+            </div>
+
+            <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
+
               <button
                 type="button"
                 onClick={() =>
                   navigate("/khassidas")
                 }
-                className="group min-w-0 rounded-[1.5rem] border border-slate-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg sm:rounded-[1.75rem] sm:p-5"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-white/10 sm:text-sm"
               >
-
-                <div className="flex items-center justify-between">
-
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
-
-                    <BookOpen size={19} />
-
-                  </div>
-
-                  <ArrowRight
-                    size={17}
-                    className="shrink-0 text-slate-200 transition group-hover:text-[#b88b28]"
-                  />
-
-                </div>
-
-                <h3 className="mt-4 font-black text-emerald-950 sm:mt-5">
-                  Khassidas
-                </h3>
-
-                <p className="mt-1 text-sm leading-6 text-slate-400">
-                  Consultez les Khassidas disponibles.
-                </p>
-
+                <BookOpen size={15} />
+                Consulter
               </button>
-            )}
 
-            {aPermission(
-              "NOTIFICATION_CONSULTER"
-            ) && (
               <button
                 type="button"
                 onClick={() =>
-                  navigate(
-                    "/notifications"
-                  )
+                  navigate("/khassidas")
                 }
-                className="group min-w-0 rounded-[1.5rem] border border-slate-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg sm:rounded-[1.75rem] sm:p-5"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#d6ac47] px-4 py-2.5 text-xs font-black text-emerald-950 transition hover:bg-[#e3c15f] sm:text-sm"
               >
-
-                <div className="flex items-center justify-between">
-
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
-
-                    <Bell size={19} />
-
-                  </div>
-
-                  <ArrowRight
-                    size={17}
-                    className="shrink-0 text-slate-200 transition group-hover:text-[#b88b28]"
-                  />
-
-                </div>
-
-                <h3 className="mt-4 font-black text-emerald-950 sm:mt-5">
-                  Notifications
-                </h3>
-
-                <p className="mt-1 text-sm leading-6 text-slate-400">
-                  Consultez vos notifications.
-                </p>
-
+                <Volume2 size={15} />
+                Écouter
               </button>
-            )}
+
+            </div>
 
           </div>
 
+        </div>
+
+      </section>
+
+      {/* ======================================================
+          COMMUNICATIONS
+      ====================================================== */}
+
+      {aPermission("COMMUNICATION_CONSULTER") && (
+        <section className="mb-6">
+
+          <SectionHeader
+            eyebrow="Vie du Dahira"
+            title="Communications"
+            description="Les dernières informations du Dahira."
+            action={
+              <button
+                type="button"
+                onClick={() =>
+                  navigate("/communications")
+                }
+                className="inline-flex items-center gap-1 text-sm font-bold text-emerald-800 transition hover:text-[#a77919]"
+              >
+                Tout voir
+                <ArrowRight size={15} />
+              </button>
+            }
+          />
+
+          {chargementCommunications ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+
+              <RefreshCw
+                size={24}
+                className="mx-auto animate-spin text-emerald-700"
+              />
+
+              <p className="mt-3 text-sm text-slate-400">
+                Chargement des communications...
+              </p>
+
+            </div>
+          ) : erreurCommunications ? (
+            <div className="rounded-2xl border border-red-100 bg-white p-5 shadow-sm">
+
+              <div className="flex items-start gap-3 text-red-600">
+
+                <AlertCircle
+                  size={18}
+                  className="mt-0.5 shrink-0"
+                />
+
+                <p className="text-sm">
+                  {erreurCommunications}
+                </p>
+
+              </div>
+
+            </div>
+          ) : communications.length === 0 ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+
+              <Megaphone
+                size={28}
+                className="mx-auto text-slate-200"
+              />
+
+              <p className="mt-3 text-sm text-slate-400">
+                Aucune communication récente.
+              </p>
+
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-3">
+
+              {communications.map(
+                (communication) => (
+                  <button
+                    type="button"
+                    key={communication.id}
+                    onClick={() =>
+                      navigate(
+                        `/communications/${communication.id}`
+                      )
+                    }
+                    className="group min-w-0 rounded-2xl border border-slate-200/80 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md sm:p-5"
+                  >
+
+                    <div className="flex items-center justify-between">
+
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                        <Megaphone size={18} />
+                      </div>
+
+                      <ArrowRight
+                        size={16}
+                        className="text-slate-300 transition group-hover:text-[#b88b28]"
+                      />
+
+                    </div>
+
+                    <h3 className="mt-4 line-clamp-2 font-black text-emerald-950">
+                      {communication.titre}
+                    </h3>
+
+                    <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">
+                      {communication.contenu}
+                    </p>
+
+                    <div className="mt-4 flex items-center gap-2 text-xs text-slate-400">
+
+                      <Calendar size={13} />
+
+                      {communication.date_publication
+                        ? new Intl.DateTimeFormat(
+                            "fr-FR",
+                            {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            }
+                          ).format(
+                            new Date(
+                              communication.date_publication
+                            )
+                          )
+                        : "-"}
+
+                    </div>
+
+                  </button>
+                )
+              )}
+
+            </div>
+          )}
+
         </section>
+      )}
 
-        {/* ====================================================
-            FOOTER SPIRITUEL
-        ==================================================== */}
+      {/* ======================================================
+          ACCES RAPIDES
+      ====================================================== */}
 
-        <section className="relative overflow-hidden rounded-[1.5rem] bg-emerald-950 p-5 text-white sm:rounded-[2rem] sm:p-7 md:p-9">
+      <section className="mb-6">
 
-          <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full border border-[#d6ac47]/20 sm:h-48 sm:w-48" />
+        <SectionHeader
+          eyebrow="Mon espace"
+          title="Accès rapides"
+          description="Retrouvez rapidement les services accessibles selon vos droits."
+        />
 
-          <div className="absolute -bottom-20 -left-10 h-48 w-48 rounded-full border border-white/10 sm:h-56 sm:w-56" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 
-          <div className="relative flex min-w-0 flex-col gap-5 sm:gap-6 md:flex-row md:items-center md:justify-between">
+          {aPermission("REUNION_CONSULTER") && (
+            <AccessCard
+              icon={Calendar}
+              title="Réunions"
+              description="Consultez les prochaines réunions."
+              onClick={() =>
+                navigate("/reunions")
+              }
+            />
+          )}
+
+          {aPermission("COMMUNICATION_CONSULTER") && (
+            <AccessCard
+              icon={Megaphone}
+              title="Communications"
+              description="Consultez les annonces du Dahira."
+              onClick={() =>
+                navigate("/communications")
+              }
+            />
+          )}
+
+          {aPermission("KOUREL_CONSULTER") && (
+            <AccessCard
+              icon={BookOpen}
+              title="Khassidas"
+              description="Consultez les Khassidas disponibles."
+              onClick={() =>
+                navigate("/khassidas")
+              }
+            />
+          )}
+
+          {aPermission("NOTIFICATION_CONSULTER") && (
+            <AccessCard
+              icon={Bell}
+              title="Notifications"
+              description="Consultez vos notifications."
+              onClick={() =>
+                navigate("/notifications")
+              }
+            />
+          )}
+
+          {aPermission("COTISATION_CONSULTER") && (
+            <AccessCard
+              icon={Wallet}
+              title="Cotisations"
+              description="Consultez les cotisations accessibles."
+              onClick={() =>
+                navigate("/cotisations")
+              }
+            />
+          )}
+
+          {aPermission("MEMBRE_CONSULTER") && (
+            <AccessCard
+              icon={Users}
+              title="Membres"
+              description="Accédez à l'espace des membres."
+              onClick={() =>
+                navigate("/membres")
+              }
+            />
+          )}
+
+        </div>
+
+      </section>
+
+      {/* ======================================================
+          RAPPEL FINAL
+      ====================================================== */}
+
+      <section className="overflow-hidden rounded-2xl bg-emerald-950 p-5 text-white shadow-sm sm:p-6 lg:p-7">
+
+        <div className="relative">
+
+          <div className="absolute -right-16 -top-20 h-40 w-40 rounded-full border border-[#d6ac47]/15" />
+
+          <div className="absolute -bottom-20 -left-10 h-40 w-40 rounded-full border border-white/5" />
+
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
 
             <div className="min-w-0">
 
               <div className="flex items-center gap-2 text-sm font-bold text-[#d6ac47]">
-
-                <Heart size={16} />
-
+                <Heart size={15} />
                 Rappel
-
               </div>
 
-              <h2 className="mt-2 break-words text-lg font-black sm:text-xl md:text-2xl">
+              <h2 className="mt-2 text-lg font-black sm:text-xl">
                 Qu'Allah bénisse votre journée.
               </h2>
 
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/50 sm:text-base sm:leading-7">
-
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-white/50">
                 Que chaque prière, chaque invocation
                 et chaque bonne action soit une source
                 de lumière, de paix et de bénédiction.
-
               </p>
 
             </div>
@@ -2274,11 +1633,11 @@ function MonEspace() {
             <div className="flex shrink-0 items-center gap-3">
 
               <Volume2
-                size={23}
-                className="shrink-0 text-[#d6ac47]"
+                size={21}
+                className="text-[#d6ac47]"
               />
 
-              <span className="text-xs text-white/50 sm:text-sm">
+              <span className="text-xs text-white/45 sm:text-sm">
                 Dhikr • Prière • Fraternité
               </span>
 
@@ -2286,29 +1645,9 @@ function MonEspace() {
 
           </div>
 
-        </section>
-
-      </main>
-
-      {/* ======================================================
-          PETIT PIED DE PAGE
-      ====================================================== */}
-
-      <footer className="border-t border-emerald-900/10 bg-white">
-
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-center text-[11px] text-slate-400 sm:px-5 sm:py-6 sm:text-xs md:flex-row md:items-center md:justify-between md:text-left">
-
-          <p>
-            © {new Date().getFullYear()} Dahira Mawahibou Naafih
-          </p>
-
-          <p>
-            Spiritualité • Fraternité • Solidarité
-          </p>
-
         </div>
 
-      </footer>
+      </section>
 
     </div>
   );
