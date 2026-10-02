@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
 
+import PhoneInput, {
+  isValidPhoneNumber,
+} from "react-phone-number-input";
+
+import "react-phone-number-input/style.css";
+
 import {
   getMembres,
   creerMembre,
@@ -72,9 +78,6 @@ function Membres() {
         getKourels(),
       ]);
 
-      console.log("FONCTIONS REÇUES :", fonctionsData);
-      console.log("KOURELS REÇUS :", kourelsData);
-
       setFonctions(
         Array.isArray(fonctionsData)
           ? fonctionsData.filter(
@@ -120,11 +123,6 @@ function Membres() {
       const data = await getMembres(
         terme,
         afficherInactifs
-      );
-
-      console.log(
-        "MEMBRES REÇUS PAR LE FRONTEND :",
-        data
       );
 
       setMembres(
@@ -218,78 +216,19 @@ function Membres() {
   }
 
   // ============================================================
-  // TELEPHONE
+  // TELEPHONE INTERNATIONAL
   // ============================================================
 
-  function formaterTelephone(value) {
-    let chiffres = String(value || "").replace(/\D/g, "");
-
-    // Si l'utilisateur colle un numéro avec l'indicatif 221
-    if (
-      chiffres.length === 12 &&
-      chiffres.startsWith("221")
-    ) {
-      chiffres = chiffres.substring(3);
-    }
-
-    // Maximum 9 chiffres
-    chiffres = chiffres.substring(0, 9);
-
-    // Format 77 123 45 67
-    if (chiffres.length <= 2) {
-      return chiffres;
-    }
-
-    if (chiffres.length <= 5) {
-      return `${chiffres.substring(0, 2)} ${chiffres.substring(2)}`;
-    }
-
-    if (chiffres.length <= 7) {
-      return `${chiffres.substring(0, 2)} ${chiffres.substring(
-        2,
-        5
-      )} ${chiffres.substring(5)}`;
-    }
-
-    return `${chiffres.substring(0, 2)} ${chiffres.substring(
-      2,
-      5
-    )} ${chiffres.substring(5, 7)} ${chiffres.substring(7, 9)}`;
-  }
-
-  function handleTelephoneChange(event) {
-    const value = event.target.value;
-
-    const telephoneFormate = formaterTelephone(value);
-
+  function handleTelephoneChange(value) {
     setFormulaire((ancien) => ({
       ...ancien,
-      telephone: telephoneFormate,
+      telephone: value || "",
     }));
 
     setErreursFormulaire((ancien) => ({
       ...ancien,
       telephone: "",
     }));
-  }
-
-  // ============================================================
-  // NORMALISATION TELEPHONE POUR LE BACKEND
-  // ============================================================
-
-  function normaliserTelephone(telephone) {
-    let chiffres = String(
-      telephone || ""
-    ).replace(/\D/g, "");
-
-    if (
-      chiffres.length === 12 &&
-      chiffres.startsWith("221")
-    ) {
-      chiffres = chiffres.substring(3);
-    }
-
-    return chiffres;
   }
 
   // ============================================================
@@ -375,9 +314,6 @@ function Membres() {
       formulaire.telephone || ""
     ).trim();
 
-    const telephoneNormalise =
-      normaliserTelephone(telephone);
-
     const lieu = String(
       formulaire.lieu_residence || ""
     ).trim();
@@ -385,15 +321,6 @@ function Membres() {
     const montantCotisation = String(
       formulaire.montant_cotisation ?? ""
     ).trim();
-
-    console.log(
-      "VALIDATION TELEPHONE :",
-      {
-        valeurSaisie: telephone,
-        valeurNormalisee: telephoneNormalise,
-        longueur: telephoneNormalise.length,
-      }
-    );
 
     // ==========================================================
     // NOM
@@ -423,21 +350,12 @@ function Membres() {
     // TELEPHONE
     // ==========================================================
 
-    if (!telephoneNormalise) {
+    if (!telephone) {
       erreurs.telephone =
         "Le numéro de téléphone est obligatoire.";
-    } else if (
-      telephoneNormalise.length !== 9
-    ) {
+    } else if (!isValidPhoneNumber(telephone)) {
       erreurs.telephone =
-        "Le numéro doit contenir exactement 9 chiffres. Exemple : 77 123 45 67.";
-    } else if (
-      !/^(70|71|75|76|77|78)/.test(
-        telephoneNormalise
-      )
-    ) {
-      erreurs.telephone =
-        "Le numéro de téléphone sénégalais est invalide.";
+        "Le numéro de téléphone est invalide.";
     }
 
     // ==========================================================
@@ -454,15 +372,6 @@ function Membres() {
 
     // ==========================================================
     // COTISATION
-    // ==========================================================
-    //
-    // 0 FCFA est maintenant autorisé.
-    //
-    // 0 signifie :
-    // "aucune cotisation mensuelle fixe".
-    //
-    // Le membre pourra malgré tout effectuer des
-    // versements volontaires depuis la page Cotisations.
     // ==========================================================
 
     if (!montantCotisation) {
@@ -498,11 +407,6 @@ function Membres() {
 
     setErreursFormulaire(erreurs);
 
-    console.log(
-      "VALIDATION FORMULAIRE :",
-      erreurs
-    );
-
     return (
       Object.keys(erreurs).length === 0
     );
@@ -513,19 +417,11 @@ function Membres() {
   // ============================================================
 
   function ouvrirAjout() {
-    console.log(
-      "OUVERTURE FORMULAIRE AJOUT"
-    );
-
     setModeEdition(false);
     setMembreSelectionne(null);
 
     setFormulaire({
-      nom: "",
-      prenom: "",
-      telephone: "",
-      lieu_residence: "",
-      montant_cotisation: "",
+      ...FORMULAIRE_INITIAL,
       fonction_ids: [],
       kourel_ids: [],
     });
@@ -611,20 +507,13 @@ function Membres() {
   // ============================================================
 
   function ouvrirModification(membre) {
-    console.log(
-      "OUVERTURE MODIFICATION :",
-      membre
-    );
-
     setModeEdition(true);
     setMembreSelectionne(membre);
 
     setFormulaire({
       nom: membre.nom || "",
       prenom: membre.prenom || "",
-      telephone: formaterTelephone(
-        membre.telephone || ""
-      ),
+      telephone: membre.telephone || "",
       lieu_residence:
         membre.lieu_residence || "",
       montant_cotisation:
@@ -662,11 +551,7 @@ function Membres() {
     setMembreSelectionne(null);
 
     setFormulaire({
-      nom: "",
-      prenom: "",
-      telephone: "",
-      lieu_residence: "",
-      montant_cotisation: "",
+      ...FORMULAIRE_INITIAL,
       fonction_ids: [],
       kourel_ids: [],
     });
@@ -681,42 +566,18 @@ function Membres() {
   async function handleSubmit(event) {
     event.preventDefault();
 
-    console.log("=================================");
-    console.log(
-      "BOUTON AJOUT / MODIFICATION CLIQUÉ"
-    );
-    console.log("=================================");
-
     setErreur("");
     setMessage("");
-
-    console.log(
-      "FORMULAIRE ACTUEL :",
-      formulaire
-    );
 
     const formulaireValide =
       validerFormulaire();
 
-    console.log(
-      "FORMULAIRE VALIDE :",
-      formulaireValide
-    );
-
     if (!formulaireValide) {
-      console.log(
-        "❌ ENREGISTREMENT BLOQUÉ PAR LA VALIDATION"
-      );
       return;
     }
 
     try {
       setEnregistrement(true);
-
-      const telephone =
-        normaliserTelephone(
-          formulaire.telephone
-        );
 
       const donnees = {
         nom: formulaire.nom.trim(),
@@ -724,7 +585,10 @@ function Membres() {
         prenom:
           formulaire.prenom.trim(),
 
-        telephone,
+        // Le composant PhoneInput fournit
+        // directement un numéro E.164.
+        telephone:
+          formulaire.telephone,
 
         lieu_residence:
           formulaire.lieu_residence.trim(),
@@ -745,30 +609,6 @@ function Membres() {
           ),
       };
 
-      console.log(
-        "================================="
-      );
-
-      console.log(
-        "DONNEES ENVOYEES AU BACKEND :"
-      );
-
-      console.log(donnees);
-
-      console.log(
-        "TELEPHONE ENVOYE :",
-        donnees.telephone
-      );
-
-      console.log(
-        "MONTANT COTISATION ENVOYE :",
-        donnees.montant_cotisation
-      );
-
-      console.log(
-        "================================="
-      );
-
       // ========================================================
       // MODIFICATION
       // ========================================================
@@ -777,20 +617,9 @@ function Membres() {
         modeEdition &&
         membreSelectionne
       ) {
-        console.log(
-          "MODIFICATION DU MEMBRE :",
-          membreSelectionne.id
-        );
-
-        const response =
-          await modifierMembre(
-            membreSelectionne.id,
-            donnees
-          );
-
-        console.log(
-          "REPONSE MODIFICATION :",
-          response
+        await modifierMembre(
+          membreSelectionne.id,
+          donnees
         );
 
         setMessage(
@@ -803,18 +632,8 @@ function Membres() {
       // ========================================================
 
       else {
-        console.log(
-          "CREATION D'UN NOUVEAU MEMBRE"
-        );
-
-        const response =
-          await creerMembre(
-            donnees
-          );
-
-        console.log(
-          "MEMBRE CREE :",
-          response
+        await creerMembre(
+          donnees
         );
 
         setMessage(
@@ -822,26 +641,17 @@ function Membres() {
         );
       }
 
-      // ========================================================
-      // FERMETURE
-      // ========================================================
-
       setModalOuverte(false);
       setMembreSelectionne(null);
 
       setFormulaire({
-        nom: "",
-        prenom: "",
-        telephone: "",
-        lieu_residence: "",
-        montant_cotisation: "",
+        ...FORMULAIRE_INITIAL,
         fonction_ids: [],
         kourel_ids: [],
       });
 
       setErreursFormulaire({});
 
-      // Recharger la liste
       await chargerMembres(
         rechercheActive,
         inclureInactifs
@@ -849,31 +659,9 @@ function Membres() {
 
     } catch (error) {
       console.error(
-        "================================="
-      );
-
-      console.error(
         "ERREUR ENREGISTREMENT :",
         error
       );
-
-      console.error(
-        "REPONSE BACKEND :",
-        error.response?.data
-      );
-
-      console.error(
-        "STATUT HTTP :",
-        error.response?.status
-      );
-
-      console.error(
-        "================================="
-      );
-
-      // ========================================================
-      // 401
-      // ========================================================
 
       if (
         error.response?.status === 401
@@ -881,38 +669,20 @@ function Membres() {
         setErreur(
           "Votre session a expiré. Veuillez vous reconnecter."
         );
-      }
-
-      // ========================================================
-      // 403
-      // ========================================================
-
-      else if (
+      } else if (
         error.response?.status === 403
       ) {
         setErreur(
           "Vous n'avez pas la permission d'effectuer cette action."
         );
-      }
-
-      // ========================================================
-      // 409
-      // ========================================================
-
-      else if (
+      } else if (
         error.response?.status === 409
       ) {
         setErreur(
           error.response?.data?.detail ||
             "Ce numéro de téléphone est déjà utilisé."
         );
-      }
-
-      // ========================================================
-      // 422
-      // ========================================================
-
-      else if (
+      } else if (
         error.response?.status === 422
       ) {
         const detail =
@@ -936,20 +706,13 @@ function Membres() {
               "Certaines données saisies sont invalides."
           );
         }
-      }
-
-      // ========================================================
-      // AUTRE ERREUR
-      // ========================================================
-
-      else {
+      } else {
         setErreur(
           error.response?.data?.detail ||
             error.message ||
             "Une erreur est survenue lors de l'enregistrement."
         );
       }
-
     } finally {
       setEnregistrement(false);
     }
@@ -1126,9 +889,7 @@ function Membres() {
   return (
     <div className="space-y-8">
 
-      {/* ======================================================
-          HEADER
-      ====================================================== */}
+      {/* HEADER */}
 
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
 
@@ -1163,9 +924,7 @@ function Membres() {
 
       </div>
 
-      {/* ======================================================
-          MESSAGES
-      ====================================================== */}
+      {/* MESSAGES */}
 
       {message && (
         <div className="flex items-start justify-between gap-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
@@ -1219,9 +978,7 @@ function Membres() {
         </div>
       )}
 
-      {/* ======================================================
-          STATISTIQUES
-      ====================================================== */}
+      {/* STATISTIQUES */}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 
@@ -1283,9 +1040,7 @@ function Membres() {
 
       </div>
 
-      {/* ======================================================
-          RECHERCHE
-      ====================================================== */}
+      {/* RECHERCHE */}
 
       <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
 
@@ -1361,21 +1116,16 @@ function Membres() {
 
         {rechercheActive && (
           <p className="mt-4 text-xs text-gray-500">
-
             Recherche pour :{" "}
-
             <span className="font-semibold text-gray-700">
               "{rechercheActive}"
             </span>
-
           </p>
         )}
 
       </div>
 
-      {/* ======================================================
-          TABLEAU
-      ====================================================== */}
+      {/* TABLEAU */}
 
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
 
@@ -1508,8 +1258,6 @@ function Membres() {
                         className="transition hover:bg-gray-50"
                       >
 
-                        {/* MEMBRE */}
-
                         <td className="px-6 py-5">
 
                           <div className="flex items-center gap-3">
@@ -1537,10 +1285,8 @@ function Membres() {
                             <div className="min-w-0">
 
                               <p className="truncate font-semibold text-gray-900">
-
                                 {membre.prenom}{" "}
                                 {membre.nom}
-
                               </p>
 
                               <p className="mt-0.5 text-xs text-gray-400">
@@ -1553,24 +1299,14 @@ function Membres() {
 
                         </td>
 
-                        {/* TELEPHONE */}
-
-                        <td className="px-6 py-5 text-sm text-gray-600">
-                          {membre.telephone
-                            ? formaterTelephone(
-                                membre.telephone
-                              )
-                            : "—"}
+                        <td className="px-6 py-5 text-sm font-medium text-gray-600">
+                          {membre.telephone || "—"}
                         </td>
-
-                        {/* RESIDENCE */}
 
                         <td className="px-6 py-5 text-sm text-gray-600">
                           {membre.lieu_residence ||
                             "—"}
                         </td>
-
-                        {/* FONCTIONS */}
 
                         <td className="px-6 py-5">
 
@@ -1606,8 +1342,6 @@ function Membres() {
 
                         </td>
 
-                        {/* KOURELS */}
-
                         <td className="px-6 py-5">
 
                           {kourelsMembre.length >
@@ -1642,8 +1376,6 @@ function Membres() {
 
                         </td>
 
-                        {/* COTISATION */}
-
                         <td className="px-6 py-5 text-sm font-semibold text-gray-700">
 
                           {formaterMontant(
@@ -1652,8 +1384,6 @@ function Membres() {
                           )}
 
                         </td>
-
-                        {/* STATUT */}
 
                         <td className="px-6 py-5">
 
@@ -1680,8 +1410,6 @@ function Membres() {
                           )}
 
                         </td>
-
-                        {/* ACTIONS */}
 
                         <td className="px-6 py-5">
 
@@ -1746,9 +1474,7 @@ function Membres() {
 
       </div>
 
-      {/* ======================================================
-          MODAL AJOUT / MODIFICATION
-      ====================================================== */}
+      {/* MODAL */}
 
       {modalOuverte && (
 
@@ -1769,34 +1495,26 @@ function Membres() {
 
           <div className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl">
 
-            {/* HEADER MODAL */}
-
             <div className="flex items-start justify-between border-b border-gray-100 px-6 py-5 sm:px-8">
 
               <div>
 
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
-
                   {modeEdition
                     ? "Modification"
                     : "Nouveau membre"}
-
                 </p>
 
                 <h2 className="mt-2 text-2xl font-bold text-gray-900">
-
                   {modeEdition
                     ? "Modifier le membre"
                     : "Ajouter un membre"}
-
                 </h2>
 
                 <p className="mt-1 text-sm text-gray-500">
-
                   {modeEdition
                     ? "Modifiez les informations, les fonctions et les Kourels du membre."
                     : "Renseignez les informations du nouveau membre."}
-
                 </p>
 
               </div>
@@ -1816,8 +1534,6 @@ function Membres() {
 
             </div>
 
-            {/* FORMULAIRE */}
-
             <form
               onSubmit={
                 handleSubmit
@@ -1828,7 +1544,7 @@ function Membres() {
 
               <div className="space-y-6">
 
-                {/* INFORMATIONS PERSONNELLES */}
+                {/* INFORMATIONS */}
 
                 <div>
 
@@ -1845,8 +1561,6 @@ function Membres() {
                 {/* NOM + PRENOM */}
 
                 <div className="grid gap-5 sm:grid-cols-2">
-
-                  {/* NOM */}
 
                   <div>
 
@@ -1891,8 +1605,6 @@ function Membres() {
                     )}
 
                   </div>
-
-                  {/* PRENOM */}
 
                   <div>
 
@@ -1948,48 +1660,38 @@ function Membres() {
                     htmlFor="telephone"
                     className="mb-2 block text-sm font-semibold text-gray-700"
                   >
-                    Téléphone
+                    Numéro de téléphone
                     <span className="ml-1 text-red-500">
                       *
                     </span>
                   </label>
 
-                  <div
-                    className={`flex overflow-hidden rounded-xl border bg-gray-50 transition focus-within:bg-white focus-within:ring-4 ${
+                  <PhoneInput
+                    id="telephone"
+                    international
+                    defaultCountry="SN"
+                    countryCallingCodeEditable={false}
+                    value={
+                      formulaire.telephone ||
+                      undefined
+                    }
+                    onChange={
+                      handleTelephoneChange
+                    }
+                    disabled={
+                      enregistrement
+                    }
+                    autoComplete="tel"
+                    className={`w-full rounded-xl border bg-gray-50 px-4 py-3 text-sm text-gray-900 transition focus-within:bg-white focus-within:ring-4 ${
                       erreursFormulaire.telephone
                         ? "border-red-300 focus-within:border-red-500 focus-within:ring-red-500/10"
                         : "border-gray-200 focus-within:border-emerald-700 focus-within:ring-emerald-700/10"
                     }`}
-                  >
-
-                    <div className="flex items-center border-r border-gray-200 px-4 text-sm font-semibold text-gray-500">
-                      +221
-                    </div>
-
-                    <input
-                      id="telephone"
-                      name="telephone"
-                      type="tel"
-                      value={
-                        formulaire.telephone
-                      }
-                      onChange={
-                        handleTelephoneChange
-                      }
-                      disabled={
-                        enregistrement
-                      }
-                      autoComplete="tel"
-                      inputMode="numeric"
-                      maxLength={12}
-                      placeholder="77 123 45 67"
-                      className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400"
-                    />
-
-                  </div>
+                  />
 
                   <p className="mt-1.5 text-xs text-gray-400">
-                    Exemple : 77 123 45 67 — le +221 est ajouté automatiquement.
+                    Sélectionnez le pays puis saisissez le numéro.
+                    Le numéro sera enregistré au format international.
                   </p>
 
                   {erreursFormulaire.telephone && (
@@ -2030,7 +1732,7 @@ function Membres() {
                       enregistrement
                     }
                     autoComplete="address-level2"
-                    placeholder="Ex. Castors"
+                    placeholder="Ex. Castors, Dakar"
                     className={`w-full rounded-xl border bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:bg-white focus:ring-4 disabled:cursor-not-allowed disabled:opacity-60 ${
                       erreursFormulaire.lieu_residence
                         ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
@@ -2374,9 +2076,7 @@ function Membres() {
 
               </div>
 
-              {/* ==================================================
-                  ACTIONS
-                  ================================================== */}
+              {/* ACTIONS */}
 
               <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
 

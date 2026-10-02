@@ -1,5 +1,7 @@
 from decimal import Decimal
 
+import phonenumbers
+
 from pydantic import (
     BaseModel,
     Field,
@@ -8,7 +10,6 @@ from pydantic import (
 
 
 class MembreCreate(BaseModel):
-
     nom: str = Field(
         ...,
         min_length=2,
@@ -23,7 +24,12 @@ class MembreCreate(BaseModel):
 
     telephone: str = Field(
         ...,
-        description="Numéro de téléphone sénégalais",
+        min_length=8,
+        max_length=30,
+        description=(
+            "Numéro de téléphone international "
+            "au format E.164."
+        ),
     )
 
     lieu_residence: str = Field(
@@ -31,17 +37,6 @@ class MembreCreate(BaseModel):
         min_length=2,
         max_length=150,
     )
-
-    # ============================================================
-    # COTISATION
-    # ============================================================
-    #
-    # 0 = membre non cotisant
-    #
-    # > 0 = membre cotisant avec une cotisation mensuelle fixe
-    #
-    # Aucun montant négatif n'est autorisé.
-    # ============================================================
 
     montant_cotisation: Decimal = Field(
         ...,
@@ -54,27 +49,17 @@ class MembreCreate(BaseModel):
         ),
     )
 
-    # ============================================================
-    # FONCTIONS
-    # ============================================================
-
     fonction_ids: list[int] = Field(
         ...,
         min_length=1,
     )
 
-    # ============================================================
-    # KOURELS
-    # ============================================================
-
     kourel_ids: list[int] = Field(
         default_factory=list,
-        description="Liste des Kourels auxquels le membre appartient",
+        description=(
+            "Liste des Kourels auxquels le membre appartient"
+        ),
     )
-
-    # ============================================================
-    # VALIDATION TEXTES
-    # ============================================================
 
     @field_validator(
         "nom",
@@ -83,7 +68,6 @@ class MembreCreate(BaseModel):
     )
     @classmethod
     def nettoyer_texte(cls, value: str) -> str:
-
         value = " ".join(
             value.strip().split()
         )
@@ -95,46 +79,63 @@ class MembreCreate(BaseModel):
 
         return value
 
-    # ============================================================
-    # TELEPHONE
-    # ============================================================
-
     @field_validator("telephone")
     @classmethod
-    def valider_telephone(cls, value: str) -> str:
+    def valider_telephone(
+        cls,
+        value: str,
+    ) -> str:
 
         value = value.strip()
 
-        chiffres = "".join(
-            caractere
-            for caractere in value
-            if caractere.isdigit()
-        )
-
-        if len(chiffres) != 9:
+        if not value:
             raise ValueError(
-                "Le numéro de téléphone doit contenir 9 chiffres."
+                "Le numéro de téléphone est obligatoire."
             )
 
-        prefixes_valides = (
-            "70",
-            "71",
-            "75",
-            "76",
-            "77",
-            "78",
-        )
+        # --------------------------------------------------------
+        # Le frontend envoie normalement déjà du E.164.
+        # On accepte cependant certains formats avec espaces.
+        # --------------------------------------------------------
 
-        if not chiffres.startswith(prefixes_valides):
+        if not value.startswith("+"):
             raise ValueError(
-                "Le numéro de téléphone sénégalais est invalide."
+                "Le numéro doit être au format international, "
+                "par exemple +221771234567."
             )
 
-        return chiffres
+        try:
+            numero = phonenumbers.parse(
+                value,
+                None,
+            )
+        except phonenumbers.NumberParseException:
+            raise ValueError(
+                "Le numéro de téléphone est invalide."
+            )
 
-    # ============================================================
-    # COTISATION
-    # ============================================================
+        if not phonenumbers.is_possible_number(
+            numero
+        ):
+            raise ValueError(
+                "La longueur du numéro de téléphone est invalide."
+            )
+
+        if not phonenumbers.is_valid_number(
+            numero
+        ):
+            raise ValueError(
+                "Le numéro de téléphone est invalide."
+            )
+
+        numero_normalise = (
+            phonenumbers.format_number(
+                numero,
+                phonenumbers.PhoneNumberFormat.E164,
+            )
+        )
+
+        return numero_normalise
 
     @field_validator("montant_cotisation")
     @classmethod
@@ -143,24 +144,12 @@ class MembreCreate(BaseModel):
         value: Decimal,
     ) -> Decimal:
 
-        # --------------------------------------------------------
-        # 0 est autorisé.
-        #
-        # 0 = membre non cotisant.
-        #
-        # Un montant strictement négatif reste interdit.
-        # --------------------------------------------------------
-
         if value < 0:
             raise ValueError(
                 "Le montant de cotisation ne peut pas être négatif."
             )
 
         return value
-
-    # ============================================================
-    # FONCTIONS
-    # ============================================================
 
     @field_validator("fonction_ids")
     @classmethod
@@ -188,10 +177,6 @@ class MembreCreate(BaseModel):
 
         return fonctions_uniques
 
-    # ============================================================
-    # KOURELS
-    # ============================================================
-
     @field_validator("kourel_ids")
     @classmethod
     def valider_kourel_ids(
@@ -213,10 +198,6 @@ class MembreCreate(BaseModel):
 
         return kourels_uniques
 
-
-# ============================================================
-# MODIFICATION D'UN MEMBRE
-# ============================================================
 
 class MembreUpdate(MembreCreate):
     pass
