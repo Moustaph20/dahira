@@ -1,3 +1,4 @@
+
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -27,7 +28,7 @@ router = APIRouter(
 
 
 # ============================================================
-# OUTIL : RECUPERER LES FONCTIONS D'UN UTILISATEUR
+# OUTIL : RÉCUPÉRER LES FONCTIONS D'UN UTILISATEUR
 # ============================================================
 
 def recuperer_fonctions_utilisateur(
@@ -50,7 +51,7 @@ def recuperer_fonctions_utilisateur(
 
 
 # ============================================================
-# OUTIL : RECUPERER LES KOURELS D'UN MEMBRE
+# OUTIL : RÉCUPÉRER LES KOURELS D'UN MEMBRE
 # ============================================================
 
 def recuperer_kourels_membre(
@@ -74,7 +75,7 @@ def recuperer_kourels_membre(
 
 
 # ============================================================
-# CREER UN MEMBRE
+# CRÉER UN MEMBRE
 # + COMPTE UTILISATEUR
 # + FONCTIONS
 # + KOURELS
@@ -121,7 +122,6 @@ def creer_membre(
     fonctions = []
 
     if fonction_ids:
-
         fonctions = (
             db.query(Fonction)
             .filter(
@@ -148,7 +148,6 @@ def creer_membre(
     kourels = []
 
     if kourel_ids:
-
         kourels = (
             db.query(Kourel)
             .filter(
@@ -178,15 +177,18 @@ def creer_membre(
     )
 
     try:
-
         db.add(membre)
         db.flush()
 
         # ----------------------------------------------------
         # 5. Créer le compte utilisateur
         #
-        # Identifiant initial = téléphone
-        # Mot de passe initial = téléphone
+        # Pour un NOUVEAU membre :
+        # identifiant initial = téléphone
+        # mot de passe initial = téléphone
+        #
+        # IMPORTANT :
+        # cela ne modifie jamais les comptes existants.
         # ----------------------------------------------------
 
         utilisateur = Utilisateur(
@@ -207,29 +209,28 @@ def creer_membre(
         # ----------------------------------------------------
 
         for fonction in fonctions:
-
-            association = UtilisateurFonction(
-                utilisateur_id=utilisateur.id,
-                fonction_id=fonction.id,
+            db.add(
+                UtilisateurFonction(
+                    utilisateur_id=utilisateur.id,
+                    fonction_id=fonction.id,
+                )
             )
-
-            db.add(association)
 
         # ----------------------------------------------------
         # 7. Affecter les Kourels
         # ----------------------------------------------------
 
         for kourel in kourels:
-
-            affiliation = KourelMembre(
-                kourel_id=kourel.id,
-                membre_id=membre.id,
-                date_entree=date.today(),
-                date_sortie=None,
-                actif=True,
+            db.add(
+                KourelMembre(
+                    kourel_id=kourel.id,
+                    membre_id=membre.id,
+                    date_entree=date.today(),
+                    date_sortie=None,
+                    gestionnaire=False,
+                    actif=True,
+                )
             )
-
-            db.add(affiliation)
 
         # ----------------------------------------------------
         # 8. Créer la notification de bienvenue
@@ -242,7 +243,7 @@ def creer_membre(
             message=(
                 f"Bienvenue {membre.prenom} {membre.nom}. "
                 "Votre compte a été créé avec succès. "
-                f"Votre identifiant initial est votre numéro : "
+                "Votre identifiant initial est votre numéro : "
                 f"{membre.telephone}. "
                 "Vous devrez modifier votre mot de passe "
                 "lors de votre première connexion."
@@ -258,7 +259,6 @@ def creer_membre(
         db.commit()
 
     except IntegrityError as erreur:
-
         db.rollback()
 
         print(
@@ -286,7 +286,6 @@ def creer_membre(
             "Membre, compte utilisateur, fonctions et "
             "affiliations créés avec succès"
         ),
-
         "membre": {
             "id": membre.id,
             "nom": membre.nom,
@@ -298,14 +297,12 @@ def creer_membre(
             ),
             "actif": membre.actif,
         },
-
         "utilisateur": {
             "id": utilisateur.id,
             "identifiant": utilisateur.identifiant,
             "premiere_connexion": utilisateur.premiere_connexion,
             "actif": utilisateur.actif,
         },
-
         "fonctions": [
             {
                 "id": fonction.id,
@@ -314,7 +311,6 @@ def creer_membre(
             }
             for fonction in fonctions
         ],
-
         "kourels": [
             {
                 "id": kourel.id,
@@ -323,7 +319,6 @@ def creer_membre(
             }
             for kourel in kourels
         ],
-
         "acces_initial": {
             "identifiant": membre.telephone,
             "mot_de_passe_initial": membre.telephone,
@@ -348,13 +343,11 @@ def lister_membres(
     query = db.query(Membre)
 
     if not inclure_inactifs:
-
         query = query.filter(
             Membre.actif.is_(True)
         )
 
     if recherche:
-
         terme = f"%{recherche.strip()}%"
 
         query = query.filter(
@@ -375,7 +368,6 @@ def lister_membres(
     resultats = []
 
     for membre in membres:
-
         utilisateur = (
             db.query(Utilisateur)
             .filter(
@@ -387,7 +379,6 @@ def lister_membres(
         fonctions = []
 
         if utilisateur:
-
             fonctions = recuperer_fonctions_utilisateur(
                 utilisateur.id,
                 db,
@@ -409,7 +400,6 @@ def lister_membres(
                     membre.montant_cotisation
                 ),
                 "actif": membre.actif,
-
                 "fonctions": [
                     {
                         "id": fonction.id,
@@ -418,7 +408,6 @@ def lister_membres(
                     }
                     for fonction in fonctions
                 ],
-
                 "kourels": [
                     {
                         "id": kourel.id,
@@ -454,15 +443,10 @@ def obtenir_membre(
     )
 
     if not membre:
-
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Membre introuvable.",
         )
-
-    # --------------------------------------------------------
-    # Utilisateur
-    # --------------------------------------------------------
 
     utilisateur = (
         db.query(Utilisateur)
@@ -472,22 +456,13 @@ def obtenir_membre(
         .first()
     )
 
-    # --------------------------------------------------------
-    # Fonctions
-    # --------------------------------------------------------
-
     fonctions = []
 
     if utilisateur:
-
         fonctions = recuperer_fonctions_utilisateur(
             utilisateur.id,
             db,
         )
-
-    # --------------------------------------------------------
-    # Kourels
-    # --------------------------------------------------------
 
     kourels = recuperer_kourels_membre(
         membre.id,
@@ -504,7 +479,6 @@ def obtenir_membre(
             membre.montant_cotisation
         ),
         "actif": membre.actif,
-
         "fonctions": [
             {
                 "id": fonction.id,
@@ -513,7 +487,6 @@ def obtenir_membre(
             }
             for fonction in fonctions
         ],
-
         "kourels": [
             {
                 "id": kourel.id,
@@ -527,7 +500,13 @@ def obtenir_membre(
 
 # ============================================================
 # MODIFIER UN MEMBRE
+# + FONCTIONS
+# + KOURELS
 # + NOTIFICATION
+#
+# IMPORTANT :
+# La modification du téléphone NE MODIFIE JAMAIS
+# l'identifiant de connexion existant.
 # ============================================================
 
 @router.put("/{membre_id}")
@@ -552,14 +531,13 @@ def modifier_membre(
     )
 
     if not membre:
-
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Membre introuvable.",
         )
 
     # --------------------------------------------------------
-    # 2. Vérifier le téléphone du membre
+    # 2. Vérifier le téléphone
     # --------------------------------------------------------
 
     telephone_existant = (
@@ -572,7 +550,6 @@ def modifier_membre(
     )
 
     if telephone_existant:
-
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
@@ -592,7 +569,6 @@ def modifier_membre(
     fonctions = []
 
     if fonction_ids:
-
         fonctions = (
             db.query(Fonction)
             .filter(
@@ -603,7 +579,6 @@ def modifier_membre(
         )
 
         if len(fonctions) != len(fonction_ids):
-
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
@@ -623,7 +598,6 @@ def modifier_membre(
     kourels = []
 
     if kourel_ids:
-
         kourels = (
             db.query(Kourel)
             .filter(
@@ -634,7 +608,6 @@ def modifier_membre(
         )
 
         if len(kourels) != len(kourel_ids):
-
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
@@ -644,13 +617,10 @@ def modifier_membre(
             )
 
     # --------------------------------------------------------
-    # 5. Ancien téléphone
-    # --------------------------------------------------------
-
-    ancien_telephone = membre.telephone
-
-    # --------------------------------------------------------
-    # 6. Récupérer l'utilisateur
+    # 5. Récupérer l'utilisateur
+    #
+    # IMPORTANT :
+    # On ne modifie JAMAIS son identifiant ici.
     # --------------------------------------------------------
 
     utilisateur = (
@@ -662,35 +632,7 @@ def modifier_membre(
     )
 
     # --------------------------------------------------------
-    # 7. Vérifier l'identifiant utilisateur
-    # --------------------------------------------------------
-
-    if utilisateur:
-
-        if utilisateur.identifiant == ancien_telephone:
-
-            autre_utilisateur = (
-                db.query(Utilisateur)
-                .filter(
-                    Utilisateur.identifiant
-                    == donnees.telephone,
-                    Utilisateur.id != utilisateur.id,
-                )
-                .first()
-            )
-
-            if autre_utilisateur:
-
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail=(
-                        "Un autre utilisateur utilise déjà "
-                        "ce numéro comme identifiant."
-                    ),
-                )
-
-    # --------------------------------------------------------
-    # 8. Modifier les informations du membre
+    # 6. Modifier les informations du membre
     # --------------------------------------------------------
 
     membre.nom = donnees.nom
@@ -700,21 +642,10 @@ def modifier_membre(
     membre.montant_cotisation = donnees.montant_cotisation
 
     # --------------------------------------------------------
-    # 9. Synchroniser l'identifiant utilisateur
+    # 7. Remplacer les fonctions
     # --------------------------------------------------------
 
     if utilisateur:
-
-        if utilisateur.identifiant == ancien_telephone:
-
-            utilisateur.identifiant = membre.telephone
-
-    # --------------------------------------------------------
-    # 10. Remplacer les fonctions
-    # --------------------------------------------------------
-
-    if utilisateur:
-
         db.query(UtilisateurFonction).filter(
             UtilisateurFonction.utilisateur_id
             == utilisateur.id
@@ -723,7 +654,6 @@ def modifier_membre(
         )
 
         for fonction in fonctions:
-
             db.add(
                 UtilisateurFonction(
                     utilisateur_id=utilisateur.id,
@@ -732,16 +662,19 @@ def modifier_membre(
             )
 
     # ========================================================
-    # 11. SYNCHRONISER LES KOURELS
+    # 8. SYNCHRONISER LES KOURELS
     # ========================================================
     #
-    # IMPORTANT :
-    # La table possède :
+    # Règle :
     #
-    # UNIQUE (kourel_id, membre_id)
+    # - sélectionné + déjà existant = réactiver
+    # - sélectionné + inexistant = créer
+    # - existant + non sélectionné = désactiver
     #
-    # On ne doit donc jamais recréer une affiliation
-    # qui existe déjà.
+    # On ne supprime jamais une ancienne affiliation.
+    # Cela permet de conserver l'historique.
+    #
+    # La contrainte UNIQUE(kourel_id, membre_id) est respectée.
     # ========================================================
 
     toutes_affiliations = (
@@ -752,11 +685,8 @@ def modifier_membre(
         .all()
     )
 
-    # Ensemble des Kourels actuellement sélectionnés
-    kourel_ids_selectionnes = {
-        kourel.id
-        for kourel in kourels
-    }
+    # Ensemble des Kourels sélectionnés dans le formulaire
+    kourel_ids_selectionnes = set(kourel_ids)
 
     # Dictionnaire :
     #
@@ -768,65 +698,52 @@ def modifier_membre(
     }
 
     # --------------------------------------------------------
-    # 11.1 Désactiver les anciennes affiliations retirées
+    # 8.1 Désactiver les affiliations retirées
     # --------------------------------------------------------
 
     for affiliation in toutes_affiliations:
-
-        if (
-            affiliation.kourel_id
-            not in kourel_ids_selectionnes
-        ):
+        if affiliation.kourel_id not in kourel_ids_selectionnes:
 
             if affiliation.actif:
-
                 affiliation.actif = False
                 affiliation.date_sortie = date.today()
 
     # --------------------------------------------------------
-    # 11.2 Conserver / réactiver / créer
+    # 8.2 Ajouter ou réactiver les Kourels sélectionnés
     # --------------------------------------------------------
 
-    for kourel in kourels:
+    for kourel_id in kourel_ids_selectionnes:
 
         affiliation = affiliations_par_kourel.get(
-            kourel.id
+            kourel_id
         )
 
         if affiliation:
-
-            # ------------------------------------------------
             # L'affiliation existe déjà.
-            #
-            # On ne crée PAS une nouvelle ligne.
-            # On la réactive simplement si nécessaire.
-            # ------------------------------------------------
+            # On la réactive sans créer une deuxième ligne.
 
             affiliation.actif = True
             affiliation.date_sortie = None
 
         else:
-
-            # ------------------------------------------------
-            # Nouvelle affiliation
-            # ------------------------------------------------
+            # Nouvelle affiliation.
 
             db.add(
                 KourelMembre(
-                    kourel_id=kourel.id,
+                    kourel_id=kourel_id,
                     membre_id=membre.id,
                     date_entree=date.today(),
                     date_sortie=None,
+                    gestionnaire=False,
                     actif=True,
                 )
             )
 
     # --------------------------------------------------------
-    # 12. Notification de modification
+    # 9. Notification de modification
     # --------------------------------------------------------
 
     if utilisateur and utilisateur.actif:
-
         creer_notification(
             db=db,
             utilisateur_id=utilisateur.id,
@@ -840,37 +757,30 @@ def modifier_membre(
         )
 
     # --------------------------------------------------------
-    # 13. Enregistrer
+    # 10. Enregistrer
     # --------------------------------------------------------
 
     try:
-
         db.commit()
-
         db.refresh(membre)
 
     except IntegrityError as erreur:
-
         db.rollback()
 
         print(
             "=============================================="
         )
-
         print(
             "ERREUR INTEGRITYERROR MODIFICATION MEMBRE"
         )
-
         print(
             "MEMBRE ID :",
             membre_id,
         )
-
         print(
             "DETAIL :",
             repr(erreur),
         )
-
         print(
             "=============================================="
         )
@@ -885,12 +795,11 @@ def modifier_membre(
         )
 
     # --------------------------------------------------------
-    # 14. Réponse
+    # 11. Réponse
     # --------------------------------------------------------
 
     return {
         "message": "Membre modifié avec succès",
-
         "membre": {
             "id": membre.id,
             "nom": membre.nom,
@@ -902,7 +811,6 @@ def modifier_membre(
             ),
             "actif": membre.actif,
         },
-
         "fonctions": [
             {
                 "id": fonction.id,
@@ -911,7 +819,6 @@ def modifier_membre(
             }
             for fonction in fonctions
         ],
-
         "kourels": [
             {
                 "id": kourel.id,
@@ -924,7 +831,7 @@ def modifier_membre(
 
 
 # ============================================================
-# DESACTIVER UN MEMBRE
+# DÉSACTIVER UN MEMBRE
 # + NOTIFICATION
 # ============================================================
 
@@ -945,14 +852,12 @@ def desactiver_membre(
     )
 
     if not membre:
-
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Membre introuvable.",
         )
 
     if not membre.actif:
-
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Ce membre est déjà désactivé.",
@@ -961,7 +866,6 @@ def desactiver_membre(
     utilisateur = None
 
     try:
-
         membre.actif = False
 
         utilisateur = (
@@ -973,12 +877,7 @@ def desactiver_membre(
         )
 
         if utilisateur:
-
             utilisateur.actif = False
-
-            # ------------------------------------------------
-            # Notification de désactivation
-            # ------------------------------------------------
 
             creer_notification(
                 db=db,
@@ -997,7 +896,6 @@ def desactiver_membre(
         db.refresh(membre)
 
     except IntegrityError as erreur:
-
         db.rollback()
 
         print(
@@ -1018,7 +916,7 @@ def desactiver_membre(
 
 
 # ============================================================
-# REACTIVER UN MEMBRE
+# RÉACTIVER UN MEMBRE
 # + NOTIFICATION
 # ============================================================
 
@@ -1039,14 +937,12 @@ def activer_membre(
     )
 
     if not membre:
-
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Membre introuvable.",
         )
 
     if membre.actif:
-
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Ce membre est déjà actif.",
@@ -1055,7 +951,6 @@ def activer_membre(
     utilisateur = None
 
     try:
-
         membre.actif = True
 
         utilisateur = (
@@ -1067,12 +962,7 @@ def activer_membre(
         )
 
         if utilisateur:
-
             utilisateur.actif = True
-
-            # ------------------------------------------------
-            # Notification de réactivation
-            # ------------------------------------------------
 
             creer_notification(
                 db=db,
@@ -1091,7 +981,6 @@ def activer_membre(
         db.refresh(membre)
 
     except IntegrityError as erreur:
-
         db.rollback()
 
         print(
@@ -1109,3 +998,4 @@ def activer_membre(
         "id": membre.id,
         "actif": membre.actif,
     }
+
