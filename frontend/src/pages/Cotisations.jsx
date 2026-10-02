@@ -241,11 +241,27 @@ export default function Cotisations() {
   const { utilisateur, aPermission } = useAuth();
 
   /*
-   * COTISATION_CREER = accès aux cotisations du Dahira.
+   * Accès à la page :
+   * - un membre ordinaire consulte uniquement ses cotisations ;
+   * - un responsable ayant COTISATION_CONSULTER consulte
+   *   les cotisations de tout le Dahira.
    *
-   * MEMBRE_CONSULTER n'est volontairement PAS utilisé ici.
+   * La distinction ne repose donc PAS sur COTISATION_CREER.
    */
-  const peutConsulterDahira = aPermission("COTISATION_CREER");
+  const fonctionsUtilisateur = Array.isArray(
+    utilisateur?.fonctions
+  )
+    ? utilisateur.fonctions
+    : [];
+
+  const peutConsulterDahira =
+    aPermission("COTISATION_CONSULTER") &&
+    fonctionsUtilisateur.some(
+      (fonction) =>
+        String(fonction?.nom ?? "")
+          .trim()
+          .toUpperCase() !== "MEMBRE"
+    );
 
   const peutCreerCotisation =
     aPermission("COTISATION_CREER") ||

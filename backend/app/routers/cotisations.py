@@ -11,6 +11,8 @@ from app.models.cotisation import Cotisation
 from app.models.membre import Membre
 from app.models.paiement import Paiement
 from app.models.utilisateur import Utilisateur
+from app.models.fonction import Fonction
+from app.models.utilisateur_fonction import UtilisateurFonction
 
 from app.services.notification_service import (
     creer_notification,
@@ -294,6 +296,39 @@ def construire_cotisation(
             for paiement in paiements
         ],
     }
+
+
+def utilisateur_peut_voir_toutes_cotisations(
+    current_user: Utilisateur,
+    db: Session,
+) -> bool:
+    """
+    Détermine si l'utilisateur connecté peut consulter
+    les cotisations de tout le Dahira.
+
+    Règle :
+    - la fonction MEMBRE = consultation personnelle uniquement ;
+    - toute autre fonction disposant de COTISATION_CONSULTER
+      est considérée comme une fonction responsable/gestionnaire
+      pour cette page.
+    """
+    fonctions = (
+        db.query(Fonction)
+        .join(
+            UtilisateurFonction,
+            UtilisateurFonction.fonction_id == Fonction.id,
+        )
+        .filter(
+            UtilisateurFonction.utilisateur_id == current_user.id,
+            Fonction.actif.is_(True),
+        )
+        .all()
+    )
+
+    return any(
+        (fonction.nom or "").strip().upper() != "MEMBRE"
+        for fonction in fonctions
+    )
 
 
 def obtenir_cotisation_precedente(
@@ -1034,10 +1069,45 @@ def lister_cotisations(
     )
 
     # --------------------------------------------------------
-    # FILTRE MEMBRE
+    # VISIBILITÉ
+    # --------------------------------------------------------
+    #
+    # Membre ordinaire :
+    #   uniquement ses propres cotisations.
+    #
+    # Responsable / gestionnaire :
+    #   cotisations de tout le Dahira.
+    #
+    # Le contrôle est fait côté backend afin qu'un utilisateur
+    # ne puisse pas contourner la restriction avec membre_id.
     # --------------------------------------------------------
 
-    if membre_id is not None:
+    peut_voir_tout = utilisateur_peut_voir_toutes_cotisations(
+        current_user=current_user,
+        db=db,
+    )
+
+    if not peut_voir_tout:
+        if current_user.membre_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Aucun membre n'est associé à cet utilisateur.",
+            )
+
+        if (
+            membre_id is not None
+            and int(membre_id) != int(current_user.membre_id)
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Vous ne pouvez consulter que vos propres cotisations.",
+            )
+
+        query = query.filter(
+            Cotisation.membre_id == current_user.membre_id
+        )
+
+    elif membre_id is not None:
 
         query = query.filter(
             Cotisation.membre_id == membre_id
@@ -1165,6 +1235,28 @@ def obtenir_cotisation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cotisation introuvable.",
         )
+    # --------------------------------------------------------
+    # SÉCURITÉ DE CONSULTATION
+    # --------------------------------------------------------
+    #
+    # Un membre ordinaire ne peut jamais consulter la
+    # cotisation d'un autre membre, même en connaissant son ID.
+    # --------------------------------------------------------
+
+    peut_voir_tout = utilisateur_peut_voir_toutes_cotisations(
+        current_user=current_user,
+        db=db,
+    )
+
+    if (
+        not peut_voir_tout
+        and cotisation.membre_id != current_user.membre_id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Vous ne pouvez consulter que vos propres cotisations.",
+        )
+
 
     return construire_cotisation(
         cotisation,
