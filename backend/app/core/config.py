@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     # AUTHENTIFICATION JWT
     # ==========================================================
 
-    secret_key: str
+    secret_key: str = ""
 
     algorithm: str = "HS256"
 
@@ -24,24 +24,24 @@ class Settings(BaseSettings):
     # ==========================================================
 
     cors_origins: str = (
-    "http://localhost:5173,"
-    "http://127.0.0.1:5173,"
-    "http://localhost"
+        "http://localhost:5173,"
+        "http://127.0.0.1:5173,"
+        "http://localhost"
     )
 
     # ==========================================================
     # CLOUDINARY
     # ==========================================================
 
-    cloudinary_cloud_name: str
-    cloudinary_api_key: str
-    cloudinary_api_secret: str
+    cloudinary_cloud_name: str = ""
+    cloudinary_api_key: str = ""
+    cloudinary_api_secret: str = ""
 
     # ==========================================================
     # FIREBASE CLOUD MESSAGING
     # ==========================================================
 
-    firebase_credentials_path: str
+    firebase_credentials_path: str = ""
 
     # ==========================================================
     # CONFIGURATION PYDANTIC
