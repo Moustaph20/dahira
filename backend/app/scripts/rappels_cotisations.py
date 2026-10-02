@@ -1,6 +1,11 @@
+
 import sys
 from pathlib import Path
 
+
+# ============================================================
+# RACINE DU PROJET
+# ============================================================
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 
@@ -8,13 +13,36 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 
+# ============================================================
+# IMPORTS
+# ============================================================
+
 from app.core.database import SessionLocal
+from app.core.firebase import initialiser_firebase
+
 from app.services.rappel_cotisation_service import (
     envoyer_rappels_cotisations,
 )
 
 
+# ============================================================
+# PROGRAMME PRINCIPAL
+# ============================================================
+
 def main():
+    # --------------------------------------------------------
+    # Initialisation de Firebase
+    # --------------------------------------------------------
+    try:
+        initialiser_firebase()
+        print("Firebase initialisé avec succès.")
+    except Exception as error:
+        print("ERREUR INITIALISATION FIREBASE :", error)
+        raise
+
+    # --------------------------------------------------------
+    # Connexion à la base de données
+    # --------------------------------------------------------
     db = SessionLocal()
 
     try:
@@ -40,6 +68,7 @@ def main():
                 "Aujourd'hui n'est pas un jour "
                 "de rappel."
             )
+
         else:
             print(
                 f"Cotisations analysées : "
@@ -79,5 +108,10 @@ def main():
         db.close()
 
 
+# ============================================================
+# POINT D'ENTRÉE
+# ============================================================
+
 if __name__ == "__main__":
     main()
+
