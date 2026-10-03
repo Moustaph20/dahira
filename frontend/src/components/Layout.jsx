@@ -41,39 +41,41 @@ import { useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
 
-/* ============================================================
-   ICONES
-   ============================================================ */
+/*
+|--------------------------------------------------------------------------
+| ICÔNES BACKEND
+|--------------------------------------------------------------------------
+*/
 
 const ICONES = {
   dashboard: LayoutDashboard,
   users: Users,
   wallet: Wallet,
   calendar: CalendarDays,
-  "calendar-days": CalendarDays,
-  "calendar-check": CalendarCheck,
-  "calendar-plus": CalendarDays,
   "book-open": BookOpen,
   headphones: Music,
   music: Music,
   megaphone: Megaphone,
   bell: Bell,
-  user: Users,
-  "user-cog": UserCog,
+  user: CircleUserRound,
+  userCog: UserCog,
   settings: Settings2,
-  "hand-coins": HandCoins,
-  "credit-card": CreditCard,
+  handCoins: HandCoins,
+  creditCard: CreditCard,
   receipt: Receipt,
   landmark: Landmark,
+  calendarCheck: CalendarCheck,
   globe: Globe2,
   images: Images,
-  repetitions: Repeat2,
+  repeat: Repeat2,
 };
 
 
-/* ============================================================
-   RUBRIQUES KOUREL
-   ============================================================ */
+/*
+|--------------------------------------------------------------------------
+| RUBRIQUES KOUREL
+|--------------------------------------------------------------------------
+*/
 
 const RUBRIQUES_KOUREL = [
   {
@@ -108,23 +110,80 @@ const RUBRIQUES_KOUREL = [
 ];
 
 
-/* ============================================================
-   COULEURS DU MENU
-   ============================================================ */
+/*
+|--------------------------------------------------------------------------
+| COULEURS MENU
+|--------------------------------------------------------------------------
+*/
 
 const COULEURS_MENU = {
-  emerald: "from-emerald-500 to-teal-500",
-  blue: "from-blue-500 to-indigo-500",
-  violet: "from-violet-500 to-purple-500",
-  amber: "from-amber-400 to-orange-500",
-  rose: "from-rose-500 to-pink-500",
-  cyan: "from-cyan-500 to-sky-500",
+  emerald: {
+    fond: "bg-emerald-50",
+    fondHover: "hover:bg-emerald-50",
+    texte: "text-emerald-700",
+    texteActif: "text-emerald-950",
+    icone: "text-emerald-600",
+    bordure: "border-emerald-100",
+    point: "bg-emerald-500",
+  },
+
+  blue: {
+    fond: "bg-blue-50",
+    fondHover: "hover:bg-blue-50",
+    texte: "text-blue-700",
+    texteActif: "text-blue-950",
+    icone: "text-blue-600",
+    bordure: "border-blue-100",
+    point: "bg-blue-500",
+  },
+
+  violet: {
+    fond: "bg-violet-50",
+    fondHover: "hover:bg-violet-50",
+    texte: "text-violet-700",
+    texteActif: "text-violet-950",
+    icone: "text-violet-600",
+    bordure: "border-violet-100",
+    point: "bg-violet-500",
+  },
+
+  amber: {
+    fond: "bg-amber-50",
+    fondHover: "hover:bg-amber-50",
+    texte: "text-amber-700",
+    texteActif: "text-amber-950",
+    icone: "text-amber-600",
+    bordure: "border-amber-100",
+    point: "bg-amber-500",
+  },
+
+  rose: {
+    fond: "bg-rose-50",
+    fondHover: "hover:bg-rose-50",
+    texte: "text-rose-700",
+    texteActif: "text-rose-950",
+    icone: "text-rose-600",
+    bordure: "border-rose-100",
+    point: "bg-rose-500",
+  },
+
+  cyan: {
+    fond: "bg-cyan-50",
+    fondHover: "hover:bg-cyan-50",
+    texte: "text-cyan-700",
+    texteActif: "text-cyan-950",
+    icone: "text-cyan-600",
+    bordure: "border-cyan-100",
+    point: "bg-cyan-500",
+  },
 };
 
 
-/* ============================================================
-   ELEMENT DE NAVIGATION
-   ============================================================ */
+/*
+|--------------------------------------------------------------------------
+| NAVIGATION ITEM
+|--------------------------------------------------------------------------
+*/
 
 function NavigationItem({
   item,
@@ -133,10 +192,8 @@ function NavigationItem({
 }) {
   const Icon = item?.icone || BookOpen;
 
-  const couleur = item?.couleur || "emerald";
-
-  const gradient =
-    COULEURS_MENU[couleur] ||
+  const couleur =
+    COULEURS_MENU[item?.couleur || "emerald"] ||
     COULEURS_MENU.emerald;
 
   return (
@@ -146,82 +203,89 @@ function NavigationItem({
       style={{
         animationDelay: `${index * 35}ms`,
       }}
-      className={({ isActive }) =>
-        `
-        group relative flex items-center gap-3
-        overflow-hidden rounded-2xl px-3 py-3
-        text-sm font-medium transition-all
-        duration-300
-        animate-[menuAppear_0.35s_ease-out_both]
+      className={({ isActive }) => `
+        group
+        relative
+        flex
+        items-center
+        gap-3
+        overflow-hidden
+        rounded-2xl
+        border
+        px-3
+        py-2.5
+        text-sm
+        transition-all
+        duration-200
+        animate-[menuAppear_0.3s_ease-out_both]
 
         ${
           isActive
-            ? "bg-white text-emerald-950 shadow-lg shadow-black/10"
-            : "text-white/60 hover:bg-white/[0.08] hover:text-white"
+            ? `${couleur.fond} ${couleur.bordure} ${couleur.texteActif} shadow-sm`
+            : `border-transparent text-slate-500 ${couleur.fondHover} hover:border-slate-100 hover:text-slate-900`
         }
-        `
-      }
+      `}
     >
       {({ isActive }) => (
         <>
           {isActive && (
             <span
-              className="
-                absolute left-0 top-2 bottom-2
-                w-1 rounded-r-full
-                bg-gradient-to-b
-                from-emerald-400 to-teal-600
-              "
-            />
-          )}
-
-          {isActive && (
-            <span
-              className="
-                pointer-events-none absolute
-                -right-8 -top-8 h-20 w-20
-                rounded-full bg-emerald-100
-                blur-2xl
-              "
+              className={`
+                absolute
+                left-0
+                top-2
+                bottom-2
+                w-1
+                rounded-r-full
+                ${couleur.point}
+              `}
             />
           )}
 
           <div
             className={`
-              relative z-10 flex h-10 w-10
-              shrink-0 items-center justify-center
-              rounded-xl transition-all duration-300
+              relative
+              z-10
+              flex
+              h-10
+              w-10
+              shrink-0
+              items-center
+              justify-center
+              rounded-xl
+              transition-all
+              duration-200
 
               ${
                 isActive
-                  ? `bg-gradient-to-br ${gradient}
-                     text-white shadow-md`
-                  : `
-                    bg-white/[0.06]
-                    text-white/45
-                    group-hover:bg-white/10
-                    group-hover:text-amber-300
-                  `
+                  ? `${couleur.fond} ${couleur.icone}`
+                  : "bg-slate-100 text-slate-400 group-hover:bg-white group-hover:text-slate-700"
               }
             `}
           >
             <Icon
               size={18}
-              strokeWidth={2}
+              strokeWidth={isActive ? 2.2 : 2}
             />
           </div>
 
           <div
             className="
-              relative z-10 min-w-0 flex-1
+              relative
+              z-10
+              min-w-0
+              flex-1
             "
           >
             <p
-              className={
-                isActive
-                  ? "truncate font-bold"
-                  : "truncate font-medium"
-              }
+              className={`
+                truncate
+                ${
+                  isActive
+                    ? "font-bold"
+                    : "font-medium"
+                }
+              `}
             >
               {item.nom}
             </p>
@@ -229,12 +293,13 @@ function NavigationItem({
             {item.description && (
               <p
                 className={`
-                  mt-0.5 truncate text-[10px]
-
+                  mt-0.5
+                  truncate
+                  text-[10px]
                   ${
                     isActive
-                      ? "text-emerald-700/60"
-                      : "text-white/25"
+                      ? `${couleur.texte} opacity-70`
+                      : "text-slate-400"
                   }
                 `}
               >
@@ -246,17 +311,16 @@ function NavigationItem({
           <ChevronRight
             size={16}
             className={`
-              relative z-10 shrink-0
-              transition-all duration-300
+              relative
+              z-10
+              shrink-0
+              transition-all
+              duration-200
 
               ${
                 isActive
-                  ? "translate-x-0 text-emerald-600"
-                  : `
-                    -translate-x-1 text-white/10
-                    group-hover:translate-x-0
-                    group-hover:text-white/40
-                  `
+                  ? `${couleur.texte} translate-x-0`
+                  : "-translate-x-1 text-slate-200 group-hover:translate-x-0 group-hover:text-slate-400"
               }
             `}
           />
@@ -267,60 +331,55 @@ function NavigationItem({
 }
 
 
-/* ============================================================
-   TITRE DE SECTION
-   ============================================================ */
+/*
+|--------------------------------------------------------------------------
+| TITRE DE SECTION
+|--------------------------------------------------------------------------
+*/
 
 function SectionTitre({
-  titre,
-  icone: Icon,
-  couleur = "white",
+  children,
+  couleur = "emerald",
   nombre,
+  icone: Icon,
 }) {
   const couleurs = {
-    white: "text-white/25",
-    amber: "text-amber-300/70",
-    blue: "text-blue-300/70",
-    violet: "text-violet-300/70",
-    cyan: "text-cyan-300/70",
-    rose: "text-rose-300/70",
+    emerald: "text-emerald-700",
+    blue: "text-blue-700",
+    violet: "text-violet-700",
+    amber: "text-amber-700",
+    rose: "text-rose-700",
+    cyan: "text-cyan-700",
   };
 
   return (
     <div
       className="
-        mb-3 flex items-center
-        justify-between px-2
+        mb-3
+        flex
+        items-center
+        justify-between
+        px-2
       "
     >
-      <div
-        className="
-          flex items-center gap-2
-        "
-      >
+      <div className="flex items-center gap-2">
         {Icon && (
           <Icon
             size={13}
-            className={
-              couleurs[couleur] ||
-              couleurs.white
-            }
+            className={couleurs[couleur] || couleurs.emerald}
           />
         )}
 
         <p
           className={`
-            text-[10px] font-black
+            text-[10px]
+            font-black
             uppercase
             tracking-[0.18em]
-
-            ${
-              couleurs[couleur] ||
-              couleurs.white
-            }
+            ${couleurs[couleur] || couleurs.emerald}
           `}
         >
-          {titre}
+          {children}
         </p>
       </div>
 
@@ -328,9 +387,12 @@ function SectionTitre({
         <span
           className="
             rounded-full
-            bg-white/[0.05]
-            px-2 py-0.5 text-[9px]
-            font-bold text-white/25
+            bg-slate-100
+            px-2
+            py-0.5
+            text-[9px]
+            font-bold
+            text-slate-400
           "
         >
           {nombre}
@@ -341,9 +403,11 @@ function SectionTitre({
 }
 
 
-/* ============================================================
-   LAYOUT
-   ============================================================ */
+/*
+|--------------------------------------------------------------------------
+| LAYOUT PRINCIPAL
+|--------------------------------------------------------------------------
+*/
 
 function Layout() {
   const navigate = useNavigate();
@@ -355,30 +419,34 @@ function Layout() {
     aPermission,
   } = useAuth();
 
-  const [
-    menuOuvert,
-    setMenuOuvert,
-  ] = useState(false);
-
-  const [
-    recherche,
-    setRecherche,
-  ] = useState("");
+  const [menuOuvert, setMenuOuvert] = useState(false);
+  const [recherche, setRecherche] = useState("");
 
 
-  /* ==========================================================
-     DONNEES UTILISATEUR
-     ========================================================== */
+  /*
+  |--------------------------------------------------------------------------
+  | ESPACE UTILISATEUR
+  |--------------------------------------------------------------------------
+  */
 
-  const kourels = useMemo(
-    () =>
-      Array.isArray(
-        utilisateur?.kourels
-      )
-        ? utilisateur.kourels
-        : [],
-    [utilisateur]
-  );
+  const espaceUtilisateur = useMemo(() => {
+    return Array.isArray(utilisateur?.espace)
+      ? utilisateur.espace
+      : [];
+  }, [utilisateur]);
+
+
+  /*
+  |--------------------------------------------------------------------------
+  | KOURELS
+  |--------------------------------------------------------------------------
+  */
+
+  const kourels = useMemo(() => {
+    return Array.isArray(utilisateur?.kourels)
+      ? utilisateur.kourels
+      : [];
+  }, [utilisateur]);
 
 
   const estMembreKourel =
@@ -386,33 +454,37 @@ function Layout() {
     kourels.length > 0;
 
 
-  /* ==========================================================
-     PERMISSIONS
-     ========================================================== */
+  /*
+  |--------------------------------------------------------------------------
+  | PERMISSIONS
+  |--------------------------------------------------------------------------
+  */
 
-  const possedePermission = (
-    permission
-  ) => {
-    if (!permission) {
-      return true;
-    }
+  const possedePermission = useMemo(() => {
+    return (permission) => {
+      if (!permission) {
+        return false;
+      }
 
-    if (
-      typeof aPermission !==
-      "function"
-    ) {
-      return false;
-    }
+      if (typeof aPermission === "function") {
+        return aPermission(permission);
+      }
 
-    return (
-      aPermission(permission) === true
-    );
-  };
+      const permissions =
+        Array.isArray(utilisateur?.permission_codes)
+          ? utilisateur.permission_codes
+          : [];
+
+      return permissions.includes(permission);
+    };
+  }, [aPermission, utilisateur]);
 
 
-  /* ==========================================================
-     INFORMATIONS UTILISATEUR
-     ========================================================== */
+  /*
+  |--------------------------------------------------------------------------
+  | IDENTITÉ
+  |--------------------------------------------------------------------------
+  */
 
   const prenom =
     utilisateur?.prenom ||
@@ -437,12 +509,17 @@ function Layout() {
     "Membre";
 
 
+  /*
+  |--------------------------------------------------------------------------
+  | INITIALES
+  |--------------------------------------------------------------------------
+  */
+
   const initiales = useMemo(() => {
-    const mots =
-      nomAffiche
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean);
+    const mots = nomAffiche
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
 
     if (mots.length === 0) {
       return "U";
@@ -461,92 +538,76 @@ function Layout() {
   }, [nomAffiche]);
 
 
-  /* ==========================================================
-     ADMINISTRATION
-     ========================================================== */
+  /*
+  |--------------------------------------------------------------------------
+  | ADMINISTRATION
+  |--------------------------------------------------------------------------
+  */
 
   const navigationAdministration = useMemo(() => {
     const items = [];
 
-    if (
-      possedePermission(
-        "UTILISATEUR_CONSULTER"
-      )
-    ) {
+    if (possedePermission("UTILISATEUR_CONSULTER")) {
       items.push({
         code: "UTILISATEURS",
         nom: "Utilisateurs",
-        description:
-          "Comptes et accès",
+        description: "Gestion des utilisateurs",
         chemin: "/utilisateurs",
-        permission:
-          "UTILISATEUR_CONSULTER",
+        permission: "UTILISATEUR_CONSULTER",
         icone: UserCog,
         couleur: "blue",
       });
     }
 
-    if (
-      possedePermission(
-        "GALERIE_CONSULTER"
-      )
-    ) {
+    if (possedePermission("GALERIE_CONSULTER")) {
       items.push({
         code: "GALERIE",
         nom: "Galerie",
-        description:
-          "Photos et vidéos du Dahira",
+        description: "Photos et médias",
         chemin: "/galerie",
-        permission:
-          "GALERIE_CONSULTER",
+        permission: "GALERIE_CONSULTER",
         icone: Images,
-        couleur: "blue",
+        couleur: "cyan",
       });
     }
 
     return items;
-  }, [aPermission]);
+  }, [possedePermission]);
 
 
-  /* ==========================================================
-     MEMBRES
-     ========================================================== */
+  /*
+  |--------------------------------------------------------------------------
+  | MEMBRES
+  |--------------------------------------------------------------------------
+  */
 
   const navigationMembres = useMemo(() => {
-    const items = [];
-
-    if (
-      possedePermission(
-        "MEMBRE_CONSULTER"
-      )
-    ) {
-      items.push({
-        code: "MEMBRES",
-        nom: "Membres",
-        description:
-          "Gestion des membres",
-        chemin: "/membres",
-        permission:
-          "MEMBRE_CONSULTER",
-        icone: Users,
-        couleur: "emerald",
-      });
+    if (!possedePermission("MEMBRE_CONSULTER")) {
+      return [];
     }
 
-    return items;
-  }, [aPermission]);
+    return [
+      {
+        code: "MEMBRES",
+        nom: "Membres",
+        description: "Gestion des membres",
+        chemin: "/membres",
+        permission: "MEMBRE_CONSULTER",
+        icone: Users,
+        couleur: "emerald",
+      },
+    ];
+  }, [possedePermission]);
 
 
-  /* ==========================================================
-     DASHBOARD
-     ========================================================== */
+  /*
+  |--------------------------------------------------------------------------
+  | TABLEAU DE BORD
+  |--------------------------------------------------------------------------
+  */
 
   const navigationDashboard = useMemo(() => {
-    if (
-      !possedePermission(
-        "DASHBOARD_CONSULTER"
-      )
-    ) {
+    if (!possedePermission("DASHBOARD_CONSULTER")) {
       return [];
     }
 
@@ -554,79 +615,57 @@ function Layout() {
       {
         code: "DASHBOARD",
         nom: "Tableau de bord",
-        description:
-          "Vue générale",
+        description: "Vue générale du Dahira",
         chemin: "/dashboard",
-        permission:
-          "DASHBOARD_CONSULTER",
+        permission: "DASHBOARD_CONSULTER",
         icone: LayoutDashboard,
         couleur: "emerald",
       },
     ];
-  }, [aPermission]);
+  }, [possedePermission]);
 
 
-  /* ==========================================================
-     FINANCES
-     ========================================================== */
+  /*
+  |--------------------------------------------------------------------------
+  | FINANCES
+  |--------------------------------------------------------------------------
+  */
 
   const navigationFinances = useMemo(() => {
     const items = [];
 
-    if (
-      possedePermission(
-        "COTISATION_CONSULTER"
-      )
-    ) {
+    if (possedePermission("COTISATION_CONSULTER")) {
       items.push({
         code: "COTISATIONS",
         nom: "Cotisations",
-        description:
-          "Cotisations des membres",
+        description: "Suivi des cotisations",
         chemin: "/cotisations",
-        permission:
-          "COTISATION_CONSULTER",
+        permission: "COTISATION_CONSULTER",
         icone: HandCoins,
-        couleur: "violet",
+        couleur: "emerald",
       });
     }
 
-    if (
-      possedePermission(
-        "PAIEMENT_CONSULTER"
-      )
-    ) {
+    if (possedePermission("PAIEMENT_CONSULTER")) {
       items.push({
         code: "PAIEMENTS",
         nom: "Paiements",
-        description:
-          "Paiements enregistrés",
+        description: "Encaissements effectifs",
         chemin: "/paiements",
-        permission:
-          "PAIEMENT_CONSULTER",
+        permission: "PAIEMENT_CONSULTER",
         icone: CreditCard,
-        couleur: "violet",
+        couleur: "blue",
       });
     }
 
-    /*
-     * Une seule rubrique Finances.
-     * Les permissions déterminent l'accès.
-     */
-
     if (
-      possedePermission(
-        "DEPENSE_CONSULTER"
-      ) ||
-      possedePermission(
-        "AIDE_EXTERIEURE_CONSULTER"
-      )
+      possedePermission("DEPENSE_CONSULTER") ||
+      possedePermission("AIDE_EXTERIEURE_CONSULTER")
     ) {
       items.push({
         code: "FINANCES",
         nom: "Finances",
-        description:
-          "Dépenses et aides extérieures",
+        description: "Dépenses et aides extérieures",
         chemin: "/finances",
         permission: null,
         permissions: [
@@ -639,12 +678,14 @@ function Layout() {
     }
 
     return items;
-  }, [aPermission]);
+  }, [possedePermission]);
 
 
-  /* ==========================================================
-     REUNIONS
-     ========================================================== */
+  /*
+  |--------------------------------------------------------------------------
+  | ACTIVITÉS
+  |--------------------------------------------------------------------------
+  */
 
   const navigationActivites = useMemo(() => {
     const items = [];
@@ -652,118 +693,109 @@ function Layout() {
     items.push({
       code: "REUNIONS",
       nom: "Réunions",
-      description:
-        "Réunions du Dahira",
+      description: "Réunions du Dahira",
       chemin: "/reunions",
-      permission: null,
-      icone: CalendarDays,
-      couleur: "cyan",
+      permission: "REUNION_CONSULTER",
+      icone: CalendarCheck,
+      couleur: "blue",
     });
 
-    if (
-      possedePermission(
-        "REPETITION_CONSULTER"
-      )
-    ) {
+    if (possedePermission("REPETITION_CONSULTER")) {
       items.push({
         code: "REPETITIONS",
         nom: "Répétitions",
-        description:
-          "Répétitions du Kourel",
+        description: "Programmes de répétition",
         chemin: "/repetitions",
-        permission:
-          "REPETITION_CONSULTER",
+        permission: "REPETITION_CONSULTER",
         icone: Repeat2,
-        couleur: "cyan",
+        couleur: "amber",
       });
     }
 
     return items;
-  }, [aPermission]);
+  }, [possedePermission]);
 
 
-  /* ==========================================================
-     COMMUNICATION
-     ========================================================== */
+  /*
+  |--------------------------------------------------------------------------
+  | COMMUNICATION
+  |--------------------------------------------------------------------------
+  */
 
   const navigationCommunication = useMemo(() => {
-    const items = [];
+    if (!possedePermission("COMMUNICATION_CONSULTER")) {
+      return [];
+    }
 
-    if (
-      possedePermission(
-        "COMMUNICATION_CONSULTER"
-      )
-    ) {
-      items.push({
+    return [
+      {
         code: "COMMUNICATIONS",
         nom: "Communications",
-        description:
-          "Informations du Dahira",
+        description: "Communications du Dahira",
         chemin: "/communications",
-        permission:
-          "COMMUNICATION_CONSULTER",
+        permission: "COMMUNICATION_CONSULTER",
         icone: Megaphone,
         couleur: "rose",
-      });
-    }
-
-    return items;
-  }, [aPermission]);
+      },
+    ];
+  }, [possedePermission]);
 
 
-  /* ==========================================================
-     RELATIONS EXTERIEURES
-     ========================================================== */
+  /*
+  |--------------------------------------------------------------------------
+  | RELATIONS EXTÉRIEURES
+  |--------------------------------------------------------------------------
+  */
 
   const navigationRelations = useMemo(() => {
-    const items = [];
-
-    if (
-      possedePermission(
-        "RELATION_EXTERIEUR_CONSULTER"
-      )
-    ) {
-      items.push({
-        code: "RELATIONS_EXTERIEURES",
-        nom: "Relations extérieures",
-        description:
-          "Relations et partenaires",
-        chemin: "/relations-exterieures",
-        permission:
-          "RELATION_EXTERIEUR_CONSULTER",
-        icone: Globe2,
-        couleur: "blue",
-      });
+    if (!possedePermission("RELATION_EXTERIEUR_CONSULTER")) {
+      return [];
     }
 
-    return items;
-  }, [aPermission]);
+    return [
+      {
+        code: "RELATIONS_EXTERIEURES",
+        nom: "Relations extérieures",
+        description: "Relations et partenaires",
+        chemin: "/relations-exterieures",
+        permission: "RELATION_EXTERIEUR_CONSULTER",
+        icone: Globe2,
+        couleur: "cyan",
+      },
+    ];
+  }, [possedePermission]);
 
 
-  /* ==========================================================
-     KOUREL
-     ========================================================== */
+  /*
+  |--------------------------------------------------------------------------
+  | KOUREL
+  |--------------------------------------------------------------------------
+  */
 
   const navigationKourel = useMemo(() => {
-    return RUBRIQUES_KOUREL.filter(
-      (item) =>
-        possedePermission(
-          item.permission
-        )
-    );
-  }, [aPermission]);
+    if (!estMembreKourel) {
+      return [];
+    }
+
+    if (!possedePermission("KOUREL_CONSULTER")) {
+      return [];
+    }
+
+    return RUBRIQUES_KOUREL;
+  }, [
+    estMembreKourel,
+    possedePermission,
+  ]);
 
 
-  /* ==========================================================
-     NOTIFICATIONS
-     ========================================================== */
+  /*
+  |--------------------------------------------------------------------------
+  | NOTIFICATIONS
+  |--------------------------------------------------------------------------
+  */
 
   const navigationNotifications = useMemo(() => {
-    if (
-      !possedePermission(
-        "NOTIFICATION_CONSULTER"
-      )
-    ) {
+    if (!possedePermission("NOTIFICATION_CONSULTER")) {
       return [];
     }
 
@@ -771,177 +803,193 @@ function Layout() {
       {
         code: "NOTIFICATIONS",
         nom: "Notifications",
-        description:
-          "Mes notifications",
+        description: "Notifications et alertes",
         chemin: "/notifications",
-        permission:
-          "NOTIFICATION_CONSULTER",
+        permission: "NOTIFICATION_CONSULTER",
         icone: Bell,
         couleur: "rose",
       },
     ];
-  }, [aPermission]);
+  }, [possedePermission]);
 
 
-  /* ==========================================================
-     RECHERCHE
-     ========================================================== */
+  /*
+  |--------------------------------------------------------------------------
+  | RECHERCHE
+  |--------------------------------------------------------------------------
+  */
 
-  const filtrerNavigation = (
-    navigation
-  ) => {
-    const terme =
-      recherche
-        .trim()
-        .toLowerCase();
+  const filtrerRubriques = (rubriques) => {
+    const terme = recherche
+      .trim()
+      .toLowerCase();
 
     if (!terme) {
-      return navigation;
+      return rubriques;
     }
 
-    return navigation.filter(
-      (item) =>
-        item.nom
-          ?.toLowerCase()
-          .includes(terme) ||
-        item.description
-          ?.toLowerCase()
-          .includes(terme)
+    return rubriques.filter((item) =>
+      `${item.nom} ${item.description || ""}`
+        .toLowerCase()
+        .includes(terme)
     );
   };
 
 
-  const dashboardFiltre =
-    filtrerNavigation(
-      navigationDashboard
-    );
-
-  const administrationFiltre =
-    filtrerNavigation(
-      navigationAdministration
-    );
-
-  const membresFiltre =
-    filtrerNavigation(
-      navigationMembres
-    );
-
-  const financesFiltre =
-    filtrerNavigation(
-      navigationFinances
-    );
-
-  const activitesFiltre =
-    filtrerNavigation(
-      navigationActivites
-    );
-
-  const communicationFiltre =
-    filtrerNavigation(
-      navigationCommunication
-    );
-
-  const relationsFiltre =
-    filtrerNavigation(
-      navigationRelations
-    );
-
-  const kourelFiltre =
-    filtrerNavigation(
-      navigationKourel
-    );
-
-  const notificationsFiltre =
-    filtrerNavigation(
-      navigationNotifications
-    );
-
-
-  /* ==========================================================
-     TOUTES LES RUBRIQUES
-     ========================================================== */
-
-  const toutesLesRubriques =
+  const navigationAdministrationFiltre =
     useMemo(
-      () => [
-        ...navigationDashboard,
-        ...navigationAdministration,
-        ...navigationMembres,
-        ...navigationFinances,
-        ...navigationActivites,
-        ...navigationCommunication,
-        ...navigationRelations,
-        ...navigationKourel,
-        ...navigationNotifications,
-      ],
-      [
-        navigationDashboard,
-        navigationAdministration,
-        navigationMembres,
-        navigationFinances,
-        navigationActivites,
-        navigationCommunication,
-        navigationRelations,
-        navigationKourel,
-        navigationNotifications,
-      ]
+      () =>
+        filtrerRubriques(
+          navigationAdministration
+        ),
+      [navigationAdministration, recherche]
     );
+
+  const navigationMembresFiltre =
+    useMemo(
+      () =>
+        filtrerRubriques(
+          navigationMembres
+        ),
+      [navigationMembres, recherche]
+    );
+
+  const navigationDashboardFiltre =
+    useMemo(
+      () =>
+        filtrerRubriques(
+          navigationDashboard
+        ),
+      [navigationDashboard, recherche]
+    );
+
+  const navigationFinancesFiltre =
+    useMemo(
+      () =>
+        filtrerRubriques(
+          navigationFinances
+        ),
+      [navigationFinances, recherche]
+    );
+
+  const navigationActivitesFiltre =
+    useMemo(
+      () =>
+        filtrerRubriques(
+          navigationActivites
+        ),
+      [navigationActivites, recherche]
+    );
+
+  const navigationCommunicationFiltre =
+    useMemo(
+      () =>
+        filtrerRubriques(
+          navigationCommunication
+        ),
+      [navigationCommunication, recherche]
+    );
+
+  const navigationRelationsFiltre =
+    useMemo(
+      () =>
+        filtrerRubriques(
+          navigationRelations
+        ),
+      [navigationRelations, recherche]
+    );
+
+  const navigationKourelFiltre =
+    useMemo(
+      () =>
+        filtrerRubriques(
+          navigationKourel
+        ),
+      [navigationKourel, recherche]
+    );
+
+  const navigationNotificationsFiltre =
+    useMemo(
+      () =>
+        filtrerRubriques(
+          navigationNotifications
+        ),
+      [navigationNotifications, recherche]
+    );
+
+
+  /*
+  |--------------------------------------------------------------------------
+  | TOUTES LES RUBRIQUES
+  |--------------------------------------------------------------------------
+  */
+
+  const toutesLesRubriques = useMemo(
+    () => [
+      ...navigationAdministration,
+      ...navigationMembres,
+      ...navigationDashboard,
+      ...navigationFinances,
+      ...navigationActivites,
+      ...navigationCommunication,
+      ...navigationRelations,
+      ...navigationKourel,
+      ...navigationNotifications,
+    ],
+    [
+      navigationAdministration,
+      navigationMembres,
+      navigationDashboard,
+      navigationFinances,
+      navigationActivites,
+      navigationCommunication,
+      navigationRelations,
+      navigationKourel,
+      navigationNotifications,
+    ]
+  );
 
 
   const aucunResultat =
-    recherche.trim() !== "" &&
-    toutesLesRubriques.filter(
+    recherche.trim() &&
+    toutesLesRubriques.length > 0 &&
+    toutesLesRubriques.every(
       (item) =>
-        item.nom
-          ?.toLowerCase()
+        !`${item.nom} ${item.description || ""}`
+          .toLowerCase()
           .includes(
-            recherche
-              .trim()
-              .toLowerCase()
-          ) ||
-        item.description
-          ?.toLowerCase()
-          .includes(
-            recherche
-              .trim()
-              .toLowerCase()
+            recherche.trim().toLowerCase()
           )
-    ).length === 0;
+    );
 
 
-  /* ==========================================================
-     TITRE PAGE
-     ========================================================== */
+  /*
+  |--------------------------------------------------------------------------
+  | TITRE PAGE
+  |--------------------------------------------------------------------------
+  */
 
   const titrePage = useMemo(() => {
-    if (
-      location.pathname ===
-      "/profil"
-    ) {
+    if (location.pathname === "/profil") {
       return "Mon profil";
     }
 
-    const element =
-      toutesLesRubriques.find(
-        (item) =>
-          location.pathname ===
-            item.chemin ||
-          (
-            item.chemin !== "/" &&
-            location.pathname.startsWith(
-              `${item.chemin}/`
-            )
+    const element = toutesLesRubriques.find(
+      (item) =>
+        location.pathname === item.chemin ||
+        (
+          item.chemin !== "/" &&
+          location.pathname.startsWith(
+            `${item.chemin}/`
           )
-      );
+        )
+    );
 
     if (element) {
       return element.nom;
     }
 
-    if (
-      location.pathname ===
-      "/mon-espace"
-    ) {
+    if (location.pathname === "/mon-espace") {
       return "Mon espace";
     }
 
@@ -952,9 +1000,11 @@ function Layout() {
   ]);
 
 
-  /* ==========================================================
-     ACTIONS
-     ========================================================== */
+  /*
+  |--------------------------------------------------------------------------
+  | ACTIONS
+  |--------------------------------------------------------------------------
+  */
 
   async function handleLogout() {
     try {
@@ -965,12 +1015,9 @@ function Layout() {
         error
       );
     } finally {
-      navigate(
-        "/login",
-        {
-          replace: true,
-        }
-      );
+      navigate("/login", {
+        replace: true,
+      });
     }
   }
 
@@ -992,9 +1039,11 @@ function Layout() {
   }
 
 
-  /* ==========================================================
-     DATE
-     ========================================================== */
+  /*
+  |--------------------------------------------------------------------------
+  | DATE
+  |--------------------------------------------------------------------------
+  */
 
   const dateTexte =
     new Date().toLocaleDateString(
@@ -1007,9 +1056,11 @@ function Layout() {
     );
 
 
-  /* ==========================================================
-     RENDER
-     ========================================================== */
+  /*
+  |--------------------------------------------------------------------------
+  | RENDER
+  |--------------------------------------------------------------------------
+  */
 
   return (
     <div
@@ -1017,42 +1068,55 @@ function Layout() {
         min-h-screen
         w-full
         overflow-x-hidden
-        bg-[#f6f8f7]
+        bg-slate-50
         text-slate-900
       "
     >
 
-      {/* ======================================================
-          DECORATION
-          ====================================================== */}
+      {/* =========================================================
+          FOND DÉCORATIF
+      ========================================================= */}
 
       <div
         className="
-          pointer-events-none fixed
-          inset-0 z-0 overflow-hidden
+          pointer-events-none
+          fixed
+          inset-0
+          z-0
+          overflow-hidden
         "
       >
         <div
           className="
-            absolute -left-40 -top-40
-            h-96 w-96 rounded-full
-            bg-emerald-300/10 blur-3xl
+            absolute
+            -left-40
+            -top-40
+            h-96
+            w-96
+            rounded-full
+            bg-emerald-200/20
+            blur-3xl
           "
         />
 
         <div
           className="
-            absolute -bottom-40 -right-40
-            h-96 w-96 rounded-full
-            bg-teal-300/10 blur-3xl
+            absolute
+            -bottom-40
+            -right-40
+            h-96
+            w-96
+            rounded-full
+            bg-amber-200/15
+            blur-3xl
           "
         />
       </div>
 
 
-      {/* ======================================================
+      {/* =========================================================
           OVERLAY MOBILE
-          ====================================================== */}
+      ========================================================= */}
 
       {menuOuvert && (
         <button
@@ -1060,31 +1124,39 @@ function Layout() {
           aria-label="Fermer le menu"
           onClick={fermerMenu}
           className="
-            fixed inset-0 z-40
-            bg-slate-950/50
-            backdrop-blur-sm
+            fixed
+            inset-0
+            z-40
+            bg-slate-950/20
+            backdrop-blur-[2px]
             lg:hidden
           "
         />
       )}
 
 
-      {/* ======================================================
+      {/* =========================================================
           SIDEBAR
-          ====================================================== */}
+      ========================================================= */}
 
       <aside
         className={`
-          fixed left-0 top-0 z-50 flex
-          h-screen w-[290px] flex-col
+          fixed
+          left-0
+          top-0
+          z-50
+          flex
+          h-screen
+          w-[290px]
+          flex-col
           overflow-hidden
-          border-r border-white/10
-          bg-gradient-to-b
-          from-[#062e25]
-          via-[#06382d]
-          to-[#04251e]
-          text-white shadow-2xl
-          transition-transform duration-500
+          border-r
+          border-slate-200
+          bg-white
+          text-slate-900
+          shadow-[10px_0_40px_-30px_rgba(15,23,42,0.25)]
+          transition-transform
+          duration-300
           ease-out
 
           ${
@@ -1097,74 +1169,108 @@ function Layout() {
         `}
       >
 
-        {/* DECORATION SIDEBAR */}
+        {/* DÉCORATION SIDEBAR */}
 
         <div
           className="
-            pointer-events-none absolute
-            -right-24 -top-24
-            h-64 w-64 rounded-full
-            bg-emerald-400/10
+            pointer-events-none
+            absolute
+            -right-24
+            -top-24
+            h-64
+            w-64
+            rounded-full
+            bg-emerald-100/60
             blur-3xl
           "
         />
 
         <div
           className="
-            pointer-events-none absolute
-            -bottom-24 -left-24
-            h-64 w-64 rounded-full
-            bg-teal-400/10
+            pointer-events-none
+            absolute
+            -bottom-24
+            -left-24
+            h-64
+            w-64
+            rounded-full
+            bg-amber-100/40
             blur-3xl
           "
         />
 
 
-        {/* ====================================================
+        {/* =====================================================
             HEADER SIDEBAR
-            ==================================================== */}
+        ===================================================== */}
 
         <div
           className="
-            relative border-b
-            border-white/[0.08]
-            px-5 pb-5 pt-6
+            relative
+            border-b
+            border-slate-100
+            px-5
+            pb-5
+            pt-6
           "
         >
 
           <div
             className="
-              flex items-center
+              flex
+              items-center
               justify-between
             "
           >
 
-            <div
-              className="
-                flex items-center gap-3
-              "
-            >
+            <div className="flex items-center gap-3">
 
               <div
                 className="
-                  relative flex h-12 w-12
-                  shrink-0 items-center
-                  justify-center rounded-2xl
+                  relative
+                  flex
+                  h-12
+                  w-12
+                  shrink-0
+                  items-center
+                  justify-center
+                  overflow-hidden
+                  rounded-2xl
                   bg-gradient-to-br
-                  from-amber-300 to-orange-500
-                  text-xl font-black
-                  text-emerald-950 shadow-lg
+                  from-emerald-500
+                  to-teal-600
+                  text-xl
+                  font-black
+                  text-white
+                  shadow-lg
+                  shadow-emerald-600/15
                 "
               >
-                ✦
+                <span className="relative z-10">
+                  ✦
+                </span>
+
+                <span
+                  className="
+                    absolute
+                    inset-0
+                    rounded-2xl
+                    bg-white/10
+                    blur-md
+                  "
+                />
               </div>
+
 
               <div className="min-w-0">
 
                 <h1
                   className="
-                    truncate text-[15px]
-                    font-black tracking-tight
+                    truncate
+                    text-[15px]
+                    font-black
+                    tracking-tight
+                    text-slate-900
                   "
                 >
                   Dahira Mawahibou
@@ -1172,8 +1278,10 @@ function Layout() {
 
                 <p
                   className="
-                    mt-0.5 text-xs font-medium
-                    text-amber-300
+                    mt-0.5
+                    text-xs
+                    font-semibold
+                    text-emerald-600
                   "
                 >
                   Naafih de Castors
@@ -1188,16 +1296,22 @@ function Layout() {
               type="button"
               onClick={fermerMenu}
               className="
-                flex h-9 w-9 items-center
-                justify-center rounded-xl
-                bg-white/[0.06]
-                text-white/50
+                flex
+                h-9
+                w-9
+                items-center
+                justify-center
+                rounded-xl
+                border
+                border-slate-200
+                bg-white
+                text-slate-400
                 transition
-                hover:bg-white/10
-                hover:text-white
+                hover:border-slate-300
+                hover:bg-slate-50
+                hover:text-slate-700
                 lg:hidden
               "
-              aria-label="Fermer le menu"
             >
               <X size={18} />
             </button>
@@ -1205,73 +1319,115 @@ function Layout() {
           </div>
 
 
-          {/* ==================================================
-              PROFIL SIDEBAR
-              ================================================== */}
+          {/* ===================================================
+              PROFIL
+          =================================================== */}
 
           <button
             type="button"
             onClick={ouvrirProfil}
             className="
-              mt-5 w-full rounded-2xl
-              border border-white/[0.07]
-              bg-white/[0.05]
-              p-3 text-left
-              backdrop-blur-xl
-              transition
-              hover:bg-white/[0.09]
+              group
+              mt-5
+              w-full
+              rounded-2xl
+              border
+              border-slate-100
+              bg-slate-50
+              p-3
+              text-left
+              transition-all
+              duration-200
+              hover:border-emerald-100
+              hover:bg-emerald-50/60
+              hover:shadow-sm
             "
           >
 
             <div
               className="
-                flex items-center gap-3
+                flex
+                items-center
+                gap-3
               "
             >
 
               <div
                 className="
-                  flex h-10 w-10 shrink-0
-                  items-center justify-center
+                  flex
+                  h-10
+                  w-10
+                  shrink-0
+                  items-center
+                  justify-center
                   rounded-xl
                   bg-gradient-to-br
-                  from-emerald-400 to-teal-600
-                  text-xs font-black
+                  from-emerald-500
+                  to-teal-600
+                  text-xs
+                  font-black
                   text-white
+                  shadow-md
+                  shadow-emerald-600/15
                 "
               >
                 {initiales}
               </div>
 
-              <div
-                className="
-                  min-w-0 flex-1
-                "
-              >
+
+              <div className="min-w-0 flex-1">
 
                 <p
                   className="
-                    truncate text-xs
-                    font-bold text-white
+                    truncate
+                    text-xs
+                    font-bold
+                    text-slate-800
                   "
                 >
                   {nomAffiche}
                 </p>
 
-                <p
+                <div
                   className="
-                    mt-1 truncate text-[10px]
-                    text-white/40
+                    mt-1
+                    flex
+                    items-center
+                    gap-1.5
                   "
                 >
-                  {fonctionPrincipale}
-                </p>
+
+                  <span
+                    className="
+                      h-1.5
+                      w-1.5
+                      rounded-full
+                      bg-emerald-500
+                    "
+                  />
+
+                  <p
+                    className="
+                      truncate
+                      text-[10px]
+                      text-slate-400
+                    "
+                  >
+                    {fonctionPrincipale}
+                  </p>
+
+                </div>
 
               </div>
 
+
               <CircleUserRound
                 size={17}
-                className="text-white/30"
+                className="
+                  text-slate-300
+                  transition
+                  group-hover:text-emerald-500
+                "
               />
 
             </div>
@@ -1281,24 +1437,22 @@ function Layout() {
         </div>
 
 
-        {/* ====================================================
+        {/* =====================================================
             RECHERCHE
-            ==================================================== */}
+        ===================================================== */}
 
-        <div
-          className="
-            relative px-5 pt-5
-          "
-        >
+        <div className="relative px-5 pt-5">
 
           <div className="relative">
 
             <Search
               size={16}
               className="
-                absolute left-3.5 top-1/2
+                absolute
+                left-3.5
+                top-1/2
                 -translate-y-1/2
-                text-white/25
+                text-slate-300
               "
             />
 
@@ -1306,21 +1460,27 @@ function Layout() {
               type="text"
               value={recherche}
               onChange={(e) =>
-                setRecherche(
-                  e.target.value
-                )
+                setRecherche(e.target.value)
               }
               placeholder="Rechercher..."
               className="
-                w-full rounded-xl
-                border border-white/[0.07]
-                bg-white/[0.05]
-                py-2.5 pl-10 pr-3
-                text-xs text-white
+                w-full
+                rounded-xl
+                border
+                border-slate-200
+                bg-slate-50
+                py-2.5
+                pl-10
+                pr-3
+                text-xs
+                text-slate-800
                 outline-none
-                placeholder:text-white/25
-                focus:border-emerald-400/30
-                focus:bg-white/[0.08]
+                placeholder:text-slate-400
+                transition
+                focus:border-emerald-300
+                focus:bg-white
+                focus:ring-4
+                focus:ring-emerald-500/5
               "
             />
 
@@ -1329,460 +1489,526 @@ function Layout() {
         </div>
 
 
-        {/* ====================================================
+        {/* =====================================================
             NAVIGATION
-            ==================================================== */}
+        ===================================================== */}
 
         <nav
           className="
-            relative flex-1
+            relative
+            flex-1
             overflow-y-auto
-            px-4 py-6
+            px-4
+            py-6
           "
         >
+
+          {/* ===================================================
+              ADMINISTRATION
+          =================================================== */}
+
+          {navigationAdministrationFiltre.length > 0 && (
+            <div className="mb-7">
+
+              <SectionTitre
+                couleur="blue"
+                nombre={
+                  navigationAdministrationFiltre.length
+                }
+                icone={Settings2}
+              >
+                Administration
+              </SectionTitre>
+
+              <div className="space-y-1">
+
+                {navigationAdministrationFiltre.map(
+                  (item, index) => (
+                    <NavigationItem
+                      key={item.chemin}
+                      item={item}
+                      index={index}
+                      fermerMenu={fermerMenu}
+                    />
+                  )
+                )}
+
+              </div>
+
+            </div>
+          )}
+
+
+          {/* ===================================================
+              MEMBRES
+          =================================================== */}
+
+          {navigationMembresFiltre.length > 0 && (
+            <div className="mb-7">
+
+              <SectionTitre
+                couleur="emerald"
+                nombre={
+                  navigationMembresFiltre.length
+                }
+                icone={Users}
+              >
+                Membres
+              </SectionTitre>
+
+              <div className="space-y-1">
+
+                {navigationMembresFiltre.map(
+                  (item, index) => (
+                    <NavigationItem
+                      key={item.chemin}
+                      item={item}
+                      index={index}
+                      fermerMenu={fermerMenu}
+                    />
+                  )
+                )}
+
+              </div>
+
+            </div>
+          )}
+
+
+          {/* ===================================================
+              TABLEAU DE BORD
+          =================================================== */}
+
+          {navigationDashboardFiltre.length > 0 && (
+            <div className="mb-7">
+
+              <SectionTitre
+                couleur="emerald"
+                nombre={
+                  navigationDashboardFiltre.length
+                }
+                icone={LayoutDashboard}
+              >
+                Tableau de bord
+              </SectionTitre>
+
+              <div className="space-y-1">
+
+                {navigationDashboardFiltre.map(
+                  (item, index) => (
+                    <NavigationItem
+                      key={item.chemin}
+                      item={item}
+                      index={index}
+                      fermerMenu={fermerMenu}
+                    />
+                  )
+                )}
+
+              </div>
+
+            </div>
+          )}
+
+
+          {/* ===================================================
+              FINANCES
+          =================================================== */}
+
+          {navigationFinancesFiltre.length > 0 && (
+            <div className="mb-7">
+
+              <SectionTitre
+                couleur="violet"
+                nombre={
+                  navigationFinancesFiltre.length
+                }
+                icone={Wallet}
+              >
+                Finances
+              </SectionTitre>
+
+              <div className="space-y-1">
+
+                {navigationFinancesFiltre.map(
+                  (item, index) => (
+                    <NavigationItem
+                      key={item.chemin}
+                      item={item}
+                      index={index}
+                      fermerMenu={fermerMenu}
+                    />
+                  )
+                )}
+
+              </div>
+
+            </div>
+          )}
+
+
+          {/* ===================================================
+              ACTIVITÉS
+          =================================================== */}
+
+          {navigationActivitesFiltre.length > 0 && (
+            <div className="mb-7">
+
+              <SectionTitre
+                couleur="blue"
+                nombre={
+                  navigationActivitesFiltre.length
+                }
+                icone={CalendarDays}
+              >
+                Activités
+              </SectionTitre>
+
+              <div className="space-y-1">
+
+                {navigationActivitesFiltre.map(
+                  (item, index) => (
+                    <NavigationItem
+                      key={item.chemin}
+                      item={item}
+                      index={index}
+                      fermerMenu={fermerMenu}
+                    />
+                  )
+                )}
+
+              </div>
+
+            </div>
+          )}
+
+
+          {/* ===================================================
+              COMMUNICATION
+          =================================================== */}
+
+          {navigationCommunicationFiltre.length > 0 && (
+            <div className="mb-7">
+
+              <SectionTitre
+                couleur="rose"
+                nombre={
+                  navigationCommunicationFiltre.length
+                }
+                icone={Megaphone}
+              >
+                Communication
+              </SectionTitre>
+
+              <div className="space-y-1">
+
+                {navigationCommunicationFiltre.map(
+                  (item, index) => (
+                    <NavigationItem
+                      key={item.chemin}
+                      item={item}
+                      index={index}
+                      fermerMenu={fermerMenu}
+                    />
+                  )
+                )}
+
+              </div>
+
+            </div>
+          )}
+
+
+          {/* ===================================================
+              RELATIONS EXTÉRIEURES
+          =================================================== */}
+
+          {navigationRelationsFiltre.length > 0 && (
+            <div className="mb-7">
+
+              <SectionTitre
+                couleur="cyan"
+                nombre={
+                  navigationRelationsFiltre.length
+                }
+                icone={Globe2}
+              >
+                Relations
+              </SectionTitre>
+
+              <div className="space-y-1">
+
+                {navigationRelationsFiltre.map(
+                  (item, index) => (
+                    <NavigationItem
+                      key={item.chemin}
+                      item={item}
+                      index={index}
+                      fermerMenu={fermerMenu}
+                    />
+                  )
+                )}
+
+              </div>
+
+            </div>
+          )}
+
+
+          {/* ===================================================
+              ESPACE KOUREL
+          =================================================== */}
+
+          {estMembreKourel &&
+            navigationKourelFiltre.length > 0 && (
+              <div className="mb-7">
+
+                <SectionTitre
+                  couleur="amber"
+                  nombre={
+                    navigationKourelFiltre.length
+                  }
+                  icone={Music}
+                >
+                  Espace Kourel
+                </SectionTitre>
+
+                <div
+                  className="
+                    rounded-[1.4rem]
+                    border
+                    border-amber-100
+                    bg-amber-50/50
+                    p-2
+                  "
+                >
+
+                  {navigationKourelFiltre.map(
+                    (item, index) => (
+                      <NavigationItem
+                        key={item.chemin}
+                        item={item}
+                        index={index}
+                        fermerMenu={fermerMenu}
+                      />
+                    )
+                  )}
+
+                </div>
+
+              </div>
+            )}
+
+
+          {/* ===================================================
+              NOTIFICATIONS
+          =================================================== */}
+
+          {navigationNotificationsFiltre.length > 0 && (
+            <div className="mb-4">
+
+              <SectionTitre
+                couleur="rose"
+                nombre={
+                  navigationNotificationsFiltre.length
+                }
+                icone={Bell}
+              >
+                Notifications
+              </SectionTitre>
+
+              <div className="space-y-1">
+
+                {navigationNotificationsFiltre.map(
+                  (item, index) => (
+                    <NavigationItem
+                      key={item.chemin}
+                      item={item}
+                      index={index}
+                      fermerMenu={fermerMenu}
+                    />
+                  )
+                )}
+
+              </div>
+
+            </div>
+          )}
+
+
+          {/* ===================================================
+              AUCUN RÉSULTAT
+          =================================================== */}
 
           {aucunResultat && (
             <div
               className="
-                rounded-2xl border
+                mt-4
+                rounded-2xl
+                border
                 border-dashed
-                border-white/10
-                px-4 py-5
+                border-slate-200
+                bg-slate-50
+                px-4
+                py-5
                 text-center
-                text-xs text-white/30
+                text-xs
+                text-slate-400
               "
             >
               Aucun résultat
             </div>
           )}
 
-
-          {/* ACCUEIL */}
-
-          {dashboardFiltre.length > 0 && (
-            <div className="mb-7">
-
-              <SectionTitre
-                titre="Accueil"
-                nombre={
-                  dashboardFiltre.length
-                }
-              />
-
-              <div className="space-y-1">
-
-                {dashboardFiltre.map(
-                  (item, index) => (
-                    <NavigationItem
-                      key={item.chemin}
-                      item={item}
-                      index={index}
-                      fermerMenu={
-                        fermerMenu
-                      }
-                    />
-                  )
-                )}
-
-              </div>
-
-            </div>
-          )}
-
-
-          {/* ADMINISTRATION */}
-
-          {administrationFiltre.length >
-            0 && (
-            <div className="mb-7">
-
-              <SectionTitre
-                titre="Administration"
-                icone={Settings2}
-                couleur="blue"
-                nombre={
-                  administrationFiltre.length
-                }
-              />
-
-              <div className="space-y-1">
-
-                {administrationFiltre.map(
-                  (item, index) => (
-                    <NavigationItem
-                      key={item.chemin}
-                      item={item}
-                      index={index}
-                      fermerMenu={
-                        fermerMenu
-                      }
-                    />
-                  )
-                )}
-
-              </div>
-
-            </div>
-          )}
-
-
-          {/* MEMBRES */}
-
-          {membresFiltre.length > 0 && (
-            <div className="mb-7">
-
-              <SectionTitre
-                titre="Membres"
-                icone={Users}
-                nombre={
-                  membresFiltre.length
-                }
-              />
-
-              <div className="space-y-1">
-
-                {membresFiltre.map(
-                  (item, index) => (
-                    <NavigationItem
-                      key={item.chemin}
-                      item={item}
-                      index={index}
-                      fermerMenu={
-                        fermerMenu
-                      }
-                    />
-                  )
-                )}
-
-              </div>
-
-            </div>
-          )}
-
-
-          {/* FINANCES */}
-
-          {financesFiltre.length > 0 && (
-            <div className="mb-7">
-
-              <SectionTitre
-                titre="Finances"
-                icone={Wallet}
-                couleur="violet"
-                nombre={
-                  financesFiltre.length
-                }
-              />
-
-              <div className="space-y-1">
-
-                {financesFiltre.map(
-                  (item, index) => (
-                    <NavigationItem
-                      key={item.code}
-                      item={item}
-                      index={index}
-                      fermerMenu={
-                        fermerMenu
-                      }
-                    />
-                  )
-                )}
-
-              </div>
-
-            </div>
-          )}
-
-
-          {/* REUNIONS ET ACTIVITES */}
-
-          {activitesFiltre.length > 0 && (
-            <div className="mb-7">
-
-              <SectionTitre
-                titre="Réunions & activités"
-                icone={CalendarDays}
-                couleur="cyan"
-                nombre={
-                  activitesFiltre.length
-                }
-              />
-
-              <div className="space-y-1">
-
-                {activitesFiltre.map(
-                  (item, index) => (
-                    <NavigationItem
-                      key={item.chemin}
-                      item={item}
-                      index={index}
-                      fermerMenu={
-                        fermerMenu
-                      }
-                    />
-                  )
-                )}
-
-              </div>
-
-            </div>
-          )}
-
-
-          {/* COMMUNICATION */}
-
-          {communicationFiltre.length >
-            0 && (
-            <div className="mb-7">
-
-              <SectionTitre
-                titre="Communication"
-                icone={Megaphone}
-                couleur="rose"
-                nombre={
-                  communicationFiltre.length
-                }
-              />
-
-              <div className="space-y-1">
-
-                {communicationFiltre.map(
-                  (item, index) => (
-                    <NavigationItem
-                      key={item.chemin}
-                      item={item}
-                      index={index}
-                      fermerMenu={
-                        fermerMenu
-                      }
-                    />
-                  )
-                )}
-
-              </div>
-
-            </div>
-          )}
-
-
-          {/* RELATIONS EXTERIEURES */}
-
-          {relationsFiltre.length > 0 && (
-            <div className="mb-7">
-
-              <SectionTitre
-                titre="Relations extérieures"
-                icone={Globe2}
-                couleur="blue"
-                nombre={
-                  relationsFiltre.length
-                }
-              />
-
-              <div className="space-y-1">
-
-                {relationsFiltre.map(
-                  (item, index) => (
-                    <NavigationItem
-                      key={item.chemin}
-                      item={item}
-                      index={index}
-                      fermerMenu={
-                        fermerMenu
-                      }
-                    />
-                  )
-                )}
-
-              </div>
-
-            </div>
-          )}
-
-
-          {/* ESPACE KOUREL */}
-
-          {kourelFiltre.length > 0 && (
-            <div className="mb-7">
-
-              <SectionTitre
-                titre="Espace Kourel"
-                icone={Music}
-                couleur="amber"
-                nombre={
-                  kourelFiltre.length
-                }
-              />
-
-              <div
-                className="
-                  rounded-[1.4rem]
-                  border border-amber-400/10
-                  bg-gradient-to-br
-                  from-amber-400/[0.08]
-                  to-transparent p-2
-                "
-              >
-
-                {kourelFiltre.map(
-                  (item, index) => (
-                    <NavigationItem
-                      key={item.chemin}
-                      item={item}
-                      index={index}
-                      fermerMenu={
-                        fermerMenu
-                      }
-                    />
-                  )
-                )}
-
-              </div>
-
-            </div>
-          )}
-
-
-          {/* NOTIFICATIONS */}
-
-          {notificationsFiltre.length >
-            0 && (
-            <div className="mb-3">
-
-              <SectionTitre
-                titre="Personnel"
-                icone={Bell}
-                couleur="rose"
-                nombre={
-                  notificationsFiltre.length
-                }
-              />
-
-              <div className="space-y-1">
-
-                {notificationsFiltre.map(
-                  (item, index) => (
-                    <NavigationItem
-                      key={item.chemin}
-                      item={item}
-                      index={index}
-                      fermerMenu={
-                        fermerMenu
-                      }
-                    />
-                  )
-                )}
-
-              </div>
-
-            </div>
-          )}
-
         </nav>
 
 
-        {/* ====================================================
-            BAS SIDEBAR
-            ==================================================== */}
+        {/* =====================================================
+            FOOTER SIDEBAR
+        ===================================================== */}
 
         <div
           className="
-            relative border-t
-            border-white/[0.08]
+            relative
+            border-t
+            border-slate-100
+            bg-white
             p-4
           "
         >
 
-          {/* MON PROFIL */}
+          {/* PROFIL */}
 
           <button
             type="button"
             onClick={ouvrirProfil}
             className="
-              group mb-2 flex w-full
-              items-center gap-3
-              rounded-xl px-3 py-2.5
-              text-xs font-semibold
-              text-white/45
+              group
+              mb-1
+              flex
+              w-full
+              items-center
+              gap-3
+              rounded-xl
+              px-3
+              py-2.5
+              text-xs
+              font-semibold
+              text-slate-500
               transition
-              hover:bg-white/[0.06]
-              hover:text-white
+              hover:bg-emerald-50
+              hover:text-emerald-700
             "
           >
 
             <div
               className="
-                flex h-8 w-8
-                items-center justify-center
+                flex
+                h-8
+                w-8
+                items-center
+                justify-center
                 rounded-lg
-                bg-white/[0.05]
+                bg-emerald-50
+                text-emerald-600
+                transition
+                group-hover:bg-emerald-100
               "
             >
               <CircleUserRound size={16} />
             </div>
 
-            Mon profil
+            <span>
+              Mon profil
+            </span>
 
           </button>
 
 
-          {/* RETOUR ACCUEIL */}
+          {/* ACCUEIL */}
 
           <button
             type="button"
             onClick={retourAccueil}
             className="
-              group mb-2 flex w-full
-              items-center gap-3
-              rounded-xl px-3 py-2.5
-              text-xs font-semibold
-              text-white/45
+              group
+              mb-1
+              flex
+              w-full
+              items-center
+              gap-3
+              rounded-xl
+              px-3
+              py-2.5
+              text-xs
+              font-semibold
+              text-slate-500
               transition
-              hover:bg-white/[0.06]
-              hover:text-white
+              hover:bg-slate-50
+              hover:text-slate-800
             "
           >
 
             <div
               className="
-                flex h-8 w-8
-                items-center justify-center
+                flex
+                h-8
+                w-8
+                items-center
+                justify-center
                 rounded-lg
-                bg-white/[0.05]
+                bg-slate-100
+                text-slate-500
+                transition
+                group-hover:bg-slate-200
               "
             >
               <Home size={16} />
             </div>
 
-            Retour à l'accueil
+            <span>
+              Retour à l'accueil
+            </span>
 
           </button>
 
 
-          {/* DECONNEXION */}
+          {/* DÉCONNEXION */}
 
           <button
             type="button"
             onClick={handleLogout}
             className="
-              group flex w-full
-              items-center gap-3
-              rounded-xl px-3 py-2.5
-              text-xs font-semibold
-              text-white/35
+              group
+              flex
+              w-full
+              items-center
+              gap-3
+              rounded-xl
+              px-3
+              py-2.5
+              text-xs
+              font-semibold
+              text-slate-400
               transition
-              hover:bg-rose-500/10
-              hover:text-rose-300
+              hover:bg-rose-50
+              hover:text-rose-600
             "
           >
 
             <div
               className="
-                flex h-8 w-8
-                items-center justify-center
+                flex
+                h-8
+                w-8
+                items-center
+                justify-center
                 rounded-lg
-                bg-white/[0.05]
+                bg-slate-100
+                text-slate-400
+                transition
+                group-hover:bg-rose-100
+                group-hover:text-rose-500
               "
             >
               <LogOut size={16} />
@@ -1797,9 +2023,9 @@ function Layout() {
       </aside>
 
 
-      {/* ======================================================
+      {/* =========================================================
           BOUTON MOBILE
-          ====================================================== */}
+      ========================================================= */}
 
       {!menuOuvert && (
         <button
@@ -1808,12 +2034,25 @@ function Layout() {
             setMenuOuvert(true)
           }
           className="
-            fixed left-4 top-4 z-40
-            flex h-11 w-11
-            items-center justify-center
+            fixed
+            left-4
+            top-4
+            z-40
+            flex
+            h-11
+            w-11
+            items-center
+            justify-center
             rounded-2xl
-            bg-emerald-950
-            text-white shadow-xl
+            border
+            border-slate-200
+            bg-white
+            text-emerald-700
+            shadow-lg
+            shadow-slate-900/10
+            transition
+            hover:scale-105
+            hover:bg-emerald-50
             lg:hidden
           "
           aria-label="Ouvrir le menu"
@@ -1823,35 +2062,40 @@ function Layout() {
       )}
 
 
-      {/* ======================================================
+      {/* =========================================================
           CONTENU PRINCIPAL
-          ====================================================== */}
+      ========================================================= */}
 
       <main
         className="
-          relative z-10
+          relative
+          z-10
           min-h-screen
           lg:ml-[290px]
         "
       >
 
-        {/* ====================================================
-            HEADER
-            ==================================================== */}
+        {/* =======================================================
+            TOPBAR
+        ======================================================= */}
 
         <header
           className="
-            sticky top-0 z-30
+            sticky
+            top-0
+            z-30
             border-b
-            border-slate-200/70
-            bg-white/90
+            border-slate-200/80
+            bg-white/95
+            shadow-[0_4px_20px_-18px_rgba(15,23,42,0.3)]
             backdrop-blur-2xl
           "
         >
 
           <div
             className="
-              flex min-h-[76px]
+              flex
+              min-h-[76px]
               items-center
               justify-between
               gap-4
@@ -1871,15 +2115,20 @@ function Layout() {
 
               <div
                 className="
-                  flex items-center gap-2
+                  flex
+                  items-center
+                  gap-2
                 "
               >
 
                 <span
                   className="
-                    hidden h-2 w-2
+                    hidden
+                    h-2
+                    w-2
                     rounded-full
                     bg-emerald-500
+                    shadow-[0_0_10px_rgba(16,185,129,0.35)]
                     sm:block
                   "
                 />
@@ -1899,12 +2148,7 @@ function Layout() {
               </div>
 
 
-              <div
-                className="
-                  mt-1 flex
-                  items-center gap-2
-                "
-              >
+              <div className="mt-1 flex items-center gap-2">
 
                 <h2
                   className="
@@ -1919,22 +2163,22 @@ function Layout() {
                   {titrePage}
                 </h2>
 
+
                 {estMembreKourel &&
-                  (
-                    location.pathname.includes(
-                      "kourel"
-                    ) ||
-                    location.pathname ===
-                      "/programme-religieux" ||
-                    location.pathname ===
-                      "/khassidas"
+                  location.pathname.includes(
+                    "kourel"
                   ) && (
                     <span
                       className="
-                        hidden items-center gap-1
+                        hidden
+                        items-center
+                        gap-1
                         rounded-full
+                        border
+                        border-amber-100
                         bg-amber-50
-                        px-2.5 py-1
+                        px-2.5
+                        py-1
                         text-[9px]
                         font-bold
                         text-amber-700
@@ -1951,18 +2195,22 @@ function Layout() {
             </div>
 
 
-            {/* ACTIONS HEADER */}
+            {/* ACTIONS */}
 
             <div
               className="
-                flex items-center
-                gap-2 sm:gap-4
+                flex
+                items-center
+                gap-2
+                sm:gap-4
               "
             >
 
               <div
                 className="
-                  hidden items-center gap-2
+                  hidden
+                  items-center
+                  gap-2
                   xl:flex
                 "
               >
@@ -1986,79 +2234,78 @@ function Layout() {
               </div>
 
 
+              <div
+                className="
+                  hidden
+                  h-8
+                  w-px
+                  bg-slate-200
+                  xl:block
+                "
+              />
+
+
               {/* NOTIFICATIONS */}
-
-              {possedePermission(
-                "NOTIFICATION_CONSULTER"
-              ) && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate(
-                      "/notifications"
-                    )
-                  }
-                  className="
-                    relative flex h-10 w-10
-                    items-center
-                    justify-center
-                    rounded-xl
-                    border
-                    border-slate-200
-                    bg-white
-                    text-slate-500
-                    shadow-sm
-                    transition
-                    hover:border-emerald-200
-                    hover:bg-emerald-50
-                    hover:text-emerald-700
-                  "
-                  title="Notifications"
-                >
-
-                  <Bell size={18} />
-
-                  <span
-                    className="
-                      absolute right-2 top-2
-                      h-2 w-2
-                      rounded-full
-                      bg-rose-500
-                      ring-2 ring-white
-                    "
-                  />
-
-                </button>
-              )}
-
-
-              {/* PROFIL */}
 
               <button
                 type="button"
-                onClick={ouvrirProfil}
+                onClick={() =>
+                  navigate("/notifications")
+                }
                 className="
-                  hidden
-                  items-center gap-3
-                  rounded-2xl
+                  group
+                  relative
+                  flex
+                  h-10
+                  w-10
+                  items-center
+                  justify-center
+                  rounded-xl
                   border
                   border-slate-200
                   bg-white
-                  px-3 py-2
+                  text-slate-500
                   shadow-sm
-                  transition
+                  transition-all
+                  hover:-translate-y-0.5
                   hover:border-emerald-200
-                  hover:bg-emerald-50/50
-                  sm:flex
+                  hover:bg-emerald-50
+                  hover:text-emerald-700
                 "
-                title="Mon profil"
+                title="Notifications"
               >
 
-                <div
+                <Bell size={18} />
+
+                <span
                   className="
-                    text-right
+                    absolute
+                    right-2
+                    top-2
+                    h-2
+                    w-2
+                    rounded-full
+                    bg-rose-500
+                    ring-2
+                    ring-white
                   "
-                >
+                />
+
+              </button>
+
+
+              {/* UTILISATEUR */}
+
+              <div
+                className="
+                  hidden
+                  items-center
+                  gap-3
+                  sm:flex
+                "
+              >
+
+                <div className="text-right">
 
                   <p
                     className="
@@ -2087,10 +2334,17 @@ function Layout() {
                 </div>
 
 
-                <div
+                <button
+                  type="button"
+                  onClick={ouvrirProfil}
                   className="
-                    relative flex h-11 w-11
-                    items-center justify-center
+                    group
+                    relative
+                    flex
+                    h-11
+                    w-11
+                    items-center
+                    justify-center
                     rounded-2xl
                     bg-gradient-to-br
                     from-emerald-500
@@ -2099,12 +2353,33 @@ function Layout() {
                     font-black
                     text-white
                     shadow-lg
+                    shadow-emerald-700/15
+                    transition-all
+                    hover:-translate-y-0.5
+                    hover:scale-105
                   "
+                  title="Mon profil"
                 >
-                  {initiales}
-                </div>
 
-              </button>
+                  {initiales}
+
+                  <span
+                    className="
+                      absolute
+                      bottom-0
+                      right-0
+                      h-3
+                      w-3
+                      rounded-full
+                      border-2
+                      border-white
+                      bg-emerald-400
+                    "
+                  />
+
+                </button>
+
+              </div>
 
             </div>
 
@@ -2113,17 +2388,18 @@ function Layout() {
         </header>
 
 
-        {/* ====================================================
-            BREADCRUMB
-            ==================================================== */}
+        {/* =======================================================
+            FIL D'ARIANE
+        ======================================================= */}
 
         <div
           className="
             hidden
             border-b
             border-slate-100
-            bg-white/70
-            px-5 py-2.5
+            bg-white
+            px-5
+            py-2.5
             sm:block
             sm:px-7
             lg:px-9
@@ -2132,14 +2408,16 @@ function Layout() {
 
           <div
             className="
-              flex items-center
+              flex
+              items-center
               justify-between
             "
           >
 
             <div
               className="
-                flex items-center
+                flex
+                items-center
                 gap-2
                 text-[10px]
                 text-slate-400
@@ -2152,9 +2430,7 @@ function Layout() {
                 Dahira
               </span>
 
-              <ChevronRight
-                size={11}
-              />
+              <ChevronRight size={11} />
 
               <span
                 className="
@@ -2168,41 +2444,41 @@ function Layout() {
             </div>
 
 
-            {estMembreKourel &&
-              possedePermission(
-                "KOUREL_CONSULTER"
-              ) && (
-                <div
-                  className="
-                    flex items-center
-                    gap-1.5
-                    text-[10px]
-                    font-semibold
-                    text-amber-600
-                  "
-                >
+            {estMembreKourel && (
+              <div
+                className="
+                  flex
+                  items-center
+                  gap-1.5
+                  text-[10px]
+                  font-semibold
+                  text-amber-600
+                "
+              >
 
-                  <Sparkles size={12} />
+                <Sparkles size={12} />
 
-                  Membre du Kourel
+                Membre du Kourel
 
-                </div>
-              )}
+              </div>
+            )}
 
           </div>
 
         </div>
 
 
-        {/* ====================================================
-            PAGE
-            ==================================================== */}
+        {/* =======================================================
+            CONTENU
+            IMPORTANT :
+            Le principe de scroll existant est conservé.
+        ======================================================= */}
 
         <div
           className="
             relative
             min-h-[calc(100vh-76px)]
-            bg-[#f6f8f7]
+            bg-slate-50
             p-5
             sm:p-7
             lg:p-9
@@ -2213,11 +2489,11 @@ function Layout() {
             className="
               w-full
               min-w-0
-              rounded-[26px]
+              rounded-[28px]
               border
-              border-slate-200/70
+              border-slate-200/80
               bg-white
-              shadow-sm
+              shadow-[0_18px_50px_-30px_rgba(15,23,42,0.20)]
             "
           >
 
@@ -2239,16 +2515,17 @@ function Layout() {
         </div>
 
 
-        {/* ====================================================
+        {/* =======================================================
             FOOTER
-            ==================================================== */}
+        ======================================================= */}
 
         <footer
           className="
             border-t
-            border-slate-200/70
-            bg-white/70
-            px-5 py-6
+            border-slate-200/80
+            bg-white
+            px-5
+            py-6
             sm:px-7
             lg:px-9
           "
@@ -2256,7 +2533,8 @@ function Layout() {
 
           <div
             className="
-              flex flex-col
+              flex
+              flex-col
               items-center
               justify-between
               gap-3
@@ -2268,18 +2546,22 @@ function Layout() {
 
             <div
               className="
-                flex items-center gap-2
+                flex
+                items-center
+                gap-2
               "
             >
 
               <div
                 className="
-                  flex h-7 w-7
+                  flex
+                  h-7
+                  w-7
                   items-center
                   justify-center
                   rounded-lg
-                  bg-emerald-100
-                  text-emerald-700
+                  bg-emerald-50
+                  text-emerald-600
                 "
               >
                 <Star size={13} />
@@ -2317,8 +2599,7 @@ function Layout() {
                 text-slate-400
               "
             >
-              © {new Date().getFullYear()}
-              {" — "}
+              © {new Date().getFullYear()} —
               Tous droits réservés
             </p>
 
@@ -2326,66 +2607,60 @@ function Layout() {
 
         </footer>
 
-
-        {/* ====================================================
-            STYLES
-            ==================================================== */}
-
-        <style>
-          {`
-            @keyframes menuAppear {
-              from {
-                opacity: 0;
-                transform: translateX(-8px);
-              }
-
-              to {
-                opacity: 1;
-                transform: translateX(0);
-              }
-            }
-
-            html,
-            body {
-              max-width: 100%;
-              overflow-x: hidden;
-            }
-
-            * {
-              scrollbar-width: thin;
-              scrollbar-color:
-                rgba(16, 185, 129, 0.25)
-                transparent;
-            }
-
-            *::-webkit-scrollbar {
-              width: 5px;
-              height: 5px;
-            }
-
-            *::-webkit-scrollbar-track {
-              background: transparent;
-            }
-
-            *::-webkit-scrollbar-thumb {
-              background:
-                rgba(16, 185, 129, 0.25);
-              border-radius: 999px;
-            }
-
-            *::-webkit-scrollbar-thumb:hover {
-              background:
-                rgba(16, 185, 129, 0.40);
-            }
-
-            button,
-            a {
-              -webkit-tap-highlight-color: transparent;
-            }
-          `}
-        </style>
-
       </main>
+
+
+      {/* =========================================================
+          ANIMATIONS / SCROLLBAR
+      ========================================================= */}
+
+      <style>{`
+
+        @keyframes menuAppear {
+          from {
+            opacity: 0;
+            transform: translateX(-6px);
+          }
+
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        * {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(16, 185, 129, 0.20) transparent;
+        }
+
+        *::-webkit-scrollbar {
+          width: 5px;
+          height: 5px;
+        }
+
+        *::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        *::-webkit-scrollbar-thumb {
+          background: rgba(16, 185, 129, 0.20);
+          border-radius: 999px;
+        }
+
+        *::-webkit-scrollbar-thumb:hover {
+          background: rgba(16, 185, 129, 0.38);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          *,
+          *::before,
+          *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+          }
+        }
+      `}</style>
 
     </div>
   );
