@@ -2027,7 +2027,7 @@ function Layout() {
                   type="button"
                   onClick={() =>
                     navigate(
-                      "/mon-espace"
+                      "/profil"
                     )
                   }
                   className="
@@ -2043,7 +2043,7 @@ function Layout() {
                     transition
                     hover:-translate-y-0.5
                   "
-                  title="Mon espace"
+                  title="Mon profil"
                 >
                   {initiales}
                 </button>
