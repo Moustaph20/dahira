@@ -1682,7 +1682,7 @@ function Layout() {
           <button
             type="button"
             onClick={() =>
-              navigate("/mon-espace")
+              navigate("/profil")
             }
             className="
               group mb-2 flex w-full
@@ -1705,7 +1705,7 @@ function Layout() {
               <CircleUserRound size={16} />
             </div>
 
-            Mon espace
+            Mon profil
           </button>
 
 
