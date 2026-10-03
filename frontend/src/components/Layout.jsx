@@ -1964,7 +1964,7 @@ export default function Layout() {
               <button
                 type="button"
                 onClick={ouvrirProfil}
-                aria-label="Ouvrir mon profil"
+                aria-label="Ouvrir Mon Profil"
                 className="
                   group
                   flex
