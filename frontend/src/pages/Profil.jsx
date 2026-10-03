@@ -1073,16 +1073,7 @@ function Profil() {
                 pt-5
               "
             >
-              <p
-                className="
-                  mb-4
-                  text-xs
-                  font-bold
-                  text-slate-500
-                "
-              >
-                Nouveau mot de passe
-              </p>
+              
 
               <div
                 className="
