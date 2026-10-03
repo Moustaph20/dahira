@@ -25,7 +25,6 @@ import {
   Clock3,
   Star,
   UserCog,
-  Settings2,
   HandCoins,
   CreditCard,
   Receipt,
@@ -35,130 +34,110 @@ import {
 } from "lucide-react";
 
 import {
+  useCallback,
+  useEffect,
   useMemo,
   useState,
 } from "react";
 
 import { useAuth } from "../context/AuthContext";
 
-
-/* ============================================================
-   ICONES
-   ============================================================ */
-
-const ICONES = {
-  dashboard: LayoutDashboard,
-  users: Users,
-  wallet: Wallet,
-  calendar: CalendarDays,
-  "calendar-days": CalendarDays,
-  "calendar-check": CalendarCheck,
-  "calendar-plus": CalendarDays,
-  "book-open": BookOpen,
-  headphones: Music,
-  music: Music,
-  megaphone: Megaphone,
-  bell: Bell,
-  user: Users,
-  "user-cog": UserCog,
-  settings: Settings2,
-  "hand-coins": HandCoins,
-  "credit-card": CreditCard,
-  receipt: Receipt,
-  globe: Globe2,
-  images: Images,
-};
-
-
-/* ============================================================
-   RUBRIQUES KOUREL
-   ============================================================ */
+// ============================================================
+// RUBRIQUES KOURÉL
+// ============================================================
 
 const RUBRIQUES_KOUREL = [
   {
-    code: "MON_KOUREL",
-    nom: "Mon Kourel",
-    description: "Mon espace de Kourel",
+    label: "Mon Kourel",
     chemin: "/mon-kourel",
     permission: "KOUREL_CONSULTER",
-    icone: Users,
+    icon: Users,
     couleur: "amber",
   },
-
   {
-    code: "PROGRAMME_RELIGIEUX",
-    nom: "Programme religieux",
-    description: "Répétitions et déclamations",
+    label: "Programme religieux",
     chemin: "/programme-religieux",
     permission: "KOUREL_CONSULTER",
-    icone: CalendarDays,
+    icon: CalendarDays,
     couleur: "amber",
   },
-
   {
-    code: "KHASSIDAS",
-    nom: "Khassidas",
-    description: "Khassidas, tons et audios",
+    label: "Khassidas",
     chemin: "/khassidas",
     permission: "KOUREL_CONSULTER",
-    icone: BookOpen,
+    icon: BookOpen,
     couleur: "amber",
   },
 ];
 
-
-/* ============================================================
-   COULEURS DU MENU
-   ============================================================ */
+// ============================================================
+// COULEURS DES ICÔNES
+// ============================================================
 
 const COULEURS_MENU = {
-  emerald: "from-emerald-500 to-teal-500",
-  blue: "from-blue-500 to-indigo-500",
-  violet: "from-violet-500 to-purple-500",
-  amber: "from-amber-400 to-orange-500",
-  rose: "from-rose-500 to-pink-500",
-  cyan: "from-cyan-500 to-sky-500",
+  emerald: {
+    icon: "from-emerald-500 to-green-600",
+    active: "bg-emerald-50 text-emerald-700",
+  },
+
+  blue: {
+    icon: "from-blue-500 to-indigo-600",
+    active: "bg-blue-50 text-blue-700",
+  },
+
+  violet: {
+    icon: "from-violet-500 to-purple-600",
+    active: "bg-violet-50 text-violet-700",
+  },
+
+  amber: {
+    icon: "from-amber-400 to-orange-500",
+    active: "bg-amber-50 text-amber-700",
+  },
+
+  rose: {
+    icon: "from-rose-500 to-pink-600",
+    active: "bg-rose-50 text-rose-700",
+  },
+
+  cyan: {
+    icon: "from-cyan-500 to-sky-600",
+    active: "bg-cyan-50 text-cyan-700",
+  },
 };
 
-
-/* ============================================================
-   ELEMENT DE NAVIGATION
-   ============================================================ */
+// ============================================================
+// ITEM DE NAVIGATION
+// ============================================================
 
 function NavigationItem({
   item,
-  fermerMenu,
-  index = 0,
+  onNavigate,
 }) {
-  const Icon = item?.icone || BookOpen;
+  const Icon = item.icon;
 
-  const couleur = item?.couleur || "emerald";
-
-  const gradient =
-    COULEURS_MENU[couleur] ||
+  const couleur =
+    COULEURS_MENU[item.couleur] ||
     COULEURS_MENU.emerald;
 
   return (
     <NavLink
       to={item.chemin}
-      onClick={fermerMenu}
-      style={{
-        animationDelay: `${index * 35}ms`,
-      }}
+      onClick={onNavigate}
       className={({ isActive }) =>
-        `
-        group relative flex items-center gap-3
-        overflow-hidden rounded-2xl px-3 py-3
-        text-sm font-medium transition-all
-        duration-300
-        animate-[menuAppear_0.35s_ease-out_both]
+        [
+          "group relative flex items-center gap-3",
+          "rounded-2xl px-3 py-2.5",
+          "text-[13px] font-semibold",
+          "transition-all duration-200",
+          "focus:outline-none",
+          "focus-visible:ring-2",
+          "focus-visible:ring-emerald-400/60",
 
-        ${
           isActive
-            ? "bg-white text-emerald-950 shadow-lg shadow-black/10"
-            : "text-white/60 hover:bg-white/[0.08] hover:text-white"
-        }
-        `
+            ? `${couleur.active} shadow-sm`
+            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+        ].join(" ")
       }
     >
       {({ isActive }) => (
@@ -166,98 +145,47 @@ function NavigationItem({
           {isActive && (
             <span
               className="
-                absolute left-0 top-2 bottom-2
-                w-1 rounded-r-full
-                bg-gradient-to-b
-                from-emerald-400 to-teal-600
+                absolute left-0 top-1/2
+                h-7 w-1
+                -translate-y-1/2
+                rounded-r-full
+                bg-emerald-500
               "
             />
           )}
 
-          {isActive && (
-            <span
-              className="
-                pointer-events-none absolute
-                -right-8 -top-8 h-20 w-20
-                rounded-full bg-emerald-100
-                blur-2xl
-              "
-            />
-          )}
-
-          <div
-            className={`
-              relative z-10 flex h-10 w-10
-              shrink-0 items-center justify-center
-              rounded-xl transition-all duration-300
-
-              ${
-                isActive
-                  ? `bg-gradient-to-br ${gradient}
-                     text-white shadow-md`
-                  : `
-                    bg-white/[0.06]
-                    text-white/45
-                    group-hover:bg-white/10
-                    group-hover:text-amber-300
-                  `
-              }
-            `}
+          <span
+            className={[
+              "flex h-9 w-9 shrink-0",
+              "items-center justify-center",
+              "rounded-xl",
+              "bg-gradient-to-br",
+              "text-white shadow-sm",
+              "transition-all duration-200",
+              "group-hover:scale-[1.04]",
+              "group-hover:shadow-md",
+              couleur.icon,
+            ].join(" ")}
           >
             <Icon
-              size={18}
-              strokeWidth={2}
+              size={17}
+              strokeWidth={2.2}
             />
-          </div>
+          </span>
 
-          <div
-            className="
-              relative z-10 min-w-0 flex-1
-            "
-          >
-            <p
-              className={
-                isActive
-                  ? "truncate font-bold"
-                  : "truncate font-medium"
-              }
-            >
-              {item.nom}
-            </p>
-
-            {item.description && (
-              <p
-                className={`
-                  mt-0.5 truncate text-[10px]
-
-                  ${
-                    isActive
-                      ? "text-emerald-700/60"
-                      : "text-white/25"
-                  }
-                `}
-              >
-                {item.description}
-              </p>
-            )}
-          </div>
+          <span className="min-w-0 flex-1 truncate">
+            {item.label}
+          </span>
 
           <ChevronRight
-            size={16}
-            className={`
-              relative z-10 shrink-0
-              transition-all duration-300
+            size={15}
+            className={[
+              "shrink-0 transition-all duration-200",
 
-              ${
-                isActive
-                  ? "translate-x-0 text-emerald-600"
-                  : `
-                    -translate-x-1 text-white/10
-                    group-hover:translate-x-0
-                    group-hover:text-white/40
-                  `
-              }
-            `}
+              isActive
+                ? "translate-x-0 opacity-100"
+                : "-translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-60",
+            ].join(" ")}
           />
         </>
       )}
@@ -265,86 +193,39 @@ function NavigationItem({
   );
 }
 
-
-/* ============================================================
-   TITRE DE SECTION
-   ============================================================ */
+// ============================================================
+// TITRE DE SECTION
+// ============================================================
 
 function SectionTitre({
-  titre,
-  icone: Icon,
-  couleur = "white",
-  nombre,
+  children,
 }) {
-  const couleurs = {
-    white: "text-white/25",
-    amber: "text-amber-300/70",
-    blue: "text-blue-300/70",
-    violet: "text-violet-300/70",
-    cyan: "text-cyan-300/70",
-    rose: "text-rose-300/70",
-  };
-
   return (
-    <div
-      className="
-        mb-3 flex items-center
-        justify-between px-2
-      "
-    >
-      <div
-        className="
-          flex items-center gap-2
-        "
-      >
-        {Icon && (
-          <Icon
-            size={13}
-            className={
-              couleurs[couleur] ||
-              couleurs.white
-            }
-          />
-        )}
+    <div className="mb-2 mt-5 px-3 first:mt-2">
+      <div className="flex items-center gap-2">
+        <span className="h-px w-3 bg-slate-300" />
 
-        <p
-          className={`
-            text-[10px] font-black
-            uppercase
-            tracking-[0.18em]
-
-            ${
-              couleurs[couleur] ||
-              couleurs.white
-            }
-          `}
-        >
-          {titre}
-        </p>
-      </div>
-
-      {typeof nombre === "number" && (
         <span
           className="
-            rounded-full
-            bg-white/[0.05]
-            px-2 py-0.5 text-[9px]
-            font-bold text-white/25
+            text-[10px]
+            font-extrabold
+            uppercase
+            tracking-[0.18em]
+            text-slate-400
           "
         >
-          {nombre}
+          {children}
         </span>
-      )}
+      </div>
     </div>
   );
 }
 
+// ============================================================
+// LAYOUT PRINCIPAL
+// ============================================================
 
-/* ============================================================
-   LAYOUT
-   ============================================================ */
-
-function Layout() {
+export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -353,6 +234,10 @@ function Layout() {
     deconnexion,
     aPermission,
   } = useAuth();
+
+  // ==========================================================
+  // ÉTATS
+  // ==========================================================
 
   const [
     menuOuvert,
@@ -364,693 +249,687 @@ function Layout() {
     setRecherche,
   ] = useState("");
 
+  // ==========================================================
+  // INFORMATIONS UTILISATEUR
+  // ==========================================================
 
-  /* ==========================================================
-     DONNEES UTILISATEUR
-     ========================================================== */
+  const possedePermission = useCallback(
+    (permission) => {
+      if (!permission) {
+        return true;
+      }
 
-  const kourels = useMemo(
-    () =>
-      Array.isArray(
-        utilisateur?.kourels
-      )
-        ? utilisateur.kourels
-        : [],
-    [utilisateur]
+      return Boolean(
+        aPermission?.(permission)
+      );
+    },
+    [aPermission]
   );
 
-
-  const estMembreKourel =
-    utilisateur?.est_membre_kourel === true ||
-    kourels.length > 0;
-
-
-  /* ==========================================================
-     REGLE CENTRALE DU LAYOUT
-     ========================================================== */
-
-  const possedePermission = (
-    permission
-  ) => {
-    if (!permission) {
-      return true;
-    }
-
-    if (
-      typeof aPermission !==
-      "function"
-    ) {
-      return false;
-    }
-
-    return (
-      aPermission(permission) === true
-    );
-  };
-
-
-  /* ==========================================================
-     INFORMATIONS UTILISATEUR
-     ========================================================== */
-
   const prenom =
-    utilisateur?.prenom ||
     utilisateur?.membre?.prenom ||
+    utilisateur?.prenom ||
     "";
 
   const nom =
-    utilisateur?.nom ||
     utilisateur?.membre?.nom ||
+    utilisateur?.nom ||
     "";
 
-  const nomComplet =
-    `${prenom} ${nom}`.trim();
-
   const nomAffiche =
-    nomComplet ||
+    `${prenom} ${nom}`.trim() ||
     utilisateur?.identifiant ||
     "Utilisateur";
 
-
   const fonctionPrincipale =
     utilisateur?.fonctions?.[0]?.nom ||
+    utilisateur?.fonction_principale ||
     "Membre";
 
-
   const initiales = useMemo(() => {
-    const mots =
-      nomAffiche
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean);
+    const premiereLettrePrenom =
+      prenom?.trim()?.[0] || "";
 
-    if (mots.length === 0) {
-      return "U";
-    }
+    const premiereLettreNom =
+      nom?.trim()?.[0] || "";
 
-    if (mots.length === 1) {
-      return mots[0]
-        .substring(0, 2)
-        .toUpperCase();
-    }
-
-    return (
-      mots[0][0] +
-      mots[mots.length - 1][0]
+    const resultat = (
+      `${premiereLettrePrenom}${premiereLettreNom}`
     ).toUpperCase();
-  }, [nomAffiche]);
 
+    return resultat || "DM";
+  }, [prenom, nom]);
 
-  /* ==========================================================
-     ADMINISTRATION
-     ========================================================== */
+  // ==========================================================
+  // KOURÉLS
+  // ==========================================================
 
-  const navigationAdministration = useMemo(() => {
-    const items = [];
+  const kourels =
+    utilisateur?.kourels || [];
 
-    if (
-      possedePermission(
-        "UTILISATEUR_CONSULTER"
-      )
-    ) {
-      items.push({
-        code: "UTILISATEURS",
-        nom: "Utilisateurs",
-        description:
-          "Comptes et accès",
-        chemin: "/utilisateurs",
-        permission:
-          "UTILISATEUR_CONSULTER",
-        icone: UserCog,
-        couleur: "blue",
-      });
-    }
+  const estMembreKourel =
+    kourels.length > 0;
 
+  // ==========================================================
+  // NAVIGATION
+  // ==========================================================
 
-    if (
-      possedePermission(
-        "GALERIE_CONSULTER"
-      )
-    ) {
-      items.push({
-        code: "GALERIE",
-        nom: "Galerie",
-        description:
-          "Photos et vidéos du Dahira",
-        chemin: "/galerie",
-        permission:
-          "GALERIE_CONSULTER",
-        icone: Images,
-        couleur: "blue",
-      });
-    }
-
-    return items;
-  }, [aPermission]);
-
-
-  /* ==========================================================
-     MEMBRES
-     ========================================================== */
-
-  const navigationMembres = useMemo(() => {
-    const items = [];
-
-    if (
-      possedePermission(
-        "MEMBRE_CONSULTER"
-      )
-    ) {
-      items.push({
-        code: "MEMBRES",
-        nom: "Membres",
-        description:
-          "Gestion des membres",
-        chemin: "/membres",
-        permission:
-          "MEMBRE_CONSULTER",
-        icone: Users,
-        couleur: "emerald",
-      });
-    }
-
-    return items;
-  }, [aPermission]);
-
-
-  /* ==========================================================
-     DASHBOARD
-     ========================================================== */
-
-  const navigationDashboard = useMemo(() => {
-    if (
-      !possedePermission(
-        "DASHBOARD_CONSULTER"
-      )
-    ) {
-      return [];
-    }
-
-    return [
+  const navigationDashboard = useMemo(
+    () => [
       {
-        code: "DASHBOARD",
-        nom: "Tableau de bord",
-        description:
-          "Vue générale",
+        label: "Tableau de bord",
         chemin: "/dashboard",
-        permission:
-          "DASHBOARD_CONSULTER",
-        icone: LayoutDashboard,
+        permission: "DASHBOARD_CONSULTER",
+        icon: LayoutDashboard,
         couleur: "emerald",
       },
-    ];
-  }, [aPermission]);
+    ],
+    []
+  );
 
+  const navigationAdministration =
+    useMemo(
+      () => [
+        {
+          label: "Utilisateurs",
+          chemin: "/utilisateurs",
+          permission:
+            "UTILISATEUR_CONSULTER",
+          icon: UserCog,
+          couleur: "blue",
+        },
 
-  /* ==========================================================
-     FINANCES
-     ========================================================== */
-
-  const navigationFinances = useMemo(() => {
-    const items = [];
-
-    if (
-      possedePermission(
-        "COTISATION_CONSULTER"
-      )
-    ) {
-      items.push({
-        code: "COTISATIONS",
-        nom: "Cotisations",
-        description:
-          "Cotisations des membres",
-        chemin: "/cotisations",
-        permission:
-          "COTISATION_CONSULTER",
-        icone: HandCoins,
-        couleur: "violet",
-      });
-    }
-
-
-    if (
-      possedePermission(
-        "PAIEMENT_CONSULTER"
-      )
-    ) {
-      items.push({
-        code: "PAIEMENTS",
-        nom: "Paiements",
-        description:
-          "Paiements enregistrés",
-        chemin: "/paiements",
-        permission:
-          "PAIEMENT_CONSULTER",
-        icone: CreditCard,
-        couleur: "violet",
-      });
-    }
-
-
-    /*
-     * Une seule rubrique Finances.
-     *
-     * Elle est visible si l'utilisateur possède
-     * au moins l'une des deux permissions.
-     */
-    if (
-      possedePermission(
-        "DEPENSE_CONSULTER"
-      ) ||
-      possedePermission(
-        "AIDE_EXTERIEURE_CONSULTER"
-      )
-    ) {
-      items.push({
-        code: "FINANCES",
-        nom: "Finances",
-        description:
-          "Dépenses et aides extérieures",
-        chemin: "/finances",
-        permission: null,
-        permissions: [
-          "DEPENSE_CONSULTER",
-          "AIDE_EXTERIEURE_CONSULTER",
-        ],
-        icone: Receipt,
-        couleur: "violet",
-      });
-    }
-
-    return items;
-  }, [aPermission]);
-
-
-  /* ==========================================================
-     REUNIONS ET ACTIVITES
-     ========================================================== */
-
-  const navigationActivites = useMemo(() => {
-    const items = [];
-
-    /*
-     * Les réunions restent consultables
-     * par tous les membres.
-     */
-    items.push({
-      code: "REUNIONS",
-      nom: "Réunions",
-      description:
-        "Réunions du Dahira",
-      chemin: "/reunions",
-      permission: null,
-      icone: CalendarDays,
-      couleur: "cyan",
-    });
-
-
-    /*
-     * Les répétitions utilisent
-     * la permission existante.
-     */
-    if (
-      possedePermission(
-        "KOUREL_CONSULTER"
-      )
-    ) {
-      items.push({
-        code: "REPETITIONS",
-        nom: "Répétitions",
-        description:
-          "Répétitions de Khassidas",
-        chemin: "/repetitions",
-        permission:
-          "KOUREL_CONSULTER",
-        icone: Music,
-        couleur: "cyan",
-      });
-    }
-
-    return items;
-  }, [aPermission]);
-
-
-  /* ==========================================================
-     COMMUNICATION
-     ========================================================== */
-
-  const navigationCommunication = useMemo(() => {
-    const items = [];
-
-    if (
-      possedePermission(
-        "COMMUNICATION_CONSULTER"
-      )
-    ) {
-      items.push({
-        code: "COMMUNICATIONS",
-        nom: "Communication",
-        description:
-          "Informations du Dahira",
-        chemin: "/communications",
-        permission:
-          "COMMUNICATION_CONSULTER",
-        icone: Megaphone,
-        couleur: "rose",
-      });
-    }
-
-    return items;
-  }, [aPermission]);
-
-
-  /* ==========================================================
-     RELATIONS EXTERIEURES
-     ========================================================== */
-
-  const navigationRelations = useMemo(() => {
-    const items = [];
-
-    if (
-      possedePermission(
-        "RELATION_EXTERIEUR_CONSULTER"
-      )
-    ) {
-      items.push({
-        code: "RELATIONS_EXTERIEURES",
-        nom: "Relations extérieures",
-        description:
-          "Relations et partenaires",
-        chemin: "/relations-exterieures",
-        permission:
-          "RELATION_EXTERIEUR_CONSULTER",
-        icone: Globe2,
-        couleur: "blue",
-      });
-    }
-
-    return items;
-  }, [aPermission]);
-
-
-  /* ==========================================================
-     KOUREL
-     ========================================================== */
-
-  const navigationKourel = useMemo(() => {
-    return RUBRIQUES_KOUREL.filter(
-      (item) =>
-        possedePermission(
-          item.permission
-        )
+        {
+          label: "Galerie",
+          chemin: "/galerie",
+          permission:
+            "GALERIE_CONSULTER",
+          icon: Images,
+          couleur: "violet",
+        },
+      ],
+      []
     );
-  }, [aPermission]);
 
+  const navigationMembres =
+    useMemo(
+      () => [
+        {
+          label: "Membres",
+          chemin: "/membres",
+          permission:
+            "MEMBRE_CONSULTER",
+          icon: Users,
+          couleur: "blue",
+        },
+      ],
+      []
+    );
 
-  /* ==========================================================
-     NOTIFICATIONS
-     ========================================================== */
+  // ==========================================================
+  // FINANCES
+  // ==========================================================
 
-  const navigationNotifications = useMemo(() => {
-    if (
-      !possedePermission(
-        "NOTIFICATION_CONSULTER"
-      )
-    ) {
-      return [];
-    }
+  const navigationFinances =
+    useMemo(
+      () => [
+        {
+          label: "Cotisations",
+          chemin: "/cotisations",
+          permission:
+            "COTISATION_CONSULTER",
+          icon: Wallet,
+          couleur: "emerald",
+        },
 
-    return [
-      {
-        code: "NOTIFICATIONS",
-        nom: "Notifications",
-        description:
-          "Mes notifications",
-        chemin: "/notifications",
-        permission:
-          "NOTIFICATION_CONSULTER",
-        icone: Bell,
-        couleur: "rose",
+        {
+          label: "Paiements",
+          chemin: "/paiements",
+          permission:
+            "PAIEMENT_CONSULTER",
+          icon: CreditCard,
+          couleur: "cyan",
+        },
+
+        {
+          label: "Finances",
+          chemin: "/finances",
+          permission: null,
+          permissions: [
+            "DEPENSE_CONSULTER",
+            "AIDE_EXTERIEURE_CONSULTER",
+          ],
+          icon: Receipt,
+          couleur: "rose",
+        },
+      ],
+      []
+    );
+
+  // ==========================================================
+  // ACTIVITÉS
+  // ==========================================================
+
+  const navigationActivites =
+    useMemo(
+      () => [
+        {
+          label: "Réunions",
+          chemin: "/reunions",
+          icon: CalendarCheck,
+          couleur: "violet",
+        },
+
+        {
+          label: "Répétitions",
+          chemin: "/repetitions",
+          permission:
+            "KOUREL_CONSULTER",
+          icon: Music,
+          couleur: "amber",
+        },
+      ],
+      []
+    );
+
+  // ==========================================================
+  // COMMUNICATION
+  // ==========================================================
+
+  const navigationCommunication =
+    useMemo(
+      () => [
+        {
+          label: "Communication",
+          chemin: "/communication",
+          permission:
+            "COMMUNICATION_CONSULTER",
+          icon: Megaphone,
+          couleur: "rose",
+        },
+      ],
+      []
+    );
+
+  // ==========================================================
+  // RELATIONS EXTÉRIEURES
+  // ==========================================================
+
+  const navigationRelations =
+    useMemo(
+      () => [
+        {
+          label: "Relations extérieures",
+          chemin:
+            "/relations-exterieures",
+          permission:
+            "RELATION_EXTERIEUR_CONSULTER",
+          icon: Globe2,
+          couleur: "cyan",
+        },
+      ],
+      []
+    );
+
+  // ==========================================================
+  // NOTIFICATIONS
+  // ==========================================================
+
+  const navigationNotifications =
+    useMemo(
+      () => [
+        {
+          label: "Notifications",
+          chemin: "/notifications",
+          permission:
+            "NOTIFICATION_CONSULTER",
+          icon: Bell,
+          couleur: "rose",
+        },
+      ],
+      []
+    );
+
+  // ==========================================================
+  // VÉRIFICATION DES PERMISSIONS
+  // ==========================================================
+
+  const itemAutorise = useCallback(
+    (item) => {
+      if (item.permissions?.length) {
+        return item.permissions.some(
+          (permission) =>
+            possedePermission(permission)
+        );
+      }
+
+      return possedePermission(
+        item.permission
+      );
+    },
+    [possedePermission]
+  );
+
+  // ==========================================================
+  // FILTRAGE NAVIGATION
+  // ==========================================================
+
+  const filtrerNavigation =
+    useCallback(
+      (navigation) => {
+        const terme =
+          recherche
+            .trim()
+            .toLowerCase();
+
+        return navigation.filter(
+          (item) => {
+            if (!itemAutorise(item)) {
+              return false;
+            }
+
+            if (!terme) {
+              return true;
+            }
+
+            return item.label
+              .toLowerCase()
+              .includes(terme);
+          }
+        );
       },
-    ];
-  }, [aPermission]);
-
-
-  /* ==========================================================
-     RECHERCHE
-     ========================================================== */
-
-  const filtrerNavigation = (
-    navigation
-  ) => {
-    const terme =
-      recherche
-        .trim()
-        .toLowerCase();
-
-    if (!terme) {
-      return navigation;
-    }
-
-    return navigation.filter(
-      (item) =>
-        item.nom
-          ?.toLowerCase()
-          .includes(terme) ||
-        item.description
-          ?.toLowerCase()
-          .includes(terme)
-    );
-  };
-
-
-  const dashboardFiltre =
-    filtrerNavigation(
-      navigationDashboard
+      [
+        itemAutorise,
+        recherche,
+      ]
     );
 
-  const administrationFiltre =
-    filtrerNavigation(
-      navigationAdministration
-    );
+  // ==========================================================
+  // NAVIGATION FINALE
+  // ==========================================================
 
-  const membresFiltre =
-    filtrerNavigation(
-      navigationMembres
-    );
+  const navigation = useMemo(
+    () => ({
+      dashboard:
+        filtrerNavigation(
+          navigationDashboard
+        ),
 
-  const financesFiltre =
-    filtrerNavigation(
-      navigationFinances
-    );
+      administration:
+        filtrerNavigation(
+          navigationAdministration
+        ),
 
-  const activitesFiltre =
-    filtrerNavigation(
-      navigationActivites
-    );
+      membres:
+        filtrerNavigation(
+          navigationMembres
+        ),
 
-  const communicationFiltre =
-    filtrerNavigation(
-      navigationCommunication
-    );
+      finances:
+        filtrerNavigation(
+          navigationFinances
+        ),
 
-  const relationsFiltre =
-    filtrerNavigation(
-      navigationRelations
-    );
+      activites:
+        filtrerNavigation(
+          navigationActivites
+        ),
 
-  const kourelFiltre =
-    filtrerNavigation(
-      navigationKourel
-    );
+      communication:
+        filtrerNavigation(
+          navigationCommunication
+        ),
 
-  const notificationsFiltre =
-    filtrerNavigation(
-      navigationNotifications
-    );
+      relations:
+        filtrerNavigation(
+          navigationRelations
+        ),
 
+      kourel:
+        estMembreKourel
+          ? RUBRIQUES_KOUREL.filter(
+              (item) => {
+                if (
+                  !itemAutorise(item)
+                ) {
+                  return false;
+                }
 
-  /* ==========================================================
-     TOUS LES ELEMENTS
-     ========================================================== */
+                const terme =
+                  recherche
+                    .trim()
+                    .toLowerCase();
+
+                if (!terme) {
+                  return true;
+                }
+
+                return item.label
+                  .toLowerCase()
+                  .includes(terme);
+              }
+            )
+          : [],
+
+      notifications:
+        filtrerNavigation(
+          navigationNotifications
+        ),
+    }),
+    [
+      estMembreKourel,
+      filtrerNavigation,
+      itemAutorise,
+      navigationAdministration,
+      navigationActivites,
+      navigationCommunication,
+      navigationDashboard,
+      navigationFinances,
+      navigationMembres,
+      navigationNotifications,
+      navigationRelations,
+      recherche,
+    ]
+  );
+
+  // ==========================================================
+  // TOUTES LES RUBRIQUES
+  // ==========================================================
 
   const toutesLesRubriques =
     useMemo(
       () => [
-        ...navigationDashboard,
-        ...navigationAdministration,
-        ...navigationMembres,
-        ...navigationFinances,
-        ...navigationActivites,
-        ...navigationCommunication,
-        ...navigationRelations,
-        ...navigationKourel,
-        ...navigationNotifications,
+        ...navigation.dashboard,
+        ...navigation.administration,
+        ...navigation.membres,
+        ...navigation.finances,
+        ...navigation.activites,
+        ...navigation.communication,
+        ...navigation.relations,
+        ...navigation.kourel,
+        ...navigation.notifications,
       ],
-      [
-        navigationDashboard,
-        navigationAdministration,
-        navigationMembres,
-        navigationFinances,
-        navigationActivites,
-        navigationCommunication,
-        navigationRelations,
-        navigationKourel,
-        navigationNotifications,
-      ]
+      [navigation]
     );
 
-
   const aucunResultat =
-    recherche.trim() !== "" &&
-    toutesLesRubriques.filter(
-      (item) =>
-        item.nom
-          ?.toLowerCase()
-          .includes(
-            recherche
-              .trim()
-              .toLowerCase()
-          ) ||
-        item.description
-          ?.toLowerCase()
-          .includes(
-            recherche
-              .trim()
-              .toLowerCase()
-          )
-    ).length === 0;
+    recherche.trim().length > 0 &&
+    toutesLesRubriques.length === 0;
 
-
-  /* ==========================================================
-     TITRE PAGE
-     ========================================================== */
+  // ==========================================================
+  // TITRE DE PAGE
+  // ==========================================================
 
   const titrePage = useMemo(() => {
-    const element =
-      toutesLesRubriques.find(
-        (item) =>
-          location.pathname ===
-            item.chemin ||
-          (
-            item.chemin !== "/" &&
-            location.pathname.startsWith(
-              `${item.chemin}/`
-            )
-          )
-      );
-
-    if (element) {
-      return element.nom;
-    }
+    const chemin =
+      location.pathname;
 
     if (
-      location.pathname ===
-      "/mon-espace"
+      chemin === "/mon-espace" ||
+      chemin === "/"
     ) {
       return "Mon espace";
     }
 
-    return "Mon espace";
+    if (
+      chemin === "/profil" ||
+      chemin.startsWith("/profil/")
+    ) {
+      return "Mon profil";
+    }
+
+    if (
+      chemin === "/finances" ||
+      chemin.startsWith("/finances/")
+    ) {
+      return "Finances";
+    }
+
+    const rubrique =
+      toutesLesRubriques.find(
+        (item) => {
+          if (
+            item.chemin === chemin
+          ) {
+            return true;
+          }
+
+          if (
+            item.chemin !== "/" &&
+            chemin.startsWith(
+              `${item.chemin}/`
+            )
+          ) {
+            return true;
+          }
+
+          return false;
+        }
+      );
+
+    return (
+      rubrique?.label ||
+      "Mon espace"
+    );
   }, [
     location.pathname,
     toutesLesRubriques,
   ]);
 
+  // ==========================================================
+  // BADGE KOUREL
+  // ==========================================================
 
-  /* ==========================================================
-     ACTIONS
-     ========================================================== */
-
-  async function handleLogout() {
-    try {
-      await deconnexion();
-    } catch (error) {
-      console.error(
-        "Erreur déconnexion :",
-        error
-      );
-    } finally {
-      navigate(
-        "/login",
-        {
-          replace: true,
-        }
-      );
-    }
-  }
-
-
-  function fermerMenu() {
-    setMenuOuvert(false);
-  }
-
-
-  function retourAccueil() {
-    fermerMenu();
-    navigate("/");
-  }
-
-
-  /* ==========================================================
-     DATE
-     ========================================================== */
-
-  const dateTexte =
-    new Date().toLocaleDateString(
-      "fr-FR",
-      {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-      }
+  const afficherBadgeKourel =
+    location.pathname.includes(
+      "kourel"
+    ) ||
+    location.pathname.includes(
+      "khassida"
+    ) ||
+    location.pathname.includes(
+      "programme-religieux"
+    ) ||
+    location.pathname.includes(
+      "repetition"
     );
 
+  // ==========================================================
+  // ACTIONS
+  // ==========================================================
 
-  /* ==========================================================
-     RENDER
-     ========================================================== */
+  const fermerMenu = useCallback(
+    () => {
+      setMenuOuvert(false);
+    },
+    []
+  );
+
+  const ouvrirProfil =
+    useCallback(() => {
+      fermerMenu();
+      navigate("/profil");
+    }, [
+      fermerMenu,
+      navigate,
+    ]);
+
+  const retourAccueil =
+    useCallback(() => {
+      fermerMenu();
+      navigate("/");
+    }, [
+      fermerMenu,
+      navigate,
+    ]);
+
+  const gererDeconnexion =
+    useCallback(async () => {
+      fermerMenu();
+
+      try {
+        await deconnexion();
+      } catch (error) {
+        console.error(
+          "Erreur déconnexion :",
+          error
+        );
+      } finally {
+        navigate("/login", {
+          replace: true,
+        });
+      }
+    }, [
+      deconnexion,
+      fermerMenu,
+      navigate,
+    ]);
+
+  // ==========================================================
+  // FERMETURE DU MENU APRÈS NAVIGATION
+  // ==========================================================
+
+  useEffect(() => {
+    setMenuOuvert(false);
+  }, [location.pathname]);
+
+  // ==========================================================
+  // GESTION DU MENU MOBILE
+  // ==========================================================
+
+  useEffect(() => {
+    if (!menuOuvert) {
+      return undefined;
+    }
+
+    const ancienOverflow =
+      document.body.style.overflow;
+
+    document.body.style.overflow =
+      "hidden";
+
+    const gererTouche =
+      (event) => {
+        if (
+          event.key === "Escape"
+        ) {
+          setMenuOuvert(false);
+        }
+      };
+
+    window.addEventListener(
+      "keydown",
+      gererTouche
+    );
+
+    return () => {
+      document.body.style.overflow =
+        ancienOverflow;
+
+      window.removeEventListener(
+        "keydown",
+        gererTouche
+      );
+    };
+  }, [menuOuvert]);
+
+  // ==========================================================
+  // IMPORTANT :
+  // PAS DE window.scrollTo() ICI.
+  //
+  // Le navigateur doit conserver le scroll naturel de la page.
+  // Cela permet aux formulaires et sections qui apparaissent
+  // après un clic (Ajouter, Modifier, etc.) de rester dans
+  // le même flux vertical que le Layout fonctionnel.
+  // ==========================================================
+
+  // ==========================================================
+  // DATE
+  // ==========================================================
+
+  const dateTexte = useMemo(
+    () =>
+      new Intl.DateTimeFormat(
+        "fr-FR",
+        {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+        }
+      ).format(new Date()),
+    []
+  );
+
+  // ==========================================================
+  // RENDU
+  // ==========================================================
 
   return (
     <div
       className="
         min-h-screen
+        w-full
+        overflow-x-hidden
         bg-[#f6f8f7]
         text-slate-900
       "
     >
-
       {/* ======================================================
-          DECORATION
-          ====================================================== */}
+          DÉCORATION
+      ====================================================== */}
 
       <div
+        aria-hidden="true"
         className="
-          pointer-events-none fixed
-          inset-0 overflow-hidden
+          pointer-events-none
+          fixed inset-0
+          z-0
+          overflow-hidden
         "
       >
         <div
           className="
-            absolute -left-40 -top-40
-            h-96 w-96 rounded-full
-            bg-emerald-300/10 blur-3xl
+            absolute
+            -left-32
+            -top-32
+            h-72
+            w-72
+            rounded-full
+            bg-emerald-200/20
+            blur-3xl
           "
         />
 
         <div
           className="
-            absolute -bottom-40 -right-40
-            h-96 w-96 rounded-full
-            bg-teal-300/10 blur-3xl
+            absolute
+            -right-32
+            top-1/3
+            h-80
+            w-80
+            rounded-full
+            bg-teal-200/15
+            blur-3xl
+          "
+        />
+
+        <div
+          className="
+            absolute
+            bottom-0
+            left-1/3
+            h-72
+            w-72
+            rounded-full
+            bg-slate-200/20
+            blur-3xl
           "
         />
       </div>
 
-
       {/* ======================================================
           OVERLAY MOBILE
-          ====================================================== */}
+      ====================================================== */}
 
       {menuOuvert && (
         <button
@@ -1058,1232 +937,1314 @@ function Layout() {
           aria-label="Fermer le menu"
           onClick={fermerMenu}
           className="
-            fixed inset-0 z-40
-            bg-slate-950/50
-            backdrop-blur-sm lg:hidden
+            fixed inset-0
+            z-40
+            bg-slate-950/45
+            backdrop-blur-[2px]
+            lg:hidden
           "
         />
       )}
-
 
       {/* ======================================================
           SIDEBAR
-          ====================================================== */}
+      ====================================================== */}
 
       <aside
-        className={`
-          fixed left-0 top-0 z-50 flex
-          h-screen w-[290px] flex-col
-          overflow-hidden border-r
-          border-white/10
-          bg-gradient-to-b
-          from-[#062e25]
-          via-[#06382d]
-          to-[#04251e]
-          text-white shadow-2xl
-          transition-transform duration-500
-          ease-out
+        className={[
+          "fixed inset-y-0 left-0 z-50",
+          "w-[290px] max-w-[88vw]",
+          "overflow-hidden",
+          "border-r border-emerald-900/20",
+          "bg-white",
+          "shadow-2xl shadow-slate-900/10",
+          "transition-transform duration-300 ease-out",
 
-          ${
-            menuOuvert
-              ? "translate-x-0"
-              : "-translate-x-full"
-          }
-
-          lg:translate-x-0
-        `}
+          menuOuvert
+            ? "translate-x-0"
+            : "-translate-x-full lg:translate-x-0",
+        ].join(" ")}
       >
+        {/* Fond supérieur */}
 
         <div
           className="
-            pointer-events-none absolute
-            -right-24 -top-24 h-64 w-64
-            rounded-full bg-emerald-400/10
-            blur-3xl
+            absolute inset-x-0 top-0
+            h-52
+            bg-gradient-to-br
+            from-emerald-950
+            via-emerald-900
+            to-teal-900
           "
         />
 
         <div
           className="
-            pointer-events-none absolute
-            -bottom-24 -left-24
-            h-64 w-64 rounded-full
-            bg-teal-400/10 blur-3xl
+            absolute
+            -right-16
+            -top-16
+            h-44
+            w-44
+            rounded-full
+            bg-emerald-400/10
+            blur-2xl
           "
         />
 
-
-        {/* ====================================================
-            HEADER SIDEBAR
-            ==================================================== */}
+        <div
+          className="
+            absolute
+            -left-10
+            top-28
+            h-32
+            w-32
+            rounded-full
+            bg-teal-300/10
+            blur-2xl
+          "
+        />
 
         <div
           className="
-            relative border-b
-            border-white/[0.08]
-            px-5 pb-5 pt-6
+            relative
+            flex
+            h-full
+            min-h-0
+            flex-col
           "
         >
+          {/* ==================================================
+              HEADER SIDEBAR
+          ================================================== */}
 
-          <div
-            className="
-              flex items-center
-              justify-between
-            "
-          >
-
-            <div
-              className="
-                flex items-center gap-3
-              "
-            >
-
-              <div
+          <div className="shrink-0 px-5 pb-4 pt-5">
+            <div className="flex items-start justify-between gap-3">
+              <button
+                type="button"
+                onClick={retourAccueil}
                 className="
-                  relative flex h-12 w-12
-                  shrink-0 items-center
-                  justify-center rounded-2xl
-                  bg-gradient-to-br
-                  from-amber-300 to-orange-500
-                  text-xl font-black
-                  text-emerald-950 shadow-lg
-                "
-              >
-                ✦
-              </div>
-
-              <div
-                className="
+                  group
+                  flex
                   min-w-0
+                  items-center
+                  gap-3
+                  rounded-2xl
+                  text-left
+                  focus:outline-none
+                  focus-visible:ring-2
+                  focus-visible:ring-white/60
                 "
               >
-                <h1
+                <div
                   className="
-                    truncate text-[15px]
-                    font-black tracking-tight
+                    relative
+                    flex
+                    h-12
+                    w-12
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-2xl
+                    border
+                    border-white/20
+                    bg-white/10
+                    text-white
+                    shadow-lg
+                    shadow-black/10
+                    backdrop-blur-sm
+                    transition-transform
+                    duration-200
+                    group-hover:scale-105
                   "
                 >
-                  Dahira Mawahibou
-                </h1>
+                  <Sparkles
+                    size={23}
+                    strokeWidth={1.8}
+                  />
 
-                <p
-                  className="
-                    mt-0.5 text-xs font-medium
-                    text-amber-300
-                  "
-                >
-                  Naafih de Castors
-                </p>
-              </div>
+                  <span
+                    className="
+                      absolute
+                      -bottom-1
+                      -right-1
+                      h-3.5
+                      w-3.5
+                      rounded-full
+                      border-2
+                      border-emerald-900
+                      bg-amber-400
+                    "
+                  />
+                </div>
 
+                <div className="min-w-0">
+                  <div
+                    className="
+                      truncate
+                      text-[16px]
+                      font-extrabold
+                      tracking-tight
+                      text-white
+                    "
+                  >
+                    Dahira Mawahibou
+                  </div>
+
+                  <div
+                    className="
+                      mt-0.5
+                      truncate
+                      text-[11px]
+                      font-medium
+                      text-emerald-100/70
+                    "
+                  >
+                    Naafih de Castors
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={fermerMenu}
+                aria-label="Fermer le menu"
+                className="
+                  rounded-xl
+                  p-2
+                  text-white/60
+                  transition
+                  hover:bg-white/10
+                  hover:text-white
+                  lg:hidden
+                "
+              >
+                <X size={19} />
+              </button>
             </div>
 
+            {/* PROFIL */}
 
             <button
               type="button"
-              onClick={fermerMenu}
+              onClick={ouvrirProfil}
               className="
-                flex h-9 w-9 items-center
-                justify-center rounded-xl
-                bg-white/[0.06]
-                text-white/50
-                transition hover:bg-white/10
-                hover:text-white lg:hidden
+                mt-5
+                w-full
+                rounded-2xl
+                border
+                border-white/10
+                bg-white/[0.08]
+                p-3
+                text-left
+                backdrop-blur-sm
+                transition-all
+                duration-200
+                hover:bg-white/[0.13]
+                focus:outline-none
+                focus-visible:ring-2
+                focus-visible:ring-white/60
               "
             >
-              <X size={18} />
-            </button>
+              <div className="flex items-center gap-3">
+                <div
+                  className="
+                    flex
+                    h-10
+                    w-10
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-xl
+                    bg-gradient-to-br
+                    from-amber-300
+                    to-orange-500
+                    text-sm
+                    font-extrabold
+                    text-white
+                    shadow-md
+                  "
+                >
+                  {initiales}
+                </div>
 
+                <div className="min-w-0 flex-1">
+                  <div
+                    className="
+                      truncate
+                      text-sm
+                      font-bold
+                      text-white
+                    "
+                  >
+                    {nomAffiche}
+                  </div>
+
+                  <div
+                    className="
+                      mt-0.5
+                      truncate
+                      text-[10px]
+                      font-medium
+                      uppercase
+                      tracking-wider
+                      text-emerald-100/60
+                    "
+                  >
+                    {fonctionPrincipale}
+                  </div>
+                </div>
+
+                <ChevronRight
+                  size={16}
+                  className="
+                    shrink-0
+                    text-white/40
+                  "
+                />
+              </div>
+            </button>
           </div>
 
-
           {/* ==================================================
-              PROFIL
-              ================================================== */}
+              ZONE NAVIGATION
+          ================================================== */}
 
           <div
             className="
-              mt-5 rounded-2xl border
-              border-white/[0.07]
-              bg-white/[0.05] p-3
-              backdrop-blur-xl
+              relative
+              flex
+              min-h-0
+              flex-1
+              flex-col
+              overflow-hidden
+              rounded-t-[28px]
+              bg-white
+              shadow-[0_-10px_30px_rgba(15,23,42,0.08)]
             "
           >
+            {/* RECHERCHE */}
 
             <div
               className="
-                flex items-center gap-3
+                shrink-0
+                border-b
+                border-slate-100
+                px-4
+                pb-3
+                pt-4
               "
             >
+              <div className="relative">
+                <Search
+                  size={16}
+                  className="
+                    pointer-events-none
+                    absolute
+                    left-3.5
+                    top-1/2
+                    -translate-y-1/2
+                    text-slate-400
+                  "
+                />
 
-              <div
+                <input
+                  type="text"
+                  value={recherche}
+                  onChange={(event) =>
+                    setRecherche(
+                      event.target.value
+                    )
+                  }
+                  placeholder="Rechercher..."
+                  aria-label="Rechercher dans le menu"
+                  className="
+                    h-10
+                    w-full
+                    rounded-xl
+                    border
+                    border-slate-200
+                    bg-slate-50
+                    pl-10
+                    pr-10
+                    text-sm
+                    font-medium
+                    text-slate-800
+                    outline-none
+                    transition-all
+                    placeholder:text-slate-400
+                    focus:border-emerald-300
+                    focus:bg-white
+                    focus:ring-4
+                    focus:ring-emerald-500/10
+                  "
+                />
+
+                {recherche && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setRecherche("")
+                    }
+                    aria-label="Effacer la recherche"
+                    className="
+                      absolute
+                      right-2.5
+                      top-1/2
+                      -translate-y-1/2
+                      rounded-lg
+                      p-1
+                      text-slate-400
+                      transition
+                      hover:bg-slate-200
+                      hover:text-slate-700
+                    "
+                  >
+                    <X size={15} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* NAVIGATION */}
+
+            <nav
+              className="
+                min-h-0
+                flex-1
+                overflow-y-auto
+                overscroll-contain
+                px-3
+                pb-4
+                pt-2
+              "
+            >
+              {/* DASHBOARD */}
+
+              {navigation.dashboard.length > 0 && (
+                <div>
+                  <SectionTitre>
+                    Général
+                  </SectionTitre>
+
+                  <div className="space-y-1">
+                    {navigation.dashboard.map(
+                      (item) => (
+                        <NavigationItem
+                          key={item.chemin}
+                          item={item}
+                          onNavigate={
+                            fermerMenu
+                          }
+                        />
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ADMINISTRATION */}
+
+              {navigation.administration.length > 0 && (
+                <div>
+                  <SectionTitre>
+                    Administration
+                  </SectionTitre>
+
+                  <div className="space-y-1">
+                    {navigation.administration.map(
+                      (item) => (
+                        <NavigationItem
+                          key={`${item.chemin}-${item.label}`}
+                          item={item}
+                          onNavigate={
+                            fermerMenu
+                          }
+                        />
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* MEMBRES */}
+
+              {navigation.membres.length > 0 && (
+                <div>
+                  <SectionTitre>
+                    Membres
+                  </SectionTitre>
+
+                  <div className="space-y-1">
+                    {navigation.membres.map(
+                      (item) => (
+                        <NavigationItem
+                          key={item.chemin}
+                          item={item}
+                          onNavigate={
+                            fermerMenu
+                          }
+                        />
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* FINANCES */}
+
+              {navigation.finances.length > 0 && (
+                <div>
+                  <SectionTitre>
+                    Finances
+                  </SectionTitre>
+
+                  <div className="space-y-1">
+                    {navigation.finances.map(
+                      (item) => (
+                        <NavigationItem
+                          key={`${item.chemin}-${item.label}`}
+                          item={item}
+                          onNavigate={
+                            fermerMenu
+                          }
+                        />
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ACTIVITÉS */}
+
+              {navigation.activites.length > 0 && (
+                <div>
+                  <SectionTitre>
+                    Activités
+                  </SectionTitre>
+
+                  <div className="space-y-1">
+                    {navigation.activites.map(
+                      (item) => (
+                        <NavigationItem
+                          key={`${item.chemin}-${item.label}`}
+                          item={item}
+                          onNavigate={
+                            fermerMenu
+                          }
+                        />
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* COMMUNICATION */}
+
+              {navigation.communication.length > 0 && (
+                <div>
+                  <SectionTitre>
+                    Communication
+                  </SectionTitre>
+
+                  <div className="space-y-1">
+                    {navigation.communication.map(
+                      (item) => (
+                        <NavigationItem
+                          key={item.chemin}
+                          item={item}
+                          onNavigate={
+                            fermerMenu
+                          }
+                        />
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* RELATIONS */}
+
+              {navigation.relations.length > 0 && (
+                <div>
+                  <SectionTitre>
+                    Relations
+                  </SectionTitre>
+
+                  <div className="space-y-1">
+                    {navigation.relations.map(
+                      (item) => (
+                        <NavigationItem
+                          key={item.chemin}
+                          item={item}
+                          onNavigate={
+                            fermerMenu
+                          }
+                        />
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* KOUREL */}
+
+              {navigation.kourel.length > 0 && (
+                <div>
+                  <SectionTitre>
+                    Kourel
+                  </SectionTitre>
+
+                  <div className="space-y-1">
+                    {navigation.kourel.map(
+                      (item) => (
+                        <NavigationItem
+                          key={item.chemin}
+                          item={item}
+                          onNavigate={
+                            fermerMenu
+                          }
+                        />
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* NOTIFICATIONS */}
+
+              {navigation.notifications.length > 0 && (
+                <div>
+                  <SectionTitre>
+                    Services
+                  </SectionTitre>
+
+                  <div className="space-y-1">
+                    {navigation.notifications.map(
+                      (item) => (
+                        <NavigationItem
+                          key={item.chemin}
+                          item={item}
+                          onNavigate={
+                            fermerMenu
+                          }
+                        />
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* AUCUN RÉSULTAT */}
+
+              {aucunResultat && (
+                <div
+                  className="
+                    mt-8
+                    rounded-2xl
+                    border
+                    border-dashed
+                    border-slate-200
+                    bg-slate-50
+                    p-5
+                    text-center
+                  "
+                >
+                  <Search
+                    size={22}
+                    className="
+                      mx-auto
+                      text-slate-300
+                    "
+                  />
+
+                  <p
+                    className="
+                      mt-2
+                      text-xs
+                      font-bold
+                      text-slate-500
+                    "
+                  >
+                    Aucun résultat
+                  </p>
+
+                  <p
+                    className="
+                      mt-1
+                      text-[11px]
+                      text-slate-400
+                    "
+                  >
+                    Essayez un autre terme.
+                  </p>
+                </div>
+              )}
+            </nav>
+
+            {/* ==================================================
+                BAS SIDEBAR
+            ================================================== */}
+
+            <div
+              className="
+                shrink-0
+                border-t
+                border-slate-100
+                bg-white
+                p-3
+              "
+            >
+              {/* MON PROFIL */}
+
+              <button
+                type="button"
+                onClick={ouvrirProfil}
                 className="
-                  flex h-10 w-10 shrink-0
-                  items-center justify-center
+                  group
+                  flex
+                  w-full
+                  items-center
+                  gap-3
                   rounded-xl
-                  bg-gradient-to-br
-                  from-emerald-400 to-teal-600
-                  text-xs font-black text-white
+                  px-3
+                  py-2.5
+                  text-left
+                  text-slate-600
+                  transition
+                  hover:bg-slate-50
+                  hover:text-slate-900
+                  focus:outline-none
+                  focus-visible:ring-2
+                  focus-visible:ring-emerald-400/50
                 "
               >
-                {initiales}
-              </div>
+                <CircleUserRound
+                  size={17}
+                  className="text-slate-400"
+                />
 
-              <div
-                className="
-                  min-w-0 flex-1
-                "
-              >
-                <p
+                <span className="flex-1 text-xs font-bold">
+                  Mon profil
+                </span>
+
+                <ChevronRight
+                  size={14}
                   className="
-                    truncate text-xs font-bold
-                    text-white
+                    text-slate-300
                   "
-                >
-                  {nomAffiche}
-                </p>
+                />
+              </button>
 
-                <p
-                  className="
-                    mt-1 truncate text-[10px]
-                    text-white/40
-                  "
-                >
-                  {fonctionPrincipale}
-                </p>
-              </div>
+              {/* ACCUEIL */}
 
-              <CircleUserRound
-                size={17}
-                className="text-white/20"
-              />
-
-            </div>
-
-          </div>
-
-        </div>
-
-
-        {/* ====================================================
-            RECHERCHE
-            ==================================================== */}
-
-        <div
-          className="
-            relative px-5 pt-5
-          "
-        >
-          <div className="relative">
-
-            <Search
-              size={16}
-              className="
-                absolute left-3.5 top-1/2
-                -translate-y-1/2
-                text-white/25
-              "
-            />
-
-            <input
-              type="text"
-              value={recherche}
-              onChange={(e) =>
-                setRecherche(
-                  e.target.value
-                )
-              }
-              placeholder="Rechercher..."
-              className="
-                w-full rounded-xl
-                border border-white/[0.07]
-                bg-white/[0.05]
-                py-2.5 pl-10 pr-3
-                text-xs text-white
-                outline-none
-                placeholder:text-white/25
-                focus:border-emerald-400/30
-                focus:bg-white/[0.08]
-              "
-            />
-
-          </div>
-        </div>
-
-
-        {/* ====================================================
-            NAVIGATION
-            ==================================================== */}
-
-        <nav
-          className="
-            relative flex-1
-            overflow-y-auto px-4 py-6
-          "
-        >
-
-          {/* ==================================================
-              AUCUN RESULTAT
-              ================================================== */}
-
-          {aucunResultat && (
-            <div
-              className="
-                rounded-2xl border
-                border-dashed
-                border-white/10
-                px-4 py-5 text-center
-                text-xs text-white/30
-              "
-            >
-              Aucun résultat
-            </div>
-          )}
-
-
-          {/* ==================================================
-              DASHBOARD
-              ================================================== */}
-
-          {dashboardFiltre.length > 0 && (
-            <div className="mb-7">
-
-              <SectionTitre
-                titre="Accueil"
-                nombre={
-                  dashboardFiltre.length
-                }
-              />
-
-              <div className="space-y-1">
-                {dashboardFiltre.map(
-                  (item, index) => (
-                    <NavigationItem
-                      key={item.chemin}
-                      item={item}
-                      index={index}
-                      fermerMenu={
-                        fermerMenu
-                      }
-                    />
-                  )
-                )}
-              </div>
-
-            </div>
-          )}
-
-
-          {/* ==================================================
-              ADMINISTRATION
-              ================================================== */}
-
-          {administrationFiltre.length >
-            0 && (
-            <div className="mb-7">
-
-              <SectionTitre
-                titre="Administration"
-                icone={Settings2}
-                couleur="blue"
-                nombre={
-                  administrationFiltre.length
-                }
-              />
-
-              <div className="space-y-1">
-                {administrationFiltre.map(
-                  (item, index) => (
-                    <NavigationItem
-                      key={item.chemin}
-                      item={item}
-                      index={index}
-                      fermerMenu={
-                        fermerMenu
-                      }
-                    />
-                  )
-                )}
-              </div>
-
-            </div>
-          )}
-
-
-          {/* ==================================================
-              MEMBRES
-              ================================================== */}
-
-          {membresFiltre.length > 0 && (
-            <div className="mb-7">
-
-              <SectionTitre
-                titre="Membres"
-                icone={Users}
-                nombre={
-                  membresFiltre.length
-                }
-              />
-
-              <div className="space-y-1">
-                {membresFiltre.map(
-                  (item, index) => (
-                    <NavigationItem
-                      key={item.chemin}
-                      item={item}
-                      index={index}
-                      fermerMenu={
-                        fermerMenu
-                      }
-                    />
-                  )
-                )}
-              </div>
-
-            </div>
-          )}
-
-
-          {/* ==================================================
-              FINANCES
-              ================================================== */}
-
-          {financesFiltre.length > 0 && (
-            <div className="mb-7">
-
-              <SectionTitre
-                titre="Finances"
-                icone={Wallet}
-                couleur="violet"
-                nombre={
-                  financesFiltre.length
-                }
-              />
-
-              <div className="space-y-1">
-                {financesFiltre.map(
-                  (item, index) => (
-                    <NavigationItem
-                      key={item.code}
-                      item={item}
-                      index={index}
-                      fermerMenu={
-                        fermerMenu
-                      }
-                    />
-                  )
-                )}
-              </div>
-
-            </div>
-          )}
-
-
-          {/* ==================================================
-              REUNIONS & ACTIVITES
-              ================================================== */}
-
-          {activitesFiltre.length > 0 && (
-            <div className="mb-7">
-
-              <SectionTitre
-                titre="Réunions & activités"
-                icone={CalendarDays}
-                couleur="cyan"
-                nombre={
-                  activitesFiltre.length
-                }
-              />
-
-              <div className="space-y-1">
-                {activitesFiltre.map(
-                  (item, index) => (
-                    <NavigationItem
-                      key={item.chemin}
-                      item={item}
-                      index={index}
-                      fermerMenu={
-                        fermerMenu
-                      }
-                    />
-                  )
-                )}
-              </div>
-
-            </div>
-          )}
-
-
-          {/* ==================================================
-              COMMUNICATION
-              ================================================== */}
-
-          {communicationFiltre.length >
-            0 && (
-            <div className="mb-7">
-
-              <SectionTitre
-                titre="Communication"
-                icone={Megaphone}
-                couleur="rose"
-                nombre={
-                  communicationFiltre.length
-                }
-              />
-
-              <div className="space-y-1">
-                {communicationFiltre.map(
-                  (item, index) => (
-                    <NavigationItem
-                      key={item.chemin}
-                      item={item}
-                      index={index}
-                      fermerMenu={
-                        fermerMenu
-                      }
-                    />
-                  )
-                )}
-              </div>
-
-            </div>
-          )}
-
-
-          {/* ==================================================
-              RELATIONS EXTERIEURES
-              ================================================== */}
-
-          {relationsFiltre.length > 0 && (
-            <div className="mb-7">
-
-              <SectionTitre
-                titre="Relations extérieures"
-                icone={Globe2}
-                couleur="blue"
-                nombre={
-                  relationsFiltre.length
-                }
-              />
-
-              <div className="space-y-1">
-                {relationsFiltre.map(
-                  (item, index) => (
-                    <NavigationItem
-                      key={item.chemin}
-                      item={item}
-                      index={index}
-                      fermerMenu={
-                        fermerMenu
-                      }
-                    />
-                  )
-                )}
-              </div>
-
-            </div>
-          )}
-
-
-          {/* ==================================================
-              ESPACE KOUREL
-              ================================================== */}
-
-          {kourelFiltre.length > 0 && (
-            <div className="mb-7">
-
-              <SectionTitre
-                titre="Espace Kourel"
-                icone={Music}
-                couleur="amber"
-                nombre={
-                  kourelFiltre.length
-                }
-              />
-
-              <div
+              <button
+                type="button"
+                onClick={retourAccueil}
                 className="
-                  rounded-[1.4rem]
-                  border border-amber-400/10
-                  bg-gradient-to-br
-                  from-amber-400/[0.08]
-                  to-transparent p-2
+                  group
+                  flex
+                  w-full
+                  items-center
+                  gap-3
+                  rounded-xl
+                  px-3
+                  py-2.5
+                  text-left
+                  text-slate-600
+                  transition
+                  hover:bg-slate-50
+                  hover:text-slate-900
                 "
               >
+                <Home
+                  size={17}
+                  className="text-slate-400"
+                />
 
-                {kourelFiltre.map(
-                  (item, index) => (
-                    <NavigationItem
-                      key={item.chemin}
-                      item={item}
-                      index={index}
-                      fermerMenu={
-                        fermerMenu
-                      }
-                    />
-                  )
-                )}
+                <span className="flex-1 text-xs font-bold">
+                  Retour à l'accueil
+                </span>
 
-              </div>
+                <ChevronRight
+                  size={14}
+                  className="
+                    text-slate-300
+                  "
+                />
+              </button>
 
+              {/* DÉCONNEXION */}
+
+              <button
+                type="button"
+                onClick={gererDeconnexion}
+                className="
+                  group
+                  mt-1
+                  flex
+                  w-full
+                  items-center
+                  gap-3
+                  rounded-xl
+                  px-3
+                  py-2.5
+                  text-left
+                  text-rose-600
+                  transition
+                  hover:bg-rose-50
+                  focus:outline-none
+                  focus-visible:ring-2
+                  focus-visible:ring-rose-400/40
+                "
+              >
+                <LogOut
+                  size={17}
+                  className="text-rose-400"
+                />
+
+                <span className="flex-1 text-xs font-bold">
+                  Déconnexion
+                </span>
+
+                <ChevronRight
+                  size={14}
+                  className="
+                    text-rose-200
+                  "
+                />
+              </button>
             </div>
-          )}
-
-
-          {/* ==================================================
-              NOTIFICATIONS
-              ================================================== */}
-
-          {notificationsFiltre.length >
-            0 && (
-            <div className="mb-3">
-
-              <SectionTitre
-                titre="Personnel"
-                icone={Bell}
-                couleur="rose"
-                nombre={
-                  notificationsFiltre.length
-                }
-              />
-
-              <div className="space-y-1">
-                {notificationsFiltre.map(
-                  (item, index) => (
-                    <NavigationItem
-                      key={item.chemin}
-                      item={item}
-                      index={index}
-                      fermerMenu={
-                        fermerMenu
-                      }
-                    />
-                  )
-                )}
-              </div>
-
-            </div>
-          )}
-
-        </nav>
-
-
-        {/* ====================================================
-            BAS SIDEBAR
-            ==================================================== */}
-
-        <div
-          className="
-            relative border-t
-            border-white/[0.08] p-4
-          "
-        >
-
-          <button
-            type="button"
-            onClick={() =>
-              navigate("/profil")
-            }
-            className="
-              group mb-2 flex w-full
-              items-center gap-3
-              rounded-xl px-3 py-2.5
-              text-xs font-semibold
-              text-white/45
-              transition hover:bg-white/[0.06]
-              hover:text-white
-            "
-          >
-
-            <div
-              className="
-                flex h-8 w-8 items-center
-                justify-center rounded-lg
-                bg-white/[0.05]
-              "
-            >
-              <CircleUserRound size={16} />
-            </div>
-
-            Mon profil
-          </button>
-
-
-          <button
-            type="button"
-            onClick={retourAccueil}
-            className="
-              group mb-2 flex w-full
-              items-center gap-3
-              rounded-xl px-3 py-2.5
-              text-xs font-semibold
-              text-white/45
-              transition hover:bg-white/[0.06]
-              hover:text-white
-            "
-          >
-
-            <div
-              className="
-                flex h-8 w-8 items-center
-                justify-center rounded-lg
-                bg-white/[0.05]
-              "
-            >
-              <Home size={16} />
-            </div>
-
-            Retour à l'accueil
-          </button>
-
-
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="
-              group flex w-full
-              items-center gap-3
-              rounded-xl px-3 py-2.5
-              text-xs font-semibold
-              text-white/35
-              transition
-              hover:bg-rose-500/10
-              hover:text-rose-300
-            "
-          >
-
-            <div
-              className="
-                flex h-8 w-8 items-center
-                justify-center rounded-lg
-                bg-white/[0.05]
-              "
-            >
-              <LogOut size={16} />
-            </div>
-
-            Déconnexion
-          </button>
-
+          </div>
         </div>
-
       </aside>
 
-
       {/* ======================================================
-          BOUTON MOBILE
-          ====================================================== */}
+          BOUTON MENU MOBILE
+      ====================================================== */}
 
-      {!menuOuvert && (
-        <button
-          type="button"
-          onClick={() =>
-            setMenuOuvert(true)
-          }
-          className="
-            fixed left-4 top-4 z-40
-            flex h-11 w-11 items-center
-            justify-center rounded-2xl
-            bg-emerald-950
-            text-white shadow-xl lg:hidden
-          "
-          aria-label="Ouvrir le menu"
-        >
-          <Menu size={21} />
-        </button>
-      )}
-
+      <button
+        type="button"
+        onClick={() =>
+          setMenuOuvert(
+            (ouvert) => !ouvert
+          )
+        }
+        aria-label={
+          menuOuvert
+            ? "Fermer le menu"
+            : "Ouvrir le menu"
+        }
+        aria-expanded={menuOuvert}
+        className="
+          fixed
+          left-4
+          top-4
+          z-40
+          flex
+          h-11
+          w-11
+          items-center
+          justify-center
+          rounded-2xl
+          border
+          border-white/60
+          bg-emerald-950
+          text-white
+          shadow-xl
+          shadow-emerald-950/20
+          transition-all
+          hover:scale-105
+          active:scale-95
+          lg:hidden
+        "
+      >
+        {menuOuvert ? (
+          <X size={20} />
+        ) : (
+          <Menu size={20} />
+        )}
+      </button>
 
       {/* ======================================================
           CONTENU PRINCIPAL
-          ====================================================== */}
+      ====================================================== */}
 
       <main
         className="
-          relative min-h-screen
+          relative
+          min-h-screen
+          min-w-0
           lg:ml-[290px]
         "
       >
-
-        {/* ====================================================
+        {/* ==================================================
             HEADER
-            ==================================================== */}
+        ================================================== */}
 
         <header
           className="
-            sticky top-0 z-30
-            border-b border-slate-200/70
-            bg-white/85 backdrop-blur-2xl
+            sticky
+            top-0
+            z-30
+            border-b
+            border-slate-200/70
+            bg-white/90
+            backdrop-blur-xl
           "
         >
-
           <div
             className="
-              flex min-h-[76px]
+              flex
+              min-h-[76px]
               items-center
-              justify-between gap-4
-              px-5 sm:px-7 lg:px-9
+              justify-between
+              gap-4
+              px-4
+              pl-20
+              sm:px-6
+              sm:pl-20
+              lg:px-8
+              lg:pl-8
             "
           >
+            {/* GAUCHE */}
 
-            <div
-              className="
-                min-w-0 pl-12 lg:pl-0
-              "
-            >
-
-              <div
-                className="
-                  flex items-center gap-2
-                "
-              >
-
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
                 <span
                   className="
-                    hidden h-2 w-2 rounded-full
+                    hidden
+                    h-2
+                    w-2
+                    rounded-full
                     bg-emerald-500
                     sm:block
                   "
                 />
 
-                <p
+                <span
                   className="
-                    text-[10px] font-black
+                    hidden
+                    text-[10px]
+                    font-extrabold
                     uppercase
                     tracking-[0.18em]
-                    text-emerald-700
+                    text-slate-400
+                    sm:block
                   "
                 >
                   Dahira Mawahibou
-                </p>
-
+                </span>
               </div>
 
-
-              <div
-                className="
-                  mt-1 flex items-center gap-2
-                "
-              >
-
-                <h2
+              <div className="mt-0.5 flex items-center gap-2">
+                <h1
                   className="
-                    truncate text-lg font-black
+                    truncate
+                    text-lg
+                    font-extrabold
                     tracking-tight
                     text-slate-900
                     sm:text-xl
                   "
                 >
                   {titrePage}
-                </h2>
+                </h1>
 
-                {estMembreKourel &&
-                  (
-                    location.pathname.includes(
-                      "kourel"
-                    ) ||
-                    location.pathname ===
-                      "/programme-religieux" ||
-                    location.pathname ===
-                      "/khassidas"
-                  ) && (
+                {afficherBadgeKourel &&
+                  estMembreKourel && (
                     <span
                       className="
-                        hidden items-center gap-1
+                        hidden
+                        items-center
+                        gap-1
                         rounded-full
+                        border
+                        border-amber-200
                         bg-amber-50
-                        px-2.5 py-1
-                        text-[9px] font-bold
+                        px-2
+                        py-1
+                        text-[9px]
+                        font-extrabold
+                        uppercase
+                        tracking-wider
                         text-amber-700
-                        sm:inline-flex
+                        sm:flex
                       "
                     >
-                      <Music size={11} />
+                      <Star
+                        size={10}
+                        fill="currentColor"
+                      />
+
                       Kourel
                     </span>
                   )}
-
               </div>
-
             </div>
 
+            {/* DROITE */}
 
-            <div
-              className="
-                flex items-center
-                gap-2 sm:gap-4
-              "
-            >
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+              {/* DATE */}
 
               <div
                 className="
-                  hidden items-center gap-2
-                  xl:flex
+                  hidden
+                  items-center
+                  gap-2
+                  rounded-xl
+                  border
+                  border-slate-200
+                  bg-slate-50
+                  px-3
+                  py-2
+                  text-slate-500
+                  md:flex
                 "
               >
-
                 <Clock3
                   size={15}
-                  className="text-slate-300"
+                  className="text-emerald-500"
                 />
 
-                <p
+                <span
                   className="
-                    text-xs font-medium
+                    text-[11px]
+                    font-bold
                     capitalize
-                    text-slate-400
                   "
                 >
                   {dateTexte}
-                </p>
-
+                </span>
               </div>
 
-
-              {/* ==============================================
-                  NOTIFICATIONS
-                  ============================================== */}
+              {/* NOTIFICATIONS */}
 
               {possedePermission(
                 "NOTIFICATION_CONSULTER"
               ) && (
                 <button
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
+                    fermerMenu();
                     navigate(
                       "/notifications"
-                    )
-                  }
+                    );
+                  }}
+                  aria-label="Notifications"
                   className="
-                    relative flex h-10 w-10
+                    relative
+                    flex
+                    h-10
+                    w-10
                     items-center
                     justify-center
-                    rounded-xl border
+                    rounded-xl
+                    border
                     border-slate-200
                     bg-white
                     text-slate-500
                     shadow-sm
+                    transition-all
                     hover:border-emerald-200
                     hover:bg-emerald-50
                     hover:text-emerald-700
+                    focus:outline-none
+                    focus-visible:ring-2
+                    focus-visible:ring-emerald-400/50
                   "
-                  title="Notifications"
                 >
-
                   <Bell size={18} />
-
-                  <span
-                    className="
-                      absolute right-2 top-2
-                      h-2 w-2 rounded-full
-                      bg-rose-500
-                      ring-2 ring-white
-                    "
-                  />
-
                 </button>
               )}
 
+              {/* PROFIL */}
 
-              {/* ==============================================
-                  PROFIL
-                  ============================================== */}
-
-              <div
+              <button
+                type="button"
+                onClick={ouvrirProfil}
+                aria-label="Ouvrir mon profil"
                 className="
-                  hidden items-center
-                  gap-3 sm:flex
+                  group
+                  flex
+                  items-center
+                  gap-2
+                  rounded-2xl
+                  border
+                  border-slate-200
+                  bg-white
+                  p-1.5
+                  pr-2.5
+                  shadow-sm
+                  transition-all
+                  duration-200
+                  hover:border-emerald-200
+                  hover:shadow-md
+                  focus:outline-none
+                  focus-visible:ring-2
+                  focus-visible:ring-emerald-400/50
                 "
               >
+                <div
+                  className="
+                    flex
+                    h-9
+                    w-9
+                    items-center
+                    justify-center
+                    rounded-xl
+                    bg-gradient-to-br
+                    from-emerald-600
+                    to-teal-700
+                    text-[11px]
+                    font-extrabold
+                    text-white
+                    shadow-sm
+                  "
+                >
+                  {initiales}
+                </div>
 
                 <div
-                  className="text-right"
+                  className="
+                    hidden
+                    min-w-0
+                    text-left
+                    sm:block
+                  "
                 >
-
-                  <p
+                  <div
                     className="
-                      max-w-[160px]
-                      truncate text-xs
-                      font-bold text-slate-800
+                      max-w-[130px]
+                      truncate
+                      text-xs
+                      font-extrabold
+                      text-slate-800
                     "
                   >
                     {nomAffiche}
-                  </p>
+                  </div>
 
-                  <p
+                  <div
                     className="
-                      mt-0.5 max-w-[160px]
-                      truncate text-[10px]
+                      mt-0.5
+                      max-w-[130px]
+                      truncate
+                      text-[9px]
+                      font-bold
+                      uppercase
+                      tracking-wider
                       text-slate-400
                     "
                   >
                     {fonctionPrincipale}
-                  </p>
-
+                  </div>
                 </div>
 
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate(
-                      "/profil"
-                    )
-                  }
+                <ChevronRight
+                  size={14}
                   className="
-                    relative flex h-11 w-11
-                    items-center
-                    justify-center
-                    rounded-2xl
-                    bg-gradient-to-br
-                    from-emerald-500
-                    to-teal-700
-                    text-xs font-black
-                    text-white shadow-lg
-                    transition
-                    hover:-translate-y-0.5
+                    hidden
+                    text-slate-300
+                    transition-transform
+                    group-hover:translate-x-0.5
+                    sm:block
                   "
-                  title="Mon profil"
-                >
-                  {initiales}
-                </button>
-
-              </div>
-
+                />
+              </button>
             </div>
-
           </div>
-
         </header>
 
-
-        {/* ====================================================
-            BREADCRUMB
-            ==================================================== */}
-
-        <div
-          className="
-            hidden border-b
-            border-slate-100
-            bg-white/50 px-5 py-2.5
-            sm:block sm:px-7 lg:px-9
-          "
-        >
-
-          <div
-            className="
-              flex items-center
-              justify-between
-            "
-          >
-
-            <div
-              className="
-                flex items-center gap-2
-                text-[10px]
-                text-slate-400
-              "
-            >
-
-              <Home size={12} />
-
-              <span>
-                Dahira
-              </span>
-
-              <ChevronRight
-                size={11}
-              />
-
-              <span
-                className="
-                  font-semibold
-                  text-slate-600
-                "
-              >
-                {titrePage}
-              </span>
-
-            </div>
-
-
-            {estMembreKourel &&
-              possedePermission(
-                "KOUREL_CONSULTER"
-              ) && (
-                <div
-                  className="
-                    flex items-center gap-1.5
-                    text-[10px]
-                    font-semibold
-                    text-amber-600
-                  "
-                >
-
-                  <Sparkles size={12} />
-
-                  Membre du Kourel
-
-                </div>
-              )}
-
-          </div>
-
-        </div>
-
-
-        {/* ====================================================
-            PAGE
-            ==================================================== */}
+        {/* ==================================================
+            ZONE DE CONTENU
+        ================================================== */}
 
         <div
           className="
             relative
             min-h-[calc(100vh-76px)]
-            p-5 sm:p-7 lg:p-9
+            px-4
+            pb-8
+            pt-4
+            sm:px-6
+            sm:pb-8
+            sm:pt-5
+            lg:px-8
+            lg:pb-8
+            lg:pt-6
           "
         >
-          <Outlet />
-        </div>
-
-
-        {/* ====================================================
-            FOOTER
-            ==================================================== */}
-
-        <footer
-          className="
-            border-t
-            border-slate-200/70
-            bg-white/40
-            px-5 py-6
-            sm:px-7 lg:px-9
-          "
-        >
+          {/* BREADCRUMB */}
 
           <div
             className="
-              flex flex-col
-              items-center justify-between
-              gap-3 text-center
-              sm:flex-row sm:text-left
+              mb-5
+              hidden
+              items-center
+              gap-2
+              text-[10px]
+              font-bold
+              text-slate-400
+              sm:flex
             "
           >
-
-            <div
+            <button
+              type="button"
+              onClick={retourAccueil}
               className="
-                flex items-center gap-2
+                transition
+                hover:text-emerald-600
               "
             >
+              Accueil
+            </button>
 
-              <div
+            <ChevronRight size={12} />
+
+            <span className="text-slate-600">
+              {titrePage}
+            </span>
+          </div>
+
+          {/* ==================================================
+              CONTENU DE LA PAGE
+              
+              IMPORTANT :
+              Outlet est directement dans le flux vertical
+              principal, comme dans l'ancien Layout fonctionnel.
+              
+              Il n'y a volontairement PAS de section avec
+              overflow-visible autour de Outlet.
+          ================================================== */}
+
+          <div
+            className="
+              w-full
+              min-w-0
+              rounded-[26px]
+              border
+              border-slate-200/70
+              bg-white/70
+              p-4
+              shadow-sm
+              backdrop-blur-sm
+              sm:p-6
+              lg:p-8
+            "
+          >
+            <Outlet />
+          </div>
+        </div>
+
+        {/* ==================================================
+            FOOTER
+        ================================================== */}
+
+        <footer
+          className="
+            px-4
+            pb-6
+            sm:px-6
+            lg:px-8
+          "
+        >
+          <div
+            className="
+              flex
+              flex-col
+              items-center
+              justify-between
+              gap-2
+              border-t
+              border-slate-200/70
+              pt-5
+              text-center
+              sm:flex-row
+              sm:text-left
+            "
+          >
+            <div className="flex items-center gap-2">
+              <Sparkles
+                size={13}
+                className="text-emerald-500"
+              />
+
+              <span
                 className="
-                  flex h-7 w-7
-                  items-center
-                  justify-center
-                  rounded-lg
-                  bg-emerald-100
-                  text-emerald-700
+                  text-[10px]
+                  font-bold
+                  text-slate-400
                 "
               >
-                <Star size={13} />
-              </div>
-
-              <div>
-
-                <p
-                  className="
-                    text-[10px]
-                    font-bold
-                    text-slate-700
-                  "
-                >
-                  Dahira Mawahibou Naafih
-                </p>
-
-                <p
-                  className="
-                    text-[9px]
-                    text-slate-400
-                  "
-                >
-                  Espace membre
-                </p>
-
-              </div>
-
+                Dahira Mawahibou • Naafih de Castors
+              </span>
             </div>
 
-
-            <p
+            <span
               className="
                 text-[10px]
+                font-medium
                 text-slate-400
               "
             >
-              © {new Date().getFullYear()}
-              {" — "}
+              © {new Date().getFullYear()} —
               Tous droits réservés
-            </p>
-
+            </span>
           </div>
-
         </footer>
-
-
-        {/* ====================================================
-            STYLES
-            ==================================================== */}
-
-        <style>
-          {`
-            @keyframes menuAppear {
-              from {
-                opacity: 0;
-                transform: translateX(-8px);
-              }
-
-              to {
-                opacity: 1;
-                transform: translateX(0);
-              }
-            }
-
-            * {
-              scrollbar-width: thin;
-              scrollbar-color:
-                rgba(16, 185, 129, 0.25)
-                transparent;
-            }
-
-            *::-webkit-scrollbar {
-              width: 5px;
-              height: 5px;
-            }
-
-            *::-webkit-scrollbar-track {
-              background: transparent;
-            }
-
-            *::-webkit-scrollbar-thumb {
-              background:
-                rgba(16, 185, 129, 0.25);
-              border-radius: 999px;
-            }
-
-            html,
-            body {
-              max-width: 100%;
-              overflow-x: hidden;
-            }
-          `}
-        </style>
-
       </main>
 
+      {/* ======================================================
+          SCROLLBAR
+      ====================================================== */}
+
+      <style>{`
+        html,
+        body {
+          max-width: 100%;
+          overflow-x: hidden;
+        }
+
+        html {
+          scroll-behavior: auto;
+        }
+
+        body {
+          overflow-y: auto;
+        }
+
+        * {
+          scrollbar-width: thin;
+          scrollbar-color: #cbd5e1 transparent;
+        }
+
+        *::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+
+        *::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        *::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 999px;
+        }
+
+        *::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
+        }
+
+        @media (max-width: 1023px) {
+          html,
+          body {
+            overflow-x: hidden;
+          }
+        }
+      `}</style>
     </div>
   );
 }
-
-
-export default Layout;
