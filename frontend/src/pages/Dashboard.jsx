@@ -63,118 +63,6 @@ function Dashboard() {
   }
 
   // ============================================================
-  // DATE LOCALE AU FORMAT YYYY-MM-DD
-  // ============================================================
-
-  function dateLocaleISO(date = new Date()) {
-    const annee = date.getFullYear();
-
-    const mois = String(
-      date.getMonth() + 1
-    ).padStart(2, "0");
-
-    const jour = String(
-      date.getDate()
-    ).padStart(2, "0");
-
-    return `${annee}-${mois}-${jour}`;
-  }
-
-  // ============================================================
-  // PREMIER JOUR DU MOIS
-  // ============================================================
-
-  function premierJourMois(date = new Date()) {
-    return dateLocaleISO(
-      new Date(
-        date.getFullYear(),
-        date.getMonth(),
-        1
-      )
-    );
-  }
-
-  // ============================================================
-  // DERNIER JOUR DU MOIS
-  // ============================================================
-
-  function dernierJourMois(date = new Date()) {
-    return dateLocaleISO(
-      new Date(
-        date.getFullYear(),
-        date.getMonth() + 1,
-        0
-      )
-    );
-  }
-
-  // ============================================================
-  // PREMIER JOUR DU TRIMESTRE
-  // ============================================================
-
-  function premierJourTrimestre(date = new Date()) {
-    const moisActuel = date.getMonth();
-
-    const premierMoisTrimestre =
-      Math.floor(moisActuel / 3) * 3;
-
-    return dateLocaleISO(
-      new Date(
-        date.getFullYear(),
-        premierMoisTrimestre,
-        1
-      )
-    );
-  }
-
-  // ============================================================
-  // DERNIER JOUR DU TRIMESTRE
-  // ============================================================
-
-  function dernierJourTrimestre(date = new Date()) {
-    const moisActuel = date.getMonth();
-
-    const dernierMoisTrimestre =
-      Math.floor(moisActuel / 3) * 3 + 2;
-
-    return dateLocaleISO(
-      new Date(
-        date.getFullYear(),
-        dernierMoisTrimestre + 1,
-        0
-      )
-    );
-  }
-
-  // ============================================================
-  // PREMIER JOUR DE L'ANNÉE
-  // ============================================================
-
-  function premierJourAnnee(date = new Date()) {
-    return dateLocaleISO(
-      new Date(
-        date.getFullYear(),
-        0,
-        1
-      )
-    );
-  }
-
-  // ============================================================
-  // DERNIER JOUR DE L'ANNÉE
-  // ============================================================
-
-  function dernierJourAnnee(date = new Date()) {
-    return dateLocaleISO(
-      new Date(
-        date.getFullYear(),
-        11,
-        31
-      )
-    );
-  }
-
-  // ============================================================
   // CHARGEMENT DU DASHBOARD
   // ============================================================
 
@@ -251,91 +139,26 @@ function Dashboard() {
   }
 
   // ============================================================
-  // APPLICATION D'UNE PÉRIODE PRÉDÉFINIE
+  // FILTRE "TOUT"
   // ============================================================
 
-  function appliquerPeriode(type) {
-    const aujourdHui = new Date();
+  function appliquerTout() {
+    setPeriode("tout");
 
-    let debut = null;
-    let fin = null;
+    setDateDebut("");
+    setDateFin("");
 
-    switch (type) {
-      case "tout":
-        break;
+    chargerDashboard(null);
+  }
 
-      case "aujourd_hui":
-        debut = dateLocaleISO(
-          aujourdHui
-        );
+  // ============================================================
+  // OUVERTURE DE LA PÉRIODE PERSONNALISÉE
+  // ============================================================
 
-        fin = dateLocaleISO(
-          aujourdHui
-        );
+  function ouvrirPeriodePersonnalisee() {
+    setPeriode("personnalisee");
 
-        break;
-
-      case "mois":
-        debut =
-          premierJourMois(
-            aujourdHui
-          );
-
-        fin =
-          dernierJourMois(
-            aujourdHui
-          );
-
-        break;
-
-      case "trimestre":
-        debut =
-          premierJourTrimestre(
-            aujourdHui
-          );
-
-        fin =
-          dernierJourTrimestre(
-            aujourdHui
-          );
-
-        break;
-
-      case "annee":
-        debut =
-          premierJourAnnee(
-            aujourdHui
-          );
-
-        fin =
-          dernierJourAnnee(
-            aujourdHui
-          );
-
-        break;
-
-      default:
-        return;
-    }
-
-    setPeriode(type);
-
-    if (type === "tout") {
-      setDateDebut("");
-      setDateFin("");
-
-      chargerDashboard(null);
-
-      return;
-    }
-
-    setDateDebut(debut);
-    setDateFin(fin);
-
-    chargerDashboard({
-      dateDebut: debut,
-      dateFin: fin,
-    });
+    setErreur("");
   }
 
   // ============================================================
@@ -471,81 +294,28 @@ function Dashboard() {
     donnees?.membres_actifs ?? 0
   );
 
-  /*
-   * Montant théorique attendu pour les cotisations.
-   *
-   * Le backend calcule ce montant à partir :
-   * - de tous les membres actifs ;
-   * - de leur montant de cotisation ;
-   * - du nombre de mois couverts par la période.
-   */
   const cotisationsEstimees = Number(
     donnees?.cotisations_estimees ?? 0
   );
 
-  /*
-   * Argent réellement reçu des membres.
-   *
-   * Cela comprend :
-   * - les cotisations normales ;
-   * - les paiements partiels ;
-   * - les versements volontaires des membres
-   *   ayant une cotisation mensuelle à 0.
-   *
-   * Le montant est filtré par date dans le backend.
-   */
   const cotisationsEncaissees = Number(
     donnees?.cotisations_encaissees ?? 0
   );
 
-  /*
-   * Argent reçu de personnes ou organismes extérieurs.
-   *
-   * Le backend applique également le filtre
-   * de période sur date_aide.
-   */
   const aidesExterieures = Number(
     donnees?.aides_exterieures ?? 0
   );
 
-  /*
-   * TOTAL DES RECETTES RÉELLES
-   *
-   * IMPORTANT :
-   * On utilise maintenant directement la valeur
-   * calculée par le backend.
-   *
-   * Le backend calcule :
-   *
-   * paiements de la période
-   * +
-   * aides extérieures de la période
-   *
-   * = total_recettes
-   */
   const totalRecettes = Number(
     donnees?.total_recettes ?? 0
   );
 
-  /*
-   * TOTAL DES SORTIES D'ARGENT
-   *
-   * Le backend applique le filtre sur
-   * Depense.date_depense.
-   */
   const totalDepenses = Number(
     donnees?.total_depenses ??
       donnees?.depenses ??
       0
   );
 
-  /*
-   * SOLDE RÉEL DISPONIBLE
-   *
-   * On utilise directement le calcul du backend :
-   *
-   * total_recettes - total_depenses
-   */
   const soldeDisponible = Number(
     donnees?.solde_disponible ?? 0
   );
@@ -601,8 +371,6 @@ function Dashboard() {
         "Membres actuellement actifs",
 
       icone: Users,
-
-      couleur: "blue",
     },
 
     {
@@ -613,11 +381,9 @@ function Dashboard() {
       )} FCFA`,
 
       description:
-        "Montant théorique attendu des cotisations",
+        "Montant cumulé des cotisations enregistrées",
 
       icone: Wallet,
-
-      couleur: "blue",
     },
 
     {
@@ -631,8 +397,6 @@ function Dashboard() {
         "Argent réellement reçu par le Dahira",
 
       icone: TrendingUp,
-
-      couleur: "emerald",
     },
 
     {
@@ -646,8 +410,6 @@ function Dashboard() {
         "Total des sorties de caisse",
 
       icone: TrendingDown,
-
-      couleur: "red",
     },
   ];
 
@@ -737,7 +499,8 @@ function Dashboard() {
 
               <p className="mt-1 text-sm text-slate-500">
                 Affichez l'état financier du Dahira
-                sur la période de votre choix.
+                sur toutes les opérations ou sur
+                une période personnalisée.
               </p>
             </div>
 
@@ -747,11 +510,11 @@ function Dashboard() {
 
           <div className="flex flex-wrap gap-2">
 
+            {/* TOUT */}
+
             <button
               type="button"
-              onClick={() =>
-                appliquerPeriode("tout")
-              }
+              onClick={appliquerTout}
               className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
                 periode === "tout"
                   ? "bg-emerald-700 text-white shadow-sm"
@@ -761,75 +524,16 @@ function Dashboard() {
               Tout
             </button>
 
-            <button
-              type="button"
-              onClick={() =>
-                appliquerPeriode(
-                  "aujourd_hui"
-                )
-              }
-              className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                periode === "aujourd_hui"
-                  ? "bg-emerald-700 text-white shadow-sm"
-                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              Aujourd'hui
-            </button>
+            {/* PÉRIODE PERSONNALISÉE */}
 
             <button
               type="button"
-              onClick={() =>
-                appliquerPeriode("mois")
+              onClick={
+                ouvrirPeriodePersonnalisee
               }
               className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                periode === "mois"
-                  ? "bg-emerald-700 text-white shadow-sm"
-                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              Ce mois
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                appliquerPeriode(
-                  "trimestre"
-                )
-              }
-              className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                periode === "trimestre"
-                  ? "bg-emerald-700 text-white shadow-sm"
-                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              Ce trimestre
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                appliquerPeriode("annee")
-              }
-              className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                periode === "annee"
-                  ? "bg-emerald-700 text-white shadow-sm"
-                  : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              Cette année
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                setPeriode(
-                  "personnalisee"
-                )
-              }
-              className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${
-                periode === "personnalisee"
+                periode ===
+                "personnalisee"
                   ? "bg-emerald-700 text-white shadow-sm"
                   : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
               }`}
@@ -846,6 +550,8 @@ function Dashboard() {
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
 
               <div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+
+                {/* DATE DÉBUT */}
 
                 <div>
                   <label
@@ -868,6 +574,8 @@ function Dashboard() {
                   />
                 </div>
 
+                {/* DATE FIN */}
+
                 <div>
                   <label
                     htmlFor="date-fin-dashboard"
@@ -888,6 +596,8 @@ function Dashboard() {
                     className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100"
                   />
                 </div>
+
+                {/* BOUTON */}
 
                 <button
                   type="button"
@@ -1153,7 +863,6 @@ function Dashboard() {
                     : "text-red-400"
                 }`}
               >
-
                 {formaterMontant(
                   soldeDisponible
                 )}
@@ -1161,7 +870,6 @@ function Dashboard() {
                 <span className="ml-2 text-xl text-slate-400">
                   FCFA
                 </span>
-
               </p>
 
               <div className="mt-4 flex items-center gap-2">
@@ -1327,7 +1035,7 @@ function Dashboard() {
 
         <div className="space-y-7">
 
-          {/* COTISATIONS ET VERSEMENTS DES MEMBRES */}
+          {/* COTISATIONS */}
 
           <div>
 
