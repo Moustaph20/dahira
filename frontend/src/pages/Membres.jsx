@@ -656,7 +656,6 @@ function Membres() {
         rechercheActive,
         inclureInactifs
       );
-
     } catch (error) {
       console.error(
         "ERREUR ENREGISTREMENT :",
@@ -763,7 +762,6 @@ function Membres() {
         rechercheActive,
         inclureInactifs
       );
-
     } catch (error) {
       console.error(
         "Erreur changement statut :",
@@ -788,7 +786,6 @@ function Membres() {
             "Impossible de modifier le statut du membre."
         );
       }
-
     } finally {
       setActionId(null);
     }
@@ -883,13 +880,47 @@ function Membres() {
   }
 
   // ============================================================
+  // UTILITAIRES VISUELS DU MODAL
+  // ============================================================
+
+  function obtenirInitialesMembre(membre) {
+    if (!membre) {
+      return "M";
+    }
+
+    return `${membre.prenom || ""} ${
+      membre.nom || ""
+    }`
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((mot) =>
+        mot.charAt(0).toUpperCase()
+      )
+      .slice(0, 2)
+      .join("") || "M";
+  }
+
+  function obtenirNomCompletMembre(membre) {
+    if (!membre) {
+      return "Nouveau membre";
+    }
+
+    return `${membre.prenom || ""} ${
+      membre.nom || ""
+    }`.trim() || "Membre";
+  }
+
+  // ============================================================
   // RENDU
   // ============================================================
 
   return (
     <div className="space-y-8">
 
-      {/* HEADER */}
+      {/* ======================================================
+          HEADER
+      ====================================================== */}
 
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
 
@@ -924,7 +955,9 @@ function Membres() {
 
       </div>
 
-      {/* MESSAGES */}
+      {/* ======================================================
+          MESSAGES
+      ====================================================== */}
 
       {message && (
         <div className="flex items-start justify-between gap-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
@@ -978,7 +1011,9 @@ function Membres() {
         </div>
       )}
 
-      {/* STATISTIQUES */}
+      {/* ======================================================
+          STATISTIQUES
+      ====================================================== */}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 
@@ -1040,7 +1075,9 @@ function Membres() {
 
       </div>
 
-      {/* RECHERCHE */}
+      {/* ======================================================
+          RECHERCHE
+      ====================================================== */}
 
       <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
 
@@ -1125,7 +1162,9 @@ function Membres() {
 
       </div>
 
-      {/* TABLEAU */}
+      {/* ======================================================
+          TABLEAU
+      ====================================================== */}
 
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
 
@@ -1426,7 +1465,7 @@ function Membres() {
                                 actionId ===
                                 membre.id
                               }
-                              className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                               Modifier
                             </button>
@@ -1470,16 +1509,19 @@ function Membres() {
             </table>
 
           </div>
+
         )}
 
       </div>
 
-      {/* MODAL */}
+      {/* ======================================================
+          MODAL PREMIUM
+      ====================================================== */}
 
       {modalOuverte && (
 
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/40 px-4 py-8 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-950/60 px-3 py-4 backdrop-blur-md sm:px-6 sm:py-8"
           onMouseDown={(event) => {
 
             if (
@@ -1493,592 +1535,99 @@ function Membres() {
           }}
         >
 
-          <div className="w-full max-w-3xl rounded-3xl bg-white shadow-2xl">
+          <div className="relative w-full max-w-4xl overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-[0_30px_100px_rgba(15,23,42,0.30)]">
 
-            <div className="flex items-start justify-between border-b border-gray-100 px-6 py-5 sm:px-8">
+            {/* ==================================================
+                BANDE DECORATIVE
+            ================================================== */}
 
-              <div>
+            <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-emerald-900 via-emerald-600 to-amber-400" />
 
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
-                  {modeEdition
-                    ? "Modification"
-                    : "Nouveau membre"}
-                </p>
+            {/* ==================================================
+                HEADER PREMIUM
+            ================================================== */}
 
-                <h2 className="mt-2 text-2xl font-bold text-gray-900">
-                  {modeEdition
-                    ? "Modifier le membre"
-                    : "Ajouter un membre"}
-                </h2>
+            <div className="relative overflow-hidden border-b border-slate-100 bg-gradient-to-br from-white via-white to-emerald-50/60 px-5 pb-5 pt-7 sm:px-8 sm:pb-6">
 
-                <p className="mt-1 text-sm text-gray-500">
-                  {modeEdition
-                    ? "Modifiez les informations, les fonctions et les Kourels du membre."
-                    : "Renseignez les informations du nouveau membre."}
-                </p>
+              <div className="absolute -right-16 -top-20 h-48 w-48 rounded-full bg-emerald-100/50 blur-3xl" />
 
-              </div>
+              <div className="absolute -bottom-24 left-1/3 h-40 w-40 rounded-full bg-amber-100/40 blur-3xl" />
 
-              <button
-                type="button"
-                onClick={
-                  fermerModal
-                }
-                disabled={
-                  enregistrement
-                }
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-xl text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                ×
-              </button>
+              <div className="relative flex items-start justify-between gap-4">
 
-            </div>
+                <div className="flex min-w-0 items-center gap-4">
 
-            <form
-              onSubmit={
-                handleSubmit
-              }
-              noValidate
-              className="max-h-[75vh] overflow-y-auto px-6 py-6 sm:px-8"
-            >
+                  {/* AVATAR */}
 
-              <div className="space-y-6">
+                  <div className="relative shrink-0">
 
-                {/* INFORMATIONS */}
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-800 to-emerald-950 text-lg font-bold text-white shadow-lg shadow-emerald-900/20 sm:h-[4.5rem] sm:w-[4.5rem]">
 
-                <div>
-
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-gray-800">
-                    Informations personnelles
-                  </h3>
-
-                  <p className="mt-1 text-xs text-gray-400">
-                    Informations générales du membre.
-                  </p>
-
-                </div>
-
-                {/* NOM + PRENOM */}
-
-                <div className="grid gap-5 sm:grid-cols-2">
-
-                  <div>
-
-                    <label
-                      htmlFor="nom"
-                      className="mb-2 block text-sm font-semibold text-gray-700"
-                    >
-                      Nom
-                      <span className="ml-1 text-red-500">
-                        *
-                      </span>
-                    </label>
-
-                    <input
-                      id="nom"
-                      name="nom"
-                      type="text"
-                      value={
-                        formulaire.nom
-                      }
-                      onChange={
-                        handleChange
-                      }
-                      disabled={
-                        enregistrement
-                      }
-                      autoComplete="family-name"
-                      placeholder="Ex. Diallo"
-                      className={`w-full rounded-xl border bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:bg-white focus:ring-4 disabled:cursor-not-allowed disabled:opacity-60 ${
-                        erreursFormulaire.nom
-                          ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
-                          : "border-gray-200 focus:border-emerald-700 focus:ring-emerald-700/10"
-                      }`}
-                    />
-
-                    {erreursFormulaire.nom && (
-                      <p className="mt-1.5 text-xs text-red-600">
-                        {
-                          erreursFormulaire.nom
-                        }
-                      </p>
-                    )}
-
-                  </div>
-
-                  <div>
-
-                    <label
-                      htmlFor="prenom"
-                      className="mb-2 block text-sm font-semibold text-gray-700"
-                    >
-                      Prénom
-                      <span className="ml-1 text-red-500">
-                        *
-                      </span>
-                    </label>
-
-                    <input
-                      id="prenom"
-                      name="prenom"
-                      type="text"
-                      value={
-                        formulaire.prenom
-                      }
-                      onChange={
-                        handleChange
-                      }
-                      disabled={
-                        enregistrement
-                      }
-                      autoComplete="given-name"
-                      placeholder="Ex. Moustapha"
-                      className={`w-full rounded-xl border bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:bg-white focus:ring-4 disabled:cursor-not-allowed disabled:opacity-60 ${
-                        erreursFormulaire.prenom
-                          ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
-                          : "border-gray-200 focus:border-emerald-700 focus:ring-emerald-700/10"
-                      }`}
-                    />
-
-                    {erreursFormulaire.prenom && (
-                      <p className="mt-1.5 text-xs text-red-600">
-                        {
-                          erreursFormulaire.prenom
-                        }
-                      </p>
-                    )}
-
-                  </div>
-
-                </div>
-
-                {/* TELEPHONE */}
-
-                <div>
-
-                  <label
-                    htmlFor="telephone"
-                    className="mb-2 block text-sm font-semibold text-gray-700"
-                  >
-                    Numéro de téléphone
-                    <span className="ml-1 text-red-500">
-                      *
-                    </span>
-                  </label>
-
-                  <PhoneInput
-                    id="telephone"
-                    international
-                    defaultCountry="SN"
-                    countryCallingCodeEditable={false}
-                    value={
-                      formulaire.telephone ||
-                      undefined
-                    }
-                    onChange={
-                      handleTelephoneChange
-                    }
-                    disabled={
-                      enregistrement
-                    }
-                    autoComplete="tel"
-                    className={`w-full rounded-xl border bg-gray-50 px-4 py-3 text-sm text-gray-900 transition focus-within:bg-white focus-within:ring-4 ${
-                      erreursFormulaire.telephone
-                        ? "border-red-300 focus-within:border-red-500 focus-within:ring-red-500/10"
-                        : "border-gray-200 focus-within:border-emerald-700 focus-within:ring-emerald-700/10"
-                    }`}
-                  />
-
-                  <p className="mt-1.5 text-xs text-gray-400">
-                    Sélectionnez le pays puis saisissez le numéro.
-                    Le numéro sera enregistré au format international.
-                  </p>
-
-                  {erreursFormulaire.telephone && (
-                    <p className="mt-1.5 text-xs text-red-600">
-                      {
-                        erreursFormulaire.telephone
-                      }
-                    </p>
-                  )}
-
-                </div>
-
-                {/* RESIDENCE */}
-
-                <div>
-
-                  <label
-                    htmlFor="lieu_residence"
-                    className="mb-2 block text-sm font-semibold text-gray-700"
-                  >
-                    Lieu de résidence
-                    <span className="ml-1 text-red-500">
-                      *
-                    </span>
-                  </label>
-
-                  <input
-                    id="lieu_residence"
-                    name="lieu_residence"
-                    type="text"
-                    value={
-                      formulaire.lieu_residence
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    disabled={
-                      enregistrement
-                    }
-                    autoComplete="address-level2"
-                    placeholder="Ex. Castors, Dakar"
-                    className={`w-full rounded-xl border bg-gray-50 px-4 py-3 text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:bg-white focus:ring-4 disabled:cursor-not-allowed disabled:opacity-60 ${
-                      erreursFormulaire.lieu_residence
-                        ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
-                        : "border-gray-200 focus:border-emerald-700 focus:ring-emerald-700/10"
-                    }`}
-                  />
-
-                  {erreursFormulaire.lieu_residence && (
-                    <p className="mt-1.5 text-xs text-red-600">
-                      {
-                        erreursFormulaire.lieu_residence
-                      }
-                    </p>
-                  )}
-
-                </div>
-
-                {/* FONCTIONS */}
-
-                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
-
-                  <div className="flex items-start justify-between gap-4">
-
-                    <div>
-
-                      <label className="block text-sm font-bold text-gray-800">
-                        Fonctions occupées
-                        <span className="ml-1 text-red-500">
-                          *
-                        </span>
-                      </label>
-
-                      <p className="mt-1 text-xs leading-5 text-gray-500">
-                        Sélectionnez une ou plusieurs fonctions
-                        occupées par ce membre.
-                      </p>
+                      {modeEdition
+                        ? obtenirInitialesMembre(
+                            membreSelectionne
+                          )
+                        : "＋"}
 
                     </div>
 
-                    {formulaire.fonction_ids.length >
-                      0 && (
-                      <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">
-                        {formulaire.fonction_ids.length} sélectionnée
-                        {formulaire.fonction_ids.length >
-                        1
-                          ? "s"
-                          : ""}
+                    {modeEdition && (
+                      <span
+                        className={`absolute -bottom-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white ${
+                          membreSelectionne?.actif
+                            ? "bg-emerald-500"
+                            : "bg-slate-400"
+                        }`}
+                      >
+                        <span className="h-2 w-2 rounded-full bg-white" />
                       </span>
                     )}
 
                   </div>
 
-                  {chargementOptions ? (
+                  <div className="min-w-0">
 
-                    <div className="mt-4 flex items-center gap-2 text-sm text-gray-500">
+                    <div className="flex flex-wrap items-center gap-2">
 
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-emerald-700" />
-
-                      Chargement des fonctions...
-
-                    </div>
-
-                  ) : fonctions.length === 0 ? (
-
-                    <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                      Aucune fonction active n'est disponible.
-                    </div>
-
-                  ) : (
-
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-
-                      {fonctions.map(
-                        (fonction) => {
-
-                          const selectionnee =
-                            formulaire.fonction_ids.includes(
-                              Number(
-                                fonction.id
-                              )
-                            );
-
-                          return (
-
-                            <label
-                              key={
-                                fonction.id
-                              }
-                              className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${
-                                selectionnee
-                                  ? "border-emerald-300 bg-emerald-50"
-                                  : "border-gray-200 bg-white hover:border-emerald-200"
-                              }`}
-                            >
-
-                              <input
-                                type="checkbox"
-                                checked={
-                                  selectionnee
-                                }
-                                onChange={() =>
-                                  handleFonctionChange(
-                                    fonction.id
-                                  )
-                                }
-                                disabled={
-                                  enregistrement
-                                }
-                                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-emerald-700 focus:ring-emerald-700"
-                              />
-
-                              <span className="min-w-0">
-
-                                <span className="block text-sm font-semibold text-gray-800">
-                                  {
-                                    fonction.nom
-                                  }
-                                </span>
-
-                                {fonction.description && (
-                                  <span className="mt-0.5 block text-xs leading-5 text-gray-500">
-                                    {
-                                      fonction.description
-                                    }
-                                  </span>
-                                )}
-
-                              </span>
-
-                            </label>
-
-                          );
-                        }
-                      )}
-
-                    </div>
-
-                  )}
-
-                  {erreursFormulaire.fonction_ids && (
-                    <p className="mt-2 text-xs text-red-600">
-                      {
-                        erreursFormulaire.fonction_ids
-                      }
-                    </p>
-                  )}
-
-                </div>
-
-                {/* KOURELS */}
-
-                <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
-
-                  <div className="flex items-start justify-between gap-4">
-
-                    <div>
-
-                      <label className="block text-sm font-bold text-gray-800">
-                        Membre du Kourel
-                      </label>
-
-                      <p className="mt-1 text-xs leading-5 text-gray-500">
-                        Facultatif. Sélectionnez un ou plusieurs
-                        Kourels auxquels ce membre appartient.
-                      </p>
-
-                    </div>
-
-                    {formulaire.kourel_ids.length >
-                      0 && (
-                      <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">
-                        {formulaire.kourel_ids.length} Kourel
-                        {formulaire.kourel_ids.length >
-                        1
-                          ? "s"
-                          : ""}
+                      <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-800">
+                        {modeEdition
+                          ? "Modification"
+                          : "Nouveau membre"}
                       </span>
-                    )}
+
+                      {modeEdition &&
+                        membreSelectionne && (
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-semibold text-slate-500">
+                            ID #
+                            {
+                              membreSelectionne.id
+                            }
+                          </span>
+                        )}
+
+                    </div>
+
+                    <h2 className="mt-2 truncate text-xl font-bold tracking-tight text-slate-950 sm:text-2xl">
+                      {modeEdition
+                        ? obtenirNomCompletMembre(
+                            membreSelectionne
+                          )
+                        : "Ajouter un membre"}
+                    </h2>
+
+                    <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500 sm:text-sm">
+
+                      {modeEdition
+                        ? "Mettez à jour les informations du membre, ses responsabilités, ses Kourels et sa cotisation."
+                        : "Renseignez les informations nécessaires pour créer le profil du membre."}
+
+                    </p>
 
                   </div>
 
-                  {chargementOptions ? (
-
-                    <div className="mt-4 flex items-center gap-2 text-sm text-gray-500">
-
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-indigo-700" />
-
-                      Chargement des Kourels...
-
-                    </div>
-
-                  ) : kourels.length === 0 ? (
-
-                    <div className="mt-4 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500">
-                      Aucun Kourel disponible.
-                    </div>
-
-                  ) : (
-
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-
-                      {kourels.map(
-                        (kourel) => {
-
-                          const selectionne =
-                            formulaire.kourel_ids.includes(
-                              Number(
-                                kourel.id
-                              )
-                            );
-
-                          return (
-
-                            <label
-                              key={
-                                kourel.id
-                              }
-                              className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${
-                                selectionne
-                                  ? "border-indigo-300 bg-indigo-50"
-                                  : "border-gray-200 bg-white hover:border-indigo-200"
-                              }`}
-                            >
-
-                              <input
-                                type="checkbox"
-                                checked={
-                                  selectionne
-                                }
-                                onChange={() =>
-                                  handleKourelChange(
-                                    kourel.id
-                                  )
-                                }
-                                disabled={
-                                  enregistrement
-                                }
-                                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-700 focus:ring-indigo-700"
-                              />
-
-                              <span className="min-w-0">
-
-                                <span className="block text-sm font-semibold text-gray-800">
-                                  {
-                                    kourel.nom
-                                  }
-                                </span>
-
-                                {kourel.description && (
-                                  <span className="mt-0.5 block text-xs leading-5 text-gray-500">
-                                    {
-                                      kourel.description
-                                    }
-                                  </span>
-                                )}
-
-                              </span>
-
-                            </label>
-
-                          );
-                        }
-                      )}
-
-                    </div>
-
-                  )}
-
-                  {formulaire.kourel_ids.length ===
-                    0 && (
-                    <p className="mt-3 text-xs text-gray-400">
-                      Ce membre ne sera affilié à aucun Kourel.
-                    </p>
-                  )}
-
                 </div>
 
-                {/* COTISATION */}
-
-                <div>
-
-                  <label
-                    htmlFor="montant_cotisation"
-                    className="mb-2 block text-sm font-semibold text-gray-700"
-                  >
-                    Cotisation mensuelle
-                    <span className="ml-1 text-red-500">
-                      *
-                    </span>
-                  </label>
-
-                  <div
-                    className={`flex overflow-hidden rounded-xl border bg-gray-50 transition focus-within:bg-white focus-within:ring-4 ${
-                      erreursFormulaire.montant_cotisation
-                        ? "border-red-300 focus-within:border-red-500 focus-within:ring-red-500/10"
-                        : "border-gray-200 focus-within:border-emerald-700 focus-within:ring-emerald-700/10"
-                    }`}
-                  >
-
-                    <input
-                      id="montant_cotisation"
-                      name="montant_cotisation"
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={
-                        formulaire.montant_cotisation
-                      }
-                      onChange={
-                        handleChange
-                      }
-                      disabled={
-                        enregistrement
-                      }
-                      placeholder="Ex. 5000"
-                      className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 disabled:cursor-not-allowed disabled:opacity-60"
-                    />
-
-                    <div className="flex items-center border-l border-gray-200 px-4 text-sm font-semibold text-gray-500">
-                      FCFA
-                    </div>
-
-                  </div>
-
-                  <p className="mt-1.5 text-xs text-gray-400">
-                    Montant fixe que le membre doit cotiser chaque mois.
-                    Indiquez <strong>0 FCFA</strong> si aucune cotisation
-                    fixe n'est prévue. Le membre pourra toujours effectuer
-                    des versements volontaires.
-                  </p>
-
-                  {erreursFormulaire.montant_cotisation && (
-                    <p className="mt-1.5 text-xs text-red-600">
-                      {
-                        erreursFormulaire.montant_cotisation
-                      }
-                    </p>
-                  )}
-
-                </div>
-
-              </div>
-
-              {/* ACTIONS */}
-
-              <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                {/* FERMER */}
 
                 <button
                   type="button"
@@ -2088,31 +1637,836 @@ function Membres() {
                   disabled={
                     enregistrement
                   }
-                  className="rounded-xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-label="Fermer"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white/80 text-xl text-slate-400 shadow-sm transition hover:border-slate-300 hover:bg-white hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  Annuler
+                  ×
                 </button>
 
-                <button
-                  type="submit"
-                  disabled={
-                    enregistrement ||
-                    chargementOptions
-                  }
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-950 focus:outline-none focus:ring-4 focus:ring-emerald-900/20 disabled:cursor-not-allowed disabled:opacity-60"
-                >
+              </div>
 
-                  {enregistrement && (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                  )}
+              {/* =================================================
+                  MINI RESUME DU MEMBRE
+              ================================================= */}
 
-                  {enregistrement
-                    ? "Enregistrement..."
-                    : modeEdition
-                      ? "Enregistrer les modifications"
-                      : "Ajouter le membre"}
+              {modeEdition &&
+                membreSelectionne && (
 
-                </button>
+                  <div className="relative mt-5 grid gap-2 sm:grid-cols-3">
+
+                    <div className="rounded-xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm backdrop-blur">
+
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Statut
+                      </p>
+
+                      <div className="mt-1.5 flex items-center gap-2">
+
+                        <span
+                          className={`h-2 w-2 rounded-full ${
+                            membreSelectionne.actif
+                              ? "bg-emerald-500"
+                              : "bg-slate-400"
+                          }`}
+                        />
+
+                        <span className="text-sm font-semibold text-slate-800">
+                          {membreSelectionne.actif
+                            ? "Membre actif"
+                            : "Membre inactif"}
+                        </span>
+
+                      </div>
+
+                    </div>
+
+                    <div className="rounded-xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm backdrop-blur">
+
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Fonctions
+                      </p>
+
+                      <p className="mt-1.5 text-sm font-semibold text-slate-800">
+                        {formulaire.fonction_ids.length} fonction
+                        {formulaire.fonction_ids.length !== 1
+                          ? "s"
+                          : ""}
+                      </p>
+
+                    </div>
+
+                    <div className="rounded-xl border border-white/80 bg-white/80 px-4 py-3 shadow-sm backdrop-blur">
+
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Kourels
+                      </p>
+
+                      <p className="mt-1.5 text-sm font-semibold text-slate-800">
+                        {formulaire.kourel_ids.length} Kourel
+                        {formulaire.kourel_ids.length !== 1
+                          ? "s"
+                          : ""}
+                      </p>
+
+                    </div>
+
+                  </div>
+
+                )}
+
+            </div>
+
+            {/* ==================================================
+                FORMULAIRE
+            ================================================== */}
+
+            <form
+              onSubmit={
+                handleSubmit
+              }
+              noValidate
+              className="max-h-[calc(100vh-12rem)] overflow-y-auto px-4 py-5 sm:px-8 sm:py-7"
+            >
+
+              <div className="space-y-7">
+
+                {/* =================================================
+                    SECTION 1 — IDENTITE
+                ================================================= */}
+
+                <section>
+
+                  <div className="mb-4 flex items-center gap-3">
+
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-sm font-bold text-emerald-800">
+                      01
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">
+                        Informations personnelles
+                      </h3>
+
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        Identité et coordonnées principales
+                      </p>
+                    </div>
+
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 sm:p-5">
+
+                    <div className="grid gap-5 sm:grid-cols-2">
+
+                      {/* NOM */}
+
+                      <div>
+
+                        <label
+                          htmlFor="nom"
+                          className="mb-2 block text-sm font-semibold text-slate-700"
+                        >
+                          Nom
+                          <span className="ml-1 text-red-500">
+                            *
+                          </span>
+                        </label>
+
+                        <input
+                          id="nom"
+                          name="nom"
+                          type="text"
+                          value={
+                            formulaire.nom
+                          }
+                          onChange={
+                            handleChange
+                          }
+                          disabled={
+                            enregistrement
+                          }
+                          autoComplete="family-name"
+                          placeholder="Ex. Diallo"
+                          className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:ring-4 disabled:cursor-not-allowed disabled:opacity-60 ${
+                            erreursFormulaire.nom
+                              ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
+                              : "border-slate-200 focus:border-emerald-600 focus:ring-emerald-600/10"
+                          }`}
+                        />
+
+                        {erreursFormulaire.nom && (
+                          <p className="mt-1.5 text-xs font-medium text-red-600">
+                            {
+                              erreursFormulaire.nom
+                            }
+                          </p>
+                        )}
+
+                      </div>
+
+                      {/* PRENOM */}
+
+                      <div>
+
+                        <label
+                          htmlFor="prenom"
+                          className="mb-2 block text-sm font-semibold text-slate-700"
+                        >
+                          Prénom
+                          <span className="ml-1 text-red-500">
+                            *
+                          </span>
+                        </label>
+
+                        <input
+                          id="prenom"
+                          name="prenom"
+                          type="text"
+                          value={
+                            formulaire.prenom
+                          }
+                          onChange={
+                            handleChange
+                          }
+                          disabled={
+                            enregistrement
+                          }
+                          autoComplete="given-name"
+                          placeholder="Ex. Moustapha"
+                          className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:ring-4 disabled:cursor-not-allowed disabled:opacity-60 ${
+                            erreursFormulaire.prenom
+                              ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
+                              : "border-slate-200 focus:border-emerald-600 focus:ring-emerald-600/10"
+                          }`}
+                        />
+
+                        {erreursFormulaire.prenom && (
+                          <p className="mt-1.5 text-xs font-medium text-red-600">
+                            {
+                              erreursFormulaire.prenom
+                            }
+                          </p>
+                        )}
+
+                      </div>
+
+                      {/* TELEPHONE */}
+
+                      <div>
+
+                        <label
+                          htmlFor="telephone"
+                          className="mb-2 block text-sm font-semibold text-slate-700"
+                        >
+                          Numéro de téléphone
+                          <span className="ml-1 text-red-500">
+                            *
+                          </span>
+                        </label>
+
+                        <PhoneInput
+                          id="telephone"
+                          international
+                          defaultCountry="SN"
+                          countryCallingCodeEditable={false}
+                          value={
+                            formulaire.telephone ||
+                            undefined
+                          }
+                          onChange={
+                            handleTelephoneChange
+                          }
+                          disabled={
+                            enregistrement
+                          }
+                          autoComplete="tel"
+                          className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-slate-900 shadow-sm transition focus-within:ring-4 ${
+                            erreursFormulaire.telephone
+                              ? "border-red-300 focus-within:border-red-500 focus-within:ring-red-500/10"
+                              : "border-slate-200 focus-within:border-emerald-600 focus-within:ring-emerald-600/10"
+                          }`}
+                        />
+
+                        <p className="mt-1.5 text-xs text-slate-400">
+                          Format international automatique.
+                        </p>
+
+                        {erreursFormulaire.telephone && (
+                          <p className="mt-1.5 text-xs font-medium text-red-600">
+                            {
+                              erreursFormulaire.telephone
+                            }
+                          </p>
+                        )}
+
+                      </div>
+
+                      {/* RESIDENCE */}
+
+                      <div>
+
+                        <label
+                          htmlFor="lieu_residence"
+                          className="mb-2 block text-sm font-semibold text-slate-700"
+                        >
+                          Lieu de résidence
+                          <span className="ml-1 text-red-500">
+                            *
+                          </span>
+                        </label>
+
+                        <input
+                          id="lieu_residence"
+                          name="lieu_residence"
+                          type="text"
+                          value={
+                            formulaire.lieu_residence
+                          }
+                          onChange={
+                            handleChange
+                          }
+                          disabled={
+                            enregistrement
+                          }
+                          autoComplete="address-level2"
+                          placeholder="Ex. Castors, Dakar"
+                          className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:ring-4 disabled:cursor-not-allowed disabled:opacity-60 ${
+                            erreursFormulaire.lieu_residence
+                              ? "border-red-300 focus:border-red-500 focus:ring-red-500/10"
+                              : "border-slate-200 focus:border-emerald-600 focus:ring-emerald-600/10"
+                          }`}
+                        />
+
+                        {erreursFormulaire.lieu_residence && (
+                          <p className="mt-1.5 text-xs font-medium text-red-600">
+                            {
+                              erreursFormulaire.lieu_residence
+                            }
+                          </p>
+                        )}
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                </section>
+
+                {/* =================================================
+                    SECTION 2 — FONCTIONS
+                ================================================= */}
+
+                <section>
+
+                  <div className="mb-4 flex items-center gap-3">
+
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-sm font-bold text-amber-800">
+                      02
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+
+                      <div className="flex flex-wrap items-center gap-2">
+
+                        <h3 className="text-sm font-bold text-slate-900">
+                          Responsabilités
+                        </h3>
+
+                        {formulaire.fonction_ids.length >
+                          0 && (
+                          <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold text-emerald-700">
+                            {formulaire.fonction_ids.length} sélectionnée
+                            {formulaire.fonction_ids.length !== 1
+                              ? "s"
+                              : ""}
+                          </span>
+                        )}
+
+                      </div>
+
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        Fonctions occupées au sein du Dahira
+                      </p>
+
+                    </div>
+
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 sm:p-5">
+
+                    {chargementOptions ? (
+
+                      <div className="flex items-center justify-center py-8">
+
+                        <div className="flex items-center gap-3 text-sm text-slate-500">
+
+                          <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-700" />
+
+                          Chargement des fonctions...
+
+                        </div>
+
+                      </div>
+
+                    ) : fonctions.length === 0 ? (
+
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-700">
+                        Aucune fonction active n'est disponible.
+                      </div>
+
+                    ) : (
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+
+                        {fonctions.map(
+                          (fonction) => {
+
+                            const selectionnee =
+                              formulaire.fonction_ids.includes(
+                                Number(
+                                  fonction.id
+                                )
+                              );
+
+                            return (
+
+                              <label
+                                key={
+                                  fonction.id
+                                }
+                                className={`group relative flex cursor-pointer items-start gap-3 overflow-hidden rounded-xl border p-4 transition-all duration-200 ${
+                                  selectionnee
+                                    ? "border-emerald-300 bg-emerald-50 shadow-sm shadow-emerald-900/5"
+                                    : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-sm"
+                                }`}
+                              >
+
+                                {selectionnee && (
+                                  <div className="absolute inset-y-0 left-0 w-1 bg-emerald-600" />
+                                )}
+
+                                <input
+                                  type="checkbox"
+                                  checked={
+                                    selectionnee
+                                  }
+                                  onChange={() =>
+                                    handleFonctionChange(
+                                      fonction.id
+                                    )
+                                  }
+                                  disabled={
+                                    enregistrement
+                                  }
+                                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-emerald-700 focus:ring-emerald-700"
+                                />
+
+                                <span className="min-w-0 flex-1">
+
+                                  <span className="flex items-center justify-between gap-2">
+
+                                    <span className="block text-sm font-semibold text-slate-800">
+                                      {
+                                        fonction.nom
+                                      }
+                                    </span>
+
+                                    {selectionnee && (
+                                      <span className="shrink-0 text-sm font-bold text-emerald-600">
+                                        ✓
+                                      </span>
+                                    )}
+
+                                  </span>
+
+                                  {fonction.description && (
+                                    <span className="mt-1 block text-xs leading-5 text-slate-500">
+                                      {
+                                        fonction.description
+                                      }
+                                    </span>
+                                  )}
+
+                                </span>
+
+                              </label>
+
+                            );
+                          }
+                        )}
+
+                      </div>
+
+                    )}
+
+                    {erreursFormulaire.fonction_ids && (
+                      <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
+                        {
+                          erreursFormulaire.fonction_ids
+                        }
+                      </p>
+                    )}
+
+                  </div>
+
+                </section>
+
+                {/* =================================================
+                    SECTION 3 — KOURELS
+                ================================================= */}
+
+                <section>
+
+                  <div className="mb-4 flex items-center gap-3">
+
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-sm font-bold text-indigo-800">
+                      03
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+
+                      <div className="flex flex-wrap items-center gap-2">
+
+                        <h3 className="text-sm font-bold text-slate-900">
+                          Kourels
+                        </h3>
+
+                        {formulaire.kourel_ids.length >
+                          0 && (
+                          <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-[10px] font-bold text-indigo-700">
+                            {formulaire.kourel_ids.length} sélectionné
+                            {formulaire.kourel_ids.length !== 1
+                              ? "s"
+                              : ""}
+                          </span>
+                        )}
+
+                      </div>
+
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        Appartenance à un ou plusieurs Kourels
+                      </p>
+
+                    </div>
+
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 sm:p-5">
+
+                    {chargementOptions ? (
+
+                      <div className="flex items-center justify-center py-8">
+
+                        <div className="flex items-center gap-3 text-sm text-slate-500">
+
+                          <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-700" />
+
+                          Chargement des Kourels...
+
+                        </div>
+
+                      </div>
+
+                    ) : kourels.length === 0 ? (
+
+                      <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-500">
+                        Aucun Kourel disponible.
+                      </div>
+
+                    ) : (
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+
+                        {kourels.map(
+                          (kourel) => {
+
+                            const selectionne =
+                              formulaire.kourel_ids.includes(
+                                Number(
+                                  kourel.id
+                                )
+                              );
+
+                            return (
+
+                              <label
+                                key={
+                                  kourel.id
+                                }
+                                className={`group relative flex cursor-pointer items-start gap-3 overflow-hidden rounded-xl border p-4 transition-all duration-200 ${
+                                  selectionne
+                                    ? "border-indigo-300 bg-indigo-50 shadow-sm shadow-indigo-900/5"
+                                    : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-sm"
+                                }`}
+                              >
+
+                                {selectionne && (
+                                  <div className="absolute inset-y-0 left-0 w-1 bg-indigo-600" />
+                                )}
+
+                                <input
+                                  type="checkbox"
+                                  checked={
+                                    selectionne
+                                  }
+                                  onChange={() =>
+                                    handleKourelChange(
+                                      kourel.id
+                                    )
+                                  }
+                                  disabled={
+                                    enregistrement
+                                  }
+                                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-slate-300 text-indigo-700 focus:ring-indigo-700"
+                                />
+
+                                <span className="min-w-0 flex-1">
+
+                                  <span className="flex items-center justify-between gap-2">
+
+                                    <span className="block text-sm font-semibold text-slate-800">
+                                      {
+                                        kourel.nom
+                                      }
+                                    </span>
+
+                                    {selectionne && (
+                                      <span className="shrink-0 text-sm font-bold text-indigo-600">
+                                        ✓
+                                      </span>
+                                    )}
+
+                                  </span>
+
+                                  {kourel.description && (
+                                    <span className="mt-1 block text-xs leading-5 text-slate-500">
+                                      {
+                                        kourel.description
+                                      }
+                                    </span>
+                                  )}
+
+                                </span>
+
+                              </label>
+
+                            );
+                          }
+                        )}
+
+                      </div>
+
+                    )}
+
+                    {formulaire.kourel_ids.length ===
+                      0 && (
+                      <p className="mt-3 text-xs text-slate-400">
+                        Aucun Kourel sélectionné.
+                        L'affiliation est facultative.
+                      </p>
+                    )}
+
+                  </div>
+
+                </section>
+
+                {/* =================================================
+                    SECTION 4 — COTISATION
+                ================================================= */}
+
+                <section>
+
+                  <div className="mb-4 flex items-center gap-3">
+
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-sm font-bold text-emerald-800">
+                      04
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">
+                        Cotisation mensuelle
+                      </h3>
+
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        Montant fixe attendu chaque mois
+                      </p>
+                    </div>
+
+                  </div>
+
+                  <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/70 to-white p-4 sm:p-5">
+
+                    <div className="max-w-xl">
+
+                      <label
+                        htmlFor="montant_cotisation"
+                        className="mb-2 block text-sm font-semibold text-slate-700"
+                      >
+                        Montant de cotisation
+                        <span className="ml-1 text-red-500">
+                          *
+                        </span>
+                      </label>
+
+                      <div
+                        className={`flex overflow-hidden rounded-xl border bg-white shadow-sm transition focus-within:ring-4 ${
+                          erreursFormulaire.montant_cotisation
+                            ? "border-red-300 focus-within:border-red-500 focus-within:ring-red-500/10"
+                            : "border-slate-200 focus-within:border-emerald-600 focus-within:ring-emerald-600/10"
+                        }`}
+                      >
+
+                        <input
+                          id="montant_cotisation"
+                          name="montant_cotisation"
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={
+                            formulaire.montant_cotisation
+                          }
+                          onChange={
+                            handleChange
+                          }
+                          disabled={
+                            enregistrement
+                          }
+                          placeholder="Ex. 5000"
+                          className="min-w-0 flex-1 bg-transparent px-4 py-3.5 text-sm font-semibold text-slate-900 outline-none placeholder:font-normal placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
+                        />
+
+                        <div className="flex items-center border-l border-slate-200 bg-slate-50 px-4 text-xs font-bold tracking-wide text-slate-500">
+                          FCFA
+                        </div>
+
+                      </div>
+
+                      <div className="mt-3 flex items-start gap-2 rounded-xl bg-white/80 px-3 py-2.5">
+
+                        <span className="mt-0.5 text-emerald-600">
+                          ●
+                        </span>
+
+                        <p className="text-xs leading-5 text-slate-500">
+                          Indiquez{" "}
+                          <strong className="text-slate-700">
+                            0 FCFA
+                          </strong>{" "}
+                          si aucune cotisation fixe n'est prévue.
+                          Le membre pourra toujours effectuer
+                          des versements volontaires.
+                        </p>
+
+                      </div>
+
+                      {erreursFormulaire.montant_cotisation && (
+                        <p className="mt-2 text-xs font-medium text-red-600">
+                          {
+                            erreursFormulaire.montant_cotisation
+                          }
+                        </p>
+                      )}
+
+                    </div>
+
+                  </div>
+
+                </section>
+
+              </div>
+
+              {/* =================================================
+                  ERREUR GENERALE
+              ================================================= */}
+
+              {erreur && (
+                <div className="mt-7 rounded-2xl border border-red-200 bg-red-50 p-4">
+
+                  <div className="flex items-start gap-3">
+
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 font-bold text-red-600">
+                      !
+                    </div>
+
+                    <div>
+
+                      <p className="text-sm font-semibold text-red-800">
+                        Impossible d'enregistrer les modifications
+                      </p>
+
+                      <p className="mt-1 text-xs leading-5 text-red-600">
+                        {erreur}
+                      </p>
+
+                    </div>
+
+                  </div>
+
+                </div>
+              )}
+
+              {/* =================================================
+                  FOOTER ACTIONS
+              ================================================= */}
+
+              <div className="sticky bottom-0 z-10 -mx-4 mt-8 border-t border-slate-100 bg-white/95 px-4 pb-1 pt-5 backdrop-blur sm:-mx-8 sm:px-8">
+
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+                  <div className="text-xs text-slate-400">
+
+                    {modeEdition
+                      ? "Les modifications seront enregistrées sur le profil actuel."
+                      : "Les champs marqués d'un * sont obligatoires."}
+
+                  </div>
+
+                  <div className="flex flex-col-reverse gap-3 sm:flex-row">
+
+                    <button
+                      type="button"
+                      onClick={
+                        fermerModal
+                      }
+                      disabled={
+                        enregistrement
+                      }
+                      className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Annuler
+                    </button>
+
+                    <button
+                      type="submit"
+                      disabled={
+                        enregistrement ||
+                        chargementOptions
+                      }
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-800 to-emerald-950 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-900/15 transition hover:-translate-y-0.5 hover:shadow-xl hover:shadow-emerald-900/20 focus:outline-none focus:ring-4 focus:ring-emerald-900/20 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                    >
+
+                      {enregistrement && (
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                      )}
+
+                      {!enregistrement && (
+                        <span className="text-base">
+                          ✓
+                        </span>
+                      )}
+
+                      {enregistrement
+                        ? "Enregistrement..."
+                        : modeEdition
+                          ? "Enregistrer les modifications"
+                          : "Ajouter le membre"}
+
+                    </button>
+
+                  </div>
+
+                </div>
 
               </div>
 
