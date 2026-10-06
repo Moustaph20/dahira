@@ -1,22 +1,41 @@
-
 import api from "./api";
 
 // ============================================================
-// COMMUNICATIONS
+// CONSTANTES
 // ============================================================
 
-/**
- * Récupérer toutes les communications
- *
- * @param {Object} filtres
- * @param {boolean|null} filtres.actif
- * @param {string|null} filtres.type_communication
- * @param {string|null} filtres.priorite
- */
+export const STATUTS_COMMUNICATION = [
+  {
+    value: "BROUILLON",
+    label: "Brouillon",
+  },
+  {
+    value: "PROGRAMMEE",
+    label: "Programmée",
+  },
+  {
+    value: "PUBLIEE",
+    label: "Publiée",
+  },
+  {
+    value: "EXPIREE",
+    label: "Expirée",
+  },
+  {
+    value: "ANNULEE",
+    label: "Annulée",
+  },
+];
+
+// ============================================================
+// LISTE
+// ============================================================
+
 export async function listerCommunications({
   actif = null,
   type_communication = null,
   priorite = null,
+  statut_communication = null,
 } = {}) {
   const params = {};
 
@@ -40,6 +59,14 @@ export async function listerCommunications({
     params.priorite = priorite;
   }
 
+  if (
+    statut_communication !== null &&
+    statut_communication !== undefined &&
+    statut_communication !== ""
+  ) {
+    params.statut_communication = statut_communication;
+  }
+
   const response = await api.get("/communications", {
     params,
   });
@@ -47,22 +74,13 @@ export async function listerCommunications({
   return response.data;
 }
 
-
-// ============================================================
-// ALIAS COMPATIBLE AVEC Communication.jsx
-// ============================================================
-
-/**
- * Ancien nom conservé pour assurer la compatibilité
- * avec les composants qui utilisent getCommunications().
- */
+// Alias conservé pour compatibilité
 export async function getCommunications(filtres = {}) {
   return listerCommunications(filtres);
 }
 
-
 // ============================================================
-// COMMUNICATION PAR ID
+// OBTENIR UNE COMMUNICATION
 // ============================================================
 
 export async function obtenirCommunication(id) {
@@ -73,9 +91,8 @@ export async function obtenirCommunication(id) {
   return response.data;
 }
 
-
 // ============================================================
-// CRÉATION
+// CREER
 // ============================================================
 
 export async function creerCommunication(donnees) {
@@ -87,9 +104,8 @@ export async function creerCommunication(donnees) {
   return response.data;
 }
 
-
 // ============================================================
-// MODIFICATION
+// MODIFIER
 // ============================================================
 
 export async function modifierCommunication(
@@ -104,9 +120,8 @@ export async function modifierCommunication(
   return response.data;
 }
 
-
 // ============================================================
-// MODIFICATION DU STATUT
+// MODIFIER ACTIF / INACTIF
 // ============================================================
 
 export async function modifierStatutCommunication(
@@ -123,9 +138,20 @@ export async function modifierStatutCommunication(
   return response.data;
 }
 
+// ============================================================
+// ANNULER UNE COMMUNICATION PROGRAMMEE
+// ============================================================
+
+export async function annulerCommunication(id) {
+  const response = await api.patch(
+    `/communications/${id}/annuler`
+  );
+
+  return response.data;
+}
 
 // ============================================================
-// SUPPRESSION
+// SUPPRIMER
 // ============================================================
 
 export async function supprimerCommunication(id) {

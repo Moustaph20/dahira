@@ -1,6 +1,3 @@
-
-# app/schemas/communication.py
-
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -26,15 +23,23 @@ PRIORITES_COMMUNICATION = {
     "URGENTE",
 }
 
+STATUTS_COMMUNICATION = {
+    "BROUILLON",
+    "PROGRAMMEE",
+    "PUBLIEE",
+    "EXPIREE",
+    "ANNULEE",
+}
+
 
 # ============================================================
-# SCHEMA DE BASE
+# SCHÉMA DE BASE
 # ============================================================
 
 class CommunicationBase(BaseModel):
     titre: str = Field(
         ...,
-        min_length=2,
+        min_length=1,
         max_length=200,
     )
 
@@ -43,30 +48,51 @@ class CommunicationBase(BaseModel):
         min_length=1,
     )
 
-    type_communication: str = Field(
-        default="ANNONCE",
-        max_length=50,
-    )
+    type_communication: str = "ANNONCE"
 
-    priorite: str = Field(
-        default="NORMALE",
-        max_length=30,
-    )
+    priorite: str = "NORMALE"
+
+    # ========================================================
+    # DATE DE PUBLICATION
+    # ========================================================
+    #
+    # - publication immédiate : maintenant
+    # - programmation : date/heure future
+    #
+    date_publication: datetime | None = None
 
     date_publication: datetime | None = None
 
+    # ========================================================
+    # DATE D'EXPIRATION
+    # ========================================================
+
     date_expiration: datetime | None = None
 
+    # ========================================================
+    # STATUT
+    # ========================================================
+
+    statut: str | None = None
+
+    # ========================================================
+    # ACTIVITÉ
+    # ========================================================
+
     actif: bool = True
+
+    # ========================================================
+    # VALIDATIONS
+    # ========================================================
 
     @field_validator("titre")
     @classmethod
     def valider_titre(cls, value: str) -> str:
         value = value.strip()
 
-        if len(value) < 2:
+        if not value:
             raise ValueError(
-                "Le titre doit contenir au moins 2 caractères."
+                "Le titre de la communication est obligatoire."
             )
 
         return value
@@ -86,12 +112,11 @@ class CommunicationBase(BaseModel):
     @field_validator("type_communication")
     @classmethod
     def valider_type(cls, value: str) -> str:
-        value = value.strip().upper()
+        value = value.upper().strip()
 
         if value not in TYPES_COMMUNICATION:
             raise ValueError(
-                "Type de communication invalide. "
-                f"Valeurs autorisées : {', '.join(sorted(TYPES_COMMUNICATION))}."
+                "Type de communication invalide."
             )
 
         return value
@@ -99,37 +124,49 @@ class CommunicationBase(BaseModel):
     @field_validator("priorite")
     @classmethod
     def valider_priorite(cls, value: str) -> str:
-        value = value.strip().upper()
+        value = value.upper().strip()
 
         if value not in PRIORITES_COMMUNICATION:
             raise ValueError(
-                "Priorité invalide. "
-                f"Valeurs autorisées : {', '.join(sorted(PRIORITES_COMMUNICATION))}."
+                "Priorité de communication invalide."
             )
 
         return value
 
-    @field_validator("date_expiration")
+    @field_validator("statut")
     @classmethod
-    def valider_date_expiration(
-        cls,
-        value: datetime | None,
-    ) -> datetime | None:
+    def valider_statut(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+
+        value = value.upper().strip()
+
+        if value not in STATUTS_COMMUNICATION:
+            raise ValueError(
+                "Statut de communication invalide."
+            )
+
         return value
 
 
 # ============================================================
-# CREATION
+# CRÉATION
 # ============================================================
 
 class CommunicationCreate(CommunicationBase):
     """
-    Données nécessaires à la création d'une communication.
+    Création d'une communication.
+
+    Le statut est normalement déterminé automatiquement par
+    le backend selon la date de publication.
+
+    Le frontend pourra également utiliser explicitement :
+        - BROUILLON
+        - PROGRAMMEE
+        - PUBLIEE
     """
 
-    date_publication: datetime | None = None
-    date_expiration: datetime | None = None
-    actif: bool = True
+    pass
 
 
 # ============================================================
@@ -137,13 +174,9 @@ class CommunicationCreate(CommunicationBase):
 # ============================================================
 
 class CommunicationUpdate(BaseModel):
-    """
-    Tous les champs sont facultatifs lors d'une modification.
-    """
-
     titre: str | None = Field(
         default=None,
-        min_length=2,
+        min_length=1,
         max_length=200,
     )
 
@@ -152,19 +185,15 @@ class CommunicationUpdate(BaseModel):
         min_length=1,
     )
 
-    type_communication: str | None = Field(
-        default=None,
-        max_length=50,
-    )
+    type_communication: str | None = None
 
-    priorite: str | None = Field(
-        default=None,
-        max_length=30,
-    )
+    priorite: str | None = None
 
     date_publication: datetime | None = None
 
     date_expiration: datetime | None = None
+
+    statut: str | None = None
 
     actif: bool | None = None
 
@@ -176,9 +205,9 @@ class CommunicationUpdate(BaseModel):
 
         value = value.strip()
 
-        if len(value) < 2:
+        if not value:
             raise ValueError(
-                "Le titre doit contenir au moins 2 caractères."
+                "Le titre de la communication est obligatoire."
             )
 
         return value
@@ -200,53 +229,60 @@ class CommunicationUpdate(BaseModel):
 
     @field_validator("type_communication")
     @classmethod
-    def valider_type(
-        cls,
-        value: str | None,
-    ) -> str | None:
+    def valider_type(cls, value: str | None) -> str | None:
         if value is None:
             return None
 
-        value = value.strip().upper()
+        value = value.upper().strip()
 
         if value not in TYPES_COMMUNICATION:
             raise ValueError(
-                "Type de communication invalide. "
-                f"Valeurs autorisées : {', '.join(sorted(TYPES_COMMUNICATION))}."
+                "Type de communication invalide."
             )
 
         return value
 
     @field_validator("priorite")
     @classmethod
-    def valider_priorite(
-        cls,
-        value: str | None,
-    ) -> str | None:
+    def valider_priorite(cls, value: str | None) -> str | None:
         if value is None:
             return None
 
-        value = value.strip().upper()
+        value = value.upper().strip()
 
         if value not in PRIORITES_COMMUNICATION:
             raise ValueError(
-                "Priorité invalide. "
-                f"Valeurs autorisées : {', '.join(sorted(PRIORITES_COMMUNICATION))}."
+                "Priorité de communication invalide."
+            )
+
+        return value
+
+    @field_validator("statut")
+    @classmethod
+    def valider_statut(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+
+        value = value.upper().strip()
+
+        if value not in STATUTS_COMMUNICATION:
+            raise ValueError(
+                "Statut de communication invalide."
             )
 
         return value
 
 
 # ============================================================
-# REPONSE API
+# RÉPONSE
 # ============================================================
 
-class CommunicationResponse(CommunicationBase):
-    """
-    Structure renvoyée par l'API.
-    """
-
+class CommunicationResponse(
+    CommunicationBase
+):
     id: int
+
+    push_envoye: bool
 
     created_at: datetime
 
@@ -258,12 +294,16 @@ class CommunicationResponse(CommunicationBase):
 
 
 # ============================================================
-# ACTIVATION / DESACTIVATION
+# MODIFICATION DU STATUT ACTIF
 # ============================================================
 
 class CommunicationStatutUpdate(BaseModel):
-    """
-    Permet d'activer ou de désactiver une communication.
-    """
-
     actif: bool
+
+
+# ============================================================
+# ANNULATION D'UNE COMMUNICATION PROGRAMMÉE
+# ============================================================
+
+class CommunicationAnnulation(BaseModel):
+    statut: str = "ANNULEE"
