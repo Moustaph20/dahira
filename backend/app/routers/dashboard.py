@@ -73,22 +73,44 @@ def premier_jour_du_mois(d: date) -> date:
 
 
 def dernier_jour_du_mois(d: date) -> date:
-    dernier_jour = monthrange(d.year, d.month)[1]
-    return d.replace(day=dernier_jour)
+    dernier_jour = monthrange(
+        d.year,
+        d.month,
+    )[1]
+
+    return d.replace(
+        day=dernier_jour
+    )
 
 
-def ajouter_mois(d: date, nombre: int) -> date:
+def ajouter_mois(
+    d: date,
+    nombre: int,
+) -> date:
     """
     Ajoute un nombre de mois à une date.
     """
-    mois_total = d.year * 12 + (d.month - 1) + nombre
 
-    nouvelle_annee = mois_total // 12
-    nouveau_mois = mois_total % 12 + 1
+    mois_total = (
+        d.year * 12
+        + (d.month - 1)
+        + nombre
+    )
+
+    nouvelle_annee = (
+        mois_total // 12
+    )
+
+    nouveau_mois = (
+        mois_total % 12 + 1
+    )
 
     nouveau_jour = min(
         d.day,
-        monthrange(nouvelle_annee, nouveau_mois)[1],
+        monthrange(
+            nouvelle_annee,
+            nouveau_mois,
+        )[1],
     )
 
     return date(
@@ -103,16 +125,19 @@ def nombre_mois_couverts(
     date_fin: date,
 ) -> int:
     """
-    Compte le nombre de mois calendaires touchés par la période.
+    Compte le nombre de mois calendaires
+    touchés par la période.
 
     Exemple :
+
     01/09/2026 -> 30/09/2026 = 1 mois
     15/09/2026 -> 10/10/2026 = 2 mois
     01/01/2026 -> 31/03/2026 = 3 mois
     """
 
     return (
-        (date_fin.year - date_debut.year) * 12
+        (date_fin.year - date_debut.year)
+        * 12
         + date_fin.month
         - date_debut.month
         + 1
@@ -128,33 +153,45 @@ def normaliser_periode(
     """
 
     if date_debut and date_fin:
+
         if date_debut > date_fin:
             raise HTTPException(
                 status_code=400,
                 detail=(
-                    "La date de début doit être antérieure "
-                    "ou égale à la date de fin."
+                    "La date de début doit être "
+                    "antérieure ou égale à la "
+                    "date de fin."
                 ),
             )
 
         return date_debut, date_fin
 
-    # Si une seule date est fournie,
-    # on considère cela comme une erreur.
+    # --------------------------------------------------------
+    # Une seule date fournie
+    # --------------------------------------------------------
+
     if date_debut and not date_fin:
         raise HTTPException(
             status_code=400,
-            detail="La date de fin est obligatoire.",
+            detail=(
+                "La date de fin est obligatoire."
+            ),
         )
 
     if date_fin and not date_debut:
         raise HTTPException(
             status_code=400,
-            detail="La date de début est obligatoire.",
+            detail=(
+                "La date de début est obligatoire."
+            ),
         )
 
-    # Aucune période :
-    # on retourne None / None.
+    # --------------------------------------------------------
+    # Aucune période
+    #
+    # Cela correspond au filtre "Tout".
+    # --------------------------------------------------------
+
     return None, None
 
 
@@ -179,9 +216,9 @@ def dashboard(
         )
     ),
 ):
-    # ---------------------------------------------------------
-    # Vérification des dates
-    # ---------------------------------------------------------
+    # ========================================================
+    # VÉRIFICATION DES DATES
+    # ========================================================
 
     date_debut, date_fin = normaliser_periode(
         date_debut,
@@ -193,19 +230,21 @@ def dashboard(
         and date_fin is not None
     )
 
-    # ---------------------------------------------------------
-    # Permission financière
-    # ---------------------------------------------------------
+    # ========================================================
+    # PERMISSION FINANCIÈRE
+    # ========================================================
 
-    peut_consulter_finances = utilisateur_a_permission(
-        db=db,
-        utilisateur_id=current_user.id,
-        code_permission="FINANCE_CONSULTER",
+    peut_consulter_finances = (
+        utilisateur_a_permission(
+            db=db,
+            utilisateur_id=current_user.id,
+            code_permission="FINANCE_CONSULTER",
+        )
     )
 
-    # ---------------------------------------------------------
-    # Nombre de membres actifs
-    # ---------------------------------------------------------
+    # ========================================================
+    # NOMBRE DE MEMBRES ACTIFS
+    # ========================================================
 
     nombre_membres = (
         db.query(
@@ -218,9 +257,9 @@ def dashboard(
         or 0
     )
 
-    # ---------------------------------------------------------
-    # Valeurs financières par défaut
-    # ---------------------------------------------------------
+    # ========================================================
+    # VALEURS FINANCIÈRES PAR DÉFAUT
+    # ========================================================
 
     total_cotisations_estimees = 0.0
     total_cotisations_encaissees = 0.0
@@ -229,76 +268,99 @@ def dashboard(
     total_recettes = 0.0
     solde = 0.0
 
-    # ---------------------------------------------------------
+    # ========================================================
     # CALCULS FINANCIERS
-    # ---------------------------------------------------------
+    # ========================================================
 
     if peut_consulter_finances:
 
-        # =====================================================
-        # 1. COTISATIONS PRÉVUES
-        # =====================================================
+        # ====================================================
+        # 1. COTISATIONS ESTIMÉES
+        # ====================================================
         #
-        # On part de TOUS les membres actifs.
+        # IMPORTANT :
+        #
+        # On ne recalcule plus les cotisations avec :
+        #
+        # membres actifs × montant actuel × nombre de mois
+        #
+        # On utilise maintenant les cotisations réellement
+        # enregistrées dans la table Cotisation.
+        #
+        # Cela permet de conserver l'historique réel.
         #
         # Exemple :
         #
-        # Membre A = 7 000
-        # Membre B = 5 000
-        # Membre C = 0
+        # Janvier  : 5 000
+        # Février  : 5 000
+        # Mars     : 7 000
         #
-        # Prévision mensuelle = 12 000
+        # Total = 17 000
         #
-        # Si période = septembre + octobre :
-        #
-        # 12 000 x 2 = 24 000
-        #
-        # Si aucune période n'est sélectionnée :
-        # on conserve le comportement actuel :
-        # prévision mensuelle.
-        # =====================================================
+        # Même si le montant actuel du membre est ensuite
+        # modifié à 10 000 FCFA.
+        # ====================================================
 
-        total_mensuel_cotisations = (
+        requete_cotisations = (
             db.query(
                 func.coalesce(
                     func.sum(
-                        Membre.montant_cotisation
+                        Cotisation.montant
                     ),
                     0,
                 )
             )
             .filter(
-                Membre.actif.is_(True),
-                Membre.montant_cotisation > 0,
+                Cotisation.actif.is_(True)
             )
-            .scalar()
+        )
+
+        # ----------------------------------------------------
+        # FILTRE DE PÉRIODE
+        # ----------------------------------------------------
+        #
+        # Si aucune période :
+        # toutes les cotisations historiques actives.
+        #
+        # Si période :
+        # uniquement les cotisations de cette période.
+        #
+        # La borne supérieure est exclusive.
+        #
+        # Exemple :
+        #
+        # 01/09 -> 30/09
+        #
+        # devient :
+        #
+        # >= 01/09
+        # < 01/10
+        #
+        # Ainsi toute la journée du 30/09 est incluse.
+        # ----------------------------------------------------
+
+        if periode_active:
+            lendemain_date_fin = (
+                date_fin + timedelta(days=1)
+            )
+
+            requete_cotisations = (
+                requete_cotisations.filter(
+                    Cotisation.date_cotisation
+                    >= date_debut,
+                    Cotisation.date_cotisation
+                    < lendemain_date_fin,
+                )
+            )
+
+        total_cotisations_estimees = (
+            requete_cotisations.scalar()
             or 0
         )
 
-        total_mensuel_cotisations = float(
-            total_mensuel_cotisations
-        )
-
-        if periode_active:
-            mois_couverts = nombre_mois_couverts(
-                date_debut,
-                date_fin,
-            )
-
-            total_cotisations_estimees = (
-                total_mensuel_cotisations
-                * mois_couverts
-            )
-        else:
-            mois_couverts = 1
-
-            total_cotisations_estimees = (
-                total_mensuel_cotisations
-            )
-
-        # =====================================================
+        # ====================================================
         # 2. PAIEMENTS RÉELLEMENT ENCAISSÉS
-        # =====================================================
+        # ====================================================
 
         requete_paiements = (
             db.query(
@@ -314,10 +376,22 @@ def dashboard(
             )
         )
 
+        # ----------------------------------------------------
+        # FILTRE DE PÉRIODE
+        # ----------------------------------------------------
+
         if periode_active:
-            requete_paiements = requete_paiements.filter(
-                Paiement.date_paiement >= date_debut,
-                Paiement.date_paiement <= date_fin,
+            lendemain_date_fin = (
+                date_fin + timedelta(days=1)
+            )
+
+            requete_paiements = (
+                requete_paiements.filter(
+                    Paiement.date_paiement
+                    >= date_debut,
+                    Paiement.date_paiement
+                    < lendemain_date_fin,
+                )
             )
 
         total_cotisations_encaissees = (
@@ -325,9 +399,9 @@ def dashboard(
             or 0
         )
 
-        # =====================================================
+        # ====================================================
         # 3. AIDES EXTÉRIEURES
-        # =====================================================
+        # ====================================================
 
         requete_aides = (
             db.query(
@@ -343,10 +417,22 @@ def dashboard(
             )
         )
 
+        # ----------------------------------------------------
+        # FILTRE DE PÉRIODE
+        # ----------------------------------------------------
+
         if periode_active:
-            requete_aides = requete_aides.filter(
-                AideExterieure.date_aide >= date_debut,
-                AideExterieure.date_aide <= date_fin,
+            lendemain_date_fin = (
+                date_fin + timedelta(days=1)
+            )
+
+            requete_aides = (
+                requete_aides.filter(
+                    AideExterieure.date_aide
+                    >= date_debut,
+                    AideExterieure.date_aide
+                    < lendemain_date_fin,
+                )
             )
 
         total_aides_exterieures = (
@@ -354,9 +440,9 @@ def dashboard(
             or 0
         )
 
-        # =====================================================
+        # ====================================================
         # 4. DÉPENSES
-        # =====================================================
+        # ====================================================
 
         requete_depenses = (
             db.query(
@@ -372,10 +458,22 @@ def dashboard(
             )
         )
 
+        # ----------------------------------------------------
+        # FILTRE DE PÉRIODE
+        # ----------------------------------------------------
+
         if periode_active:
-            requete_depenses = requete_depenses.filter(
-                Depense.date_depense >= date_debut,
-                Depense.date_depense <= date_fin,
+            lendemain_date_fin = (
+                date_fin + timedelta(days=1)
+            )
+
+            requete_depenses = (
+                requete_depenses.filter(
+                    Depense.date_depense
+                    >= date_debut,
+                    Depense.date_depense
+                    < lendemain_date_fin,
+                )
             )
 
         total_depenses = (
@@ -383,9 +481,9 @@ def dashboard(
             or 0
         )
 
-        # =====================================================
-        # CONVERSION
-        # =====================================================
+        # ====================================================
+        # CONVERSION EN FLOAT
+        # ====================================================
 
         total_cotisations_estimees = float(
             total_cotisations_estimees
@@ -403,27 +501,38 @@ def dashboard(
             total_depenses
         )
 
-        # =====================================================
+        # ====================================================
         # 5. TOTAL RECETTES
-        # =====================================================
+        # ====================================================
+        #
+        # Les recettes correspondent à l'argent réellement
+        # entré :
+        #
+        # cotisations encaissées
+        # +
+        # aides extérieures
+        #
+        # Les cotisations simplement prévues/estimées ne sont
+        # PAS ajoutées aux recettes.
+        # ====================================================
 
         total_recettes = (
             total_cotisations_encaissees
             + total_aides_exterieures
         )
 
-        # =====================================================
-        # 6. SOLDE
-        # =====================================================
+        # ====================================================
+        # 6. SOLDE DISPONIBLE
+        # ====================================================
 
         solde = (
             total_recettes
             - total_depenses
         )
 
-    # =========================================================
+    # ========================================================
     # RÉPONSE
-    # =========================================================
+    # ========================================================
 
     return {
         "message": (
@@ -436,15 +545,15 @@ def dashboard(
             peut_consulter_finances
         ),
 
-        # -----------------------------------------------------
-        # Membres
-        # -----------------------------------------------------
+        # ----------------------------------------------------
+        # MEMBRES
+        # ----------------------------------------------------
 
         "membres_actifs": nombre_membres,
 
-        # -----------------------------------------------------
-        # Informations période
-        # -----------------------------------------------------
+        # ----------------------------------------------------
+        # INFORMATIONS PÉRIODE
+        # ----------------------------------------------------
 
         "periode_active": periode_active,
 
@@ -469,9 +578,9 @@ def dashboard(
             else 1
         ),
 
-        # -----------------------------------------------------
-        # Finances
-        # -----------------------------------------------------
+        # ----------------------------------------------------
+        # FINANCES
+        # ----------------------------------------------------
 
         "cotisations_estimees": (
             total_cotisations_estimees
