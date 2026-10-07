@@ -1,11 +1,13 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
-
-# ============================================================
-# VALEURS AUTORISÉES
-# ============================================================
 
 TYPES_COMMUNICATION = {
     "ANNONCE",
@@ -33,61 +35,47 @@ STATUTS_COMMUNICATION = {
 
 
 # ============================================================
-# SCHÉMA DE BASE
+# BASE
 # ============================================================
 
 class CommunicationBase(BaseModel):
+
     titre: str = Field(
         ...,
         min_length=1,
         max_length=200,
     )
 
-    contenu: str = Field(
-        ...,
-        min_length=1,
+    # OPTIONNEL
+    contenu: str | None = Field(
+        default=None,
+    )
+
+    # OPTIONNEL
+    audio_url: str | None = Field(
+        default=None,
     )
 
     type_communication: str = "ANNONCE"
 
     priorite: str = "NORMALE"
 
-    # ========================================================
-    # DATE DE PUBLICATION
-    # ========================================================
-    #
-    # - publication immédiate : maintenant
-    # - programmation : date/heure future
-    #
     date_publication: datetime | None = None
-
-    date_publication: datetime | None = None
-
-    # ========================================================
-    # DATE D'EXPIRATION
-    # ========================================================
 
     date_expiration: datetime | None = None
 
-    # ========================================================
-    # STATUT
-    # ========================================================
-
     statut: str | None = None
-
-    # ========================================================
-    # ACTIVITÉ
-    # ========================================================
 
     actif: bool = True
 
-    # ========================================================
-    # VALIDATIONS
-    # ========================================================
+    # --------------------------------------------------------
+    # TITRE
+    # --------------------------------------------------------
 
     @field_validator("titre")
     @classmethod
     def valider_titre(cls, value: str) -> str:
+
         value = value.strip()
 
         if not value:
@@ -97,21 +85,32 @@ class CommunicationBase(BaseModel):
 
         return value
 
+    # --------------------------------------------------------
+    # CONTENU
+    # --------------------------------------------------------
+
     @field_validator("contenu")
     @classmethod
-    def valider_contenu(cls, value: str) -> str:
+    def valider_contenu(
+        cls,
+        value: str | None,
+    ) -> str | None:
+
+        if value is None:
+            return None
+
         value = value.strip()
 
-        if not value:
-            raise ValueError(
-                "Le contenu de la communication est obligatoire."
-            )
+        return value or None
 
-        return value
+    # --------------------------------------------------------
+    # TYPE
+    # --------------------------------------------------------
 
     @field_validator("type_communication")
     @classmethod
     def valider_type(cls, value: str) -> str:
+
         value = value.upper().strip()
 
         if value not in TYPES_COMMUNICATION:
@@ -121,9 +120,14 @@ class CommunicationBase(BaseModel):
 
         return value
 
+    # --------------------------------------------------------
+    # PRIORITE
+    # --------------------------------------------------------
+
     @field_validator("priorite")
     @classmethod
     def valider_priorite(cls, value: str) -> str:
+
         value = value.upper().strip()
 
         if value not in PRIORITES_COMMUNICATION:
@@ -133,9 +137,17 @@ class CommunicationBase(BaseModel):
 
         return value
 
+    # --------------------------------------------------------
+    # STATUT
+    # --------------------------------------------------------
+
     @field_validator("statut")
     @classmethod
-    def valider_statut(cls, value: str | None) -> str | None:
+    def valider_statut(
+        cls,
+        value: str | None,
+    ) -> str | None:
+
         if value is None:
             return None
 
@@ -148,24 +160,50 @@ class CommunicationBase(BaseModel):
 
         return value
 
+    # --------------------------------------------------------
+    # REGLE PRINCIPALE
+    # --------------------------------------------------------
+    # Il faut au minimum :
+    #
+    # - un texte
+    # OU
+    # - un message vocal
+    #
+    # Texte + vocal est également autorisé.
+    # --------------------------------------------------------
+
+    @model_validator(mode="after")
+    def valider_contenu_ou_audio(self):
+
+        contenu = (
+            self.contenu.strip()
+            if self.contenu
+            else ""
+        )
+
+        audio = (
+            self.audio_url.strip()
+            if self.audio_url
+            else ""
+        )
+
+        if not contenu and not audio:
+            raise ValueError(
+                "La communication doit contenir "
+                "un message texte ou un message vocal."
+            )
+
+        self.contenu = contenu or None
+        self.audio_url = audio or None
+
+        return self
+
 
 # ============================================================
-# CRÉATION
+# CREATION
 # ============================================================
 
 class CommunicationCreate(CommunicationBase):
-    """
-    Création d'une communication.
-
-    Le statut est normalement déterminé automatiquement par
-    le backend selon la date de publication.
-
-    Le frontend pourra également utiliser explicitement :
-        - BROUILLON
-        - PROGRAMMEE
-        - PUBLIEE
-    """
-
     pass
 
 
@@ -174,6 +212,7 @@ class CommunicationCreate(CommunicationBase):
 # ============================================================
 
 class CommunicationUpdate(BaseModel):
+
     titre: str | None = Field(
         default=None,
         min_length=1,
@@ -182,7 +221,10 @@ class CommunicationUpdate(BaseModel):
 
     contenu: str | None = Field(
         default=None,
-        min_length=1,
+    )
+
+    audio_url: str | None = Field(
+        default=None,
     )
 
     type_communication: str | None = None
@@ -197,9 +239,17 @@ class CommunicationUpdate(BaseModel):
 
     actif: bool | None = None
 
+    # --------------------------------------------------------
+    # TITRE
+    # --------------------------------------------------------
+
     @field_validator("titre")
     @classmethod
-    def valider_titre(cls, value: str | None) -> str | None:
+    def valider_titre(
+        cls,
+        value: str | None,
+    ) -> str | None:
+
         if value is None:
             return None
 
@@ -212,24 +262,53 @@ class CommunicationUpdate(BaseModel):
 
         return value
 
+    # --------------------------------------------------------
+    # CONTENU
+    # --------------------------------------------------------
+
     @field_validator("contenu")
     @classmethod
-    def valider_contenu(cls, value: str | None) -> str | None:
+    def valider_contenu(
+        cls,
+        value: str | None,
+    ) -> str | None:
+
         if value is None:
             return None
 
         value = value.strip()
 
-        if not value:
-            raise ValueError(
-                "Le contenu de la communication est obligatoire."
-            )
+        return value or None
 
-        return value
+    # --------------------------------------------------------
+    # AUDIO
+    # --------------------------------------------------------
+
+    @field_validator("audio_url")
+    @classmethod
+    def valider_audio_url(
+        cls,
+        value: str | None,
+    ) -> str | None:
+
+        if value is None:
+            return None
+
+        value = value.strip()
+
+        return value or None
+
+    # --------------------------------------------------------
+    # TYPE
+    # --------------------------------------------------------
 
     @field_validator("type_communication")
     @classmethod
-    def valider_type(cls, value: str | None) -> str | None:
+    def valider_type(
+        cls,
+        value: str | None,
+    ) -> str | None:
+
         if value is None:
             return None
 
@@ -242,9 +321,17 @@ class CommunicationUpdate(BaseModel):
 
         return value
 
+    # --------------------------------------------------------
+    # PRIORITE
+    # --------------------------------------------------------
+
     @field_validator("priorite")
     @classmethod
-    def valider_priorite(cls, value: str | None) -> str | None:
+    def valider_priorite(
+        cls,
+        value: str | None,
+    ) -> str | None:
+
         if value is None:
             return None
 
@@ -257,9 +344,17 @@ class CommunicationUpdate(BaseModel):
 
         return value
 
+    # --------------------------------------------------------
+    # STATUT
+    # --------------------------------------------------------
+
     @field_validator("statut")
     @classmethod
-    def valider_statut(cls, value: str | None) -> str | None:
+    def valider_statut(
+        cls,
+        value: str | None,
+    ) -> str | None:
+
         if value is None:
             return None
 
@@ -274,12 +369,11 @@ class CommunicationUpdate(BaseModel):
 
 
 # ============================================================
-# RÉPONSE
+# REPONSE
 # ============================================================
 
-class CommunicationResponse(
-    CommunicationBase
-):
+class CommunicationResponse(CommunicationBase):
+
     id: int
 
     push_envoye: bool
@@ -289,21 +383,23 @@ class CommunicationResponse(
     updated_at: datetime
 
     model_config = ConfigDict(
-        from_attributes=True,
+        from_attributes=True
     )
 
 
 # ============================================================
-# MODIFICATION DU STATUT ACTIF
+# MODIFICATION STATUT
 # ============================================================
 
 class CommunicationStatutUpdate(BaseModel):
+
     actif: bool
 
 
 # ============================================================
-# ANNULATION D'UNE COMMUNICATION PROGRAMMÉE
+# ANNULATION
 # ============================================================
 
 class CommunicationAnnulation(BaseModel):
+
     statut: str = "ANNULEE"

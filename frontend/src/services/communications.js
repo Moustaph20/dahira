@@ -1,7 +1,7 @@
 import api from "./api";
 
 // ============================================================
-// CONSTANTES
+// STATUTS
 // ============================================================
 
 export const STATUTS_COMMUNICATION = [
@@ -39,7 +39,10 @@ export async function listerCommunications({
 } = {}) {
   const params = {};
 
-  if (actif !== null && actif !== undefined) {
+  if (
+    actif !== null &&
+    actif !== undefined
+  ) {
     params.actif = actif;
   }
 
@@ -48,7 +51,8 @@ export async function listerCommunications({
     type_communication !== undefined &&
     type_communication !== ""
   ) {
-    params.type_communication = type_communication;
+    params.type_communication =
+      type_communication;
   }
 
   if (
@@ -64,26 +68,37 @@ export async function listerCommunications({
     statut_communication !== undefined &&
     statut_communication !== ""
   ) {
-    params.statut_communication = statut_communication;
+    params.statut_communication =
+      statut_communication;
   }
 
-  const response = await api.get("/communications", {
-    params,
-  });
+  const response = await api.get(
+    "/communications",
+    {
+      params,
+    }
+  );
 
   return response.data;
 }
 
-// Alias conservé pour compatibilité
-export async function getCommunications(filtres = {}) {
+// ============================================================
+// ALIAS
+// ============================================================
+
+export async function getCommunications(
+  filtres = {}
+) {
   return listerCommunications(filtres);
 }
 
 // ============================================================
-// OBTENIR UNE COMMUNICATION
+// DETAIL
 // ============================================================
 
-export async function obtenirCommunication(id) {
+export async function obtenirCommunication(
+  id
+) {
   const response = await api.get(
     `/communications/${id}`
   );
@@ -92,10 +107,12 @@ export async function obtenirCommunication(id) {
 }
 
 // ============================================================
-// CREER
+// CREATION
 // ============================================================
 
-export async function creerCommunication(donnees) {
+export async function creerCommunication(
+  donnees
+) {
   const response = await api.post(
     "/communications",
     donnees
@@ -105,7 +122,7 @@ export async function creerCommunication(donnees) {
 }
 
 // ============================================================
-// MODIFIER
+// MODIFICATION
 // ============================================================
 
 export async function modifierCommunication(
@@ -121,7 +138,7 @@ export async function modifierCommunication(
 }
 
 // ============================================================
-// MODIFIER ACTIF / INACTIF
+// MODIFIER STATUT
 // ============================================================
 
 export async function modifierStatutCommunication(
@@ -139,10 +156,12 @@ export async function modifierStatutCommunication(
 }
 
 // ============================================================
-// ANNULER UNE COMMUNICATION PROGRAMMEE
+// ANNULER
 // ============================================================
 
-export async function annulerCommunication(id) {
+export async function annulerCommunication(
+  id
+) {
   const response = await api.patch(
     `/communications/${id}/annuler`
   );
@@ -154,8 +173,38 @@ export async function annulerCommunication(id) {
 // SUPPRIMER
 // ============================================================
 
-export async function supprimerCommunication(id) {
+export async function supprimerCommunication(
+  id
+) {
   await api.delete(
     `/communications/${id}`
   );
+}
+
+// ============================================================
+// UPLOAD AUDIO
+// ============================================================
+
+export async function televerserAudioCommunication(
+  fichier
+) {
+  const formulaire = new FormData();
+
+  formulaire.append(
+    "fichier",
+    fichier
+  );
+
+  const response = await api.post(
+    "/communications/audio",
+    formulaire,
+    {
+      headers: {
+        "Content-Type":
+          "multipart/form-data",
+      },
+    }
+  );
+
+  return response.data;
 }

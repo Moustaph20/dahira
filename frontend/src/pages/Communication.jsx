@@ -1,5 +1,4 @@
-
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   AlertCircle,
@@ -11,15 +10,24 @@ import {
   ChevronDown,
   Clock3,
   Edit,
+  FileAudio,
   FileText,
   Filter,
   Info,
   Megaphone,
+  Mic,
+  MicOff,
   MessageSquare,
+  Pause,
+  Play,
   Plus,
   RefreshCw,
+  RotateCcw,
   Send,
+  Square,
   Trash2,
+  Upload,
+  Volume2,
   X,
   XCircle,
 } from "lucide-react";
@@ -33,7 +41,9 @@ import {
   modifierStatutCommunication,
   annulerCommunication,
   supprimerCommunication,
+  televerserAudioCommunication,
 } from "../services/communications";
+
 
 // ============================================================
 // CONSTANTES
@@ -111,6 +121,7 @@ const STATUTS_COMMUNICATION = [
 const FORMULAIRE_INITIAL = {
   titre: "",
   contenu: "",
+  audio_url: null,
   type_communication: "ANNONCE",
   priorite: "NORMALE",
   mode_publication: "IMMEDIATE",
@@ -119,6 +130,7 @@ const FORMULAIRE_INITIAL = {
   actif: true,
   statut: "PUBLIEE",
 };
+
 
 // ============================================================
 // UTILITAIRES
@@ -144,6 +156,7 @@ function formaterDate(date) {
   });
 }
 
+
 function formaterDateCourte(date) {
   if (!date) {
     return "—";
@@ -161,6 +174,7 @@ function formaterDateCourte(date) {
     year: "numeric",
   });
 }
+
 
 function formaterDatePourInput(date) {
   if (!date) {
@@ -182,6 +196,7 @@ function formaterDatePourInput(date) {
   return `${annee}-${mois}-${jour}T${heures}:${minutes}`;
 }
 
+
 function obtenirLabelType(type) {
   const resultat = TYPES_COMMUNICATION.find(
     (item) => item.value === type
@@ -189,6 +204,7 @@ function obtenirLabelType(type) {
 
   return resultat?.label || type || "Autre";
 }
+
 
 function obtenirLabelPriorite(priorite) {
   const resultat = PRIORITES_COMMUNICATION.find(
@@ -198,6 +214,7 @@ function obtenirLabelPriorite(priorite) {
   return resultat?.label || priorite || "Normale";
 }
 
+
 function obtenirLabelStatut(statut) {
   const resultat = STATUTS_COMMUNICATION.find(
     (item) => item.value === statut
@@ -205,6 +222,7 @@ function obtenirLabelStatut(statut) {
 
   return resultat?.label || statut || "Inconnu";
 }
+
 
 function obtenirClassesPriorite(priorite) {
   switch (priorite) {
@@ -218,6 +236,7 @@ function obtenirClassesPriorite(priorite) {
       return "bg-slate-50 text-slate-600 border-slate-100";
   }
 }
+
 
 function obtenirClassesType(type) {
   switch (type) {
@@ -241,6 +260,7 @@ function obtenirClassesType(type) {
   }
 }
 
+
 function obtenirClassesStatut(statut) {
   switch (statut) {
     case "BROUILLON":
@@ -263,6 +283,7 @@ function obtenirClassesStatut(statut) {
   }
 }
 
+
 function obtenirIconeStatut(statut) {
   switch (statut) {
     case "BROUILLON":
@@ -284,6 +305,7 @@ function obtenirIconeStatut(statut) {
       return Info;
   }
 }
+
 
 function extraireMessageErreur(error) {
   if (
@@ -315,6 +337,30 @@ function extraireMessageErreur(error) {
 
   return error?.message || "Une erreur est survenue.";
 }
+
+
+function obtenirFormatAudio() {
+  if (
+    typeof MediaRecorder === "undefined"
+  ) {
+    return null;
+  }
+
+  const formats = [
+    "audio/webm;codecs=opus",
+    "audio/webm",
+    "audio/ogg;codecs=opus",
+    "audio/ogg",
+    "audio/mp4",
+  ];
+
+  return (
+    formats.find((format) =>
+      MediaRecorder.isTypeSupported(format)
+    ) || ""
+  );
+}
+
 
 // ============================================================
 // CARTE STATISTIQUE
@@ -353,7 +399,8 @@ function StatistiqueCarte({
     },
   };
 
-  const theme = couleurs[couleur] || couleurs.slate;
+  const theme =
+    couleurs[couleur] || couleurs.slate;
 
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-5">
@@ -377,6 +424,836 @@ function StatistiqueCarte({
     </div>
   );
 }
+
+
+// ============================================================
+// COMPOSANT LECTEUR AUDIO
+// ============================================================
+
+function LecteurAudio({
+  audioUrl,
+  compact = false,
+}) {
+  const audioRef = useRef(null);
+
+  const [enLecture, setEnLecture] =
+    useState(false);
+
+  const [progression, setProgression] =
+    useState(0);
+
+  const [duree, setDuree] =
+    useState(0);
+
+  const [tempsActuel, setTempsActuel] =
+    useState(0);
+
+  function basculerLecture() {
+    if (!audioRef.current) {
+      return;
+    }
+
+    if (enLecture) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play().catch(() => {});
+    }
+  }
+
+  function handleTimeUpdate() {
+    if (!audioRef.current) {
+      return;
+    }
+
+    const current =
+      audioRef.current.currentTime || 0;
+
+    const duration =
+      audioRef.current.duration || 0;
+
+    setTempsActuel(current);
+
+    setProgression(
+      duration > 0
+        ? (current / duration) * 100
+        : 0
+    );
+  }
+
+  function handleLoadedMetadata() {
+    if (!audioRef.current) {
+      return;
+    }
+
+    setDuree(
+      audioRef.current.duration || 0
+    );
+  }
+
+  function handleEnded() {
+    setEnLecture(false);
+    setProgression(0);
+    setTempsActuel(0);
+
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+    }
+  }
+
+  function changerPosition(event) {
+    if (!audioRef.current) {
+      return;
+    }
+
+    const valeur =
+      Number(event.target.value);
+
+    const duration =
+      audioRef.current.duration || 0;
+
+    audioRef.current.currentTime =
+      (valeur / 100) * duration;
+  }
+
+  function formaterTemps(secondes) {
+    if (!Number.isFinite(secondes)) {
+      return "00:00";
+    }
+
+    const minutes = Math.floor(
+      secondes / 60
+    );
+
+    const secondesRestantes = Math.floor(
+      secondes % 60
+    );
+
+    return `${String(minutes).padStart(
+      2,
+      "0"
+    )}:${String(
+      secondesRestantes
+    ).padStart(2, "0")}`;
+  }
+
+  if (!audioUrl) {
+    return null;
+  }
+
+  return (
+    <div
+      className={`rounded-2xl border border-emerald-100 bg-emerald-50/70 ${
+        compact ? "p-3" : "p-4"
+      }`}
+    >
+      <audio
+        ref={audioRef}
+        src={audioUrl}
+        preload="metadata"
+        onPlay={() =>
+          setEnLecture(true)
+        }
+        onPause={() =>
+          setEnLecture(false)
+        }
+        onTimeUpdate={
+          handleTimeUpdate
+        }
+        onLoadedMetadata={
+          handleLoadedMetadata
+        }
+        onEnded={handleEnded}
+      />
+
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={basculerLecture}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-white shadow-sm transition hover:bg-emerald-800"
+          title={
+            enLecture
+              ? "Pause"
+              : "Lire le message vocal"
+          }
+        >
+          {enLecture ? (
+            <Pause size={18} />
+          ) : (
+            <Play
+              size={18}
+              className="ml-0.5"
+            />
+          )}
+        </button>
+
+        <div className="min-w-0 flex-1">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Volume2
+                size={16}
+                className="shrink-0 text-emerald-700"
+              />
+
+              <span className="text-xs font-bold text-emerald-800">
+                Message vocal
+              </span>
+            </div>
+
+            <span className="text-[11px] font-semibold text-emerald-700">
+              {formaterTemps(tempsActuel)}
+              {" / "}
+              {formaterTemps(duree)}
+            </span>
+          </div>
+
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={progression}
+            onChange={changerPosition}
+            className="h-1.5 w-full cursor-pointer accent-emerald-700"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ============================================================
+// COMPOSANT ENREGISTREUR VOCAL
+// ============================================================
+
+function EnregistreurVocal({
+  audioUrl,
+  onAudioChange,
+  erreur,
+  disabled = false,
+}) {
+  const mediaRecorderRef =
+    useRef(null);
+
+  const streamRef =
+    useRef(null);
+
+  const chunksRef =
+    useRef([]);
+
+  const audioPreviewRef =
+    useRef(null);
+
+  const [enregistrement, setEnregistrement] =
+    useState(false);
+
+  const [envoi, setEnvoi] =
+    useState(false);
+
+  const [temps, setTemps] =
+    useState(0);
+
+  const [audioLocalUrl, setAudioLocalUrl] =
+    useState(null);
+
+  const [erreurLocale, setErreurLocale] =
+    useState("");
+
+  const [messageLocal, setMessageLocal] =
+    useState("");
+
+  const timerRef =
+    useRef(null);
+
+  // ----------------------------------------------------------
+  // NETTOYAGE
+  // ----------------------------------------------------------
+
+  useEffect(() => {
+    return () => {
+      arreterFluxMicrophone();
+
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+
+      if (audioLocalUrl) {
+        URL.revokeObjectURL(
+          audioLocalUrl
+        );
+      }
+    };
+  }, [audioLocalUrl]);
+
+  // ----------------------------------------------------------
+  // ARRÊTER MICROPHONE
+  // ----------------------------------------------------------
+
+  function arreterFluxMicrophone() {
+    if (streamRef.current) {
+      streamRef.current
+        .getTracks()
+        .forEach((track) => {
+          track.stop();
+        });
+
+      streamRef.current = null;
+    }
+  }
+
+  // ----------------------------------------------------------
+  // TIMER
+  // ----------------------------------------------------------
+
+  function demarrerTimer() {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+
+    setTemps(0);
+
+    timerRef.current =
+      setInterval(() => {
+        setTemps((ancien) => {
+          if (ancien >= 600) {
+            return ancien;
+          }
+
+          return ancien + 1;
+        });
+      }, 1000);
+  }
+
+  function arreterTimer() {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }
+
+  function formaterTemps(secondes) {
+    const minutes = Math.floor(
+      secondes / 60
+    );
+
+    const secondesRestantes =
+      secondes % 60;
+
+    return `${String(minutes).padStart(
+      2,
+      "0"
+    )}:${String(
+      secondesRestantes
+    ).padStart(2, "0")}`;
+  }
+
+  // ----------------------------------------------------------
+  // DÉMARRER
+  // ----------------------------------------------------------
+
+  async function demarrerEnregistrement() {
+    if (disabled || enregistrement) {
+      return;
+    }
+
+    setErreurLocale("");
+    setMessageLocal("");
+
+    if (
+      typeof navigator ===
+        "undefined" ||
+      !navigator.mediaDevices ||
+      !navigator.mediaDevices
+        .getUserMedia
+    ) {
+      setErreurLocale(
+        "Votre navigateur ne permet pas l'accès au microphone."
+      );
+
+      return;
+    }
+
+    if (
+      typeof MediaRecorder ===
+      "undefined"
+    ) {
+      setErreurLocale(
+        "L'enregistrement vocal n'est pas pris en charge par ce navigateur."
+      );
+
+      return;
+    }
+
+    try {
+      const stream =
+        await navigator.mediaDevices.getUserMedia(
+          {
+            audio: true,
+          }
+        );
+
+      streamRef.current = stream;
+
+      const mimeType =
+        obtenirFormatAudio();
+
+      const options = mimeType
+        ? {
+            mimeType,
+          }
+        : undefined;
+
+      const recorder =
+        new MediaRecorder(
+          stream,
+          options
+        );
+
+      mediaRecorderRef.current =
+        recorder;
+
+      chunksRef.current = [];
+
+      recorder.ondataavailable =
+        (event) => {
+          if (
+            event.data &&
+            event.data.size > 0
+          ) {
+            chunksRef.current.push(
+              event.data
+            );
+          }
+        };
+
+      recorder.onerror = () => {
+        setErreurLocale(
+          "Une erreur est survenue pendant l'enregistrement."
+        );
+
+        arreterEnregistrement();
+      };
+
+      recorder.onstop = async () => {
+        arreterTimer();
+        arreterFluxMicrophone();
+
+        const type =
+          recorder.mimeType ||
+          "audio/webm";
+
+        const blob = new Blob(
+          chunksRef.current,
+          {
+            type,
+          }
+        );
+
+        if (!blob.size) {
+          setErreurLocale(
+            "Aucun son n'a été enregistré."
+          );
+
+          return;
+        }
+
+        const extension =
+          type.includes("ogg")
+            ? "ogg"
+            : type.includes("mp4")
+              ? "mp4"
+              : type.includes("mpeg")
+                ? "mp3"
+                : "webm";
+
+        const fichier =
+          new File(
+            [blob],
+            `communication-vocal-${Date.now()}.${extension}`,
+            {
+              type,
+            }
+          );
+
+        if (
+          fichier.size >
+          10 * 1024 * 1024
+        ) {
+          setErreurLocale(
+            "Le message vocal dépasse la limite de 10 Mo."
+          );
+
+          return;
+        }
+
+        const localUrl =
+          URL.createObjectURL(
+            blob
+          );
+
+        setAudioLocalUrl(
+          localUrl
+        );
+
+        // ----------------------------------------------------
+        // UPLOAD CLOUDINARY VIA BACKEND
+        // ----------------------------------------------------
+
+        try {
+          setEnvoi(true);
+          setErreurLocale("");
+          setMessageLocal(
+            "Envoi du message vocal..."
+          );
+
+          const resultat =
+            await televerserAudioCommunication(
+              fichier
+            );
+
+          if (
+            !resultat?.audio_url
+          ) {
+            throw new Error(
+              "Le serveur n'a pas retourné l'URL du message vocal."
+            );
+          }
+
+          onAudioChange(
+            resultat.audio_url
+          );
+
+          setMessageLocal(
+            "Message vocal prêt."
+          );
+        } catch (error) {
+          console.error(
+            "Erreur upload vocal :",
+            error
+          );
+
+          setErreurLocale(
+            extraireMessageErreur(
+              error
+            )
+          );
+        } finally {
+          setEnvoi(false);
+        }
+      };
+
+      recorder.start();
+
+      setEnregistrement(true);
+
+      demarrerTimer();
+    } catch (error) {
+      console.error(
+        "Erreur accès microphone :",
+        error
+      );
+
+      if (
+        error?.name ===
+        "NotAllowedError"
+      ) {
+        setErreurLocale(
+          "L'accès au microphone a été refusé. Autorisez le microphone dans votre navigateur."
+        );
+      } else if (
+        error?.name ===
+        "NotFoundError"
+      ) {
+        setErreurLocale(
+          "Aucun microphone n'a été détecté sur cet appareil."
+        );
+      } else {
+        setErreurLocale(
+          "Impossible d'accéder au microphone."
+        );
+      }
+
+      arreterFluxMicrophone();
+    }
+  }
+
+  // ----------------------------------------------------------
+  // ARRÊTER
+  // ----------------------------------------------------------
+
+  function arreterEnregistrement() {
+    arreterTimer();
+
+    setEnregistrement(false);
+
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !==
+        "inactive"
+    ) {
+      mediaRecorderRef.current.stop();
+    } else {
+      arreterFluxMicrophone();
+    }
+  }
+
+  // ----------------------------------------------------------
+  // SUPPRIMER VOCAL
+  // ----------------------------------------------------------
+
+  function supprimerAudio() {
+    if (enregistrement) {
+      arreterEnregistrement();
+    }
+
+    if (audioLocalUrl) {
+      URL.revokeObjectURL(
+        audioLocalUrl
+      );
+
+      setAudioLocalUrl(null);
+    }
+
+    onAudioChange(null);
+
+    setTemps(0);
+
+    setMessageLocal("");
+
+    setErreurLocale("");
+  }
+
+  // ----------------------------------------------------------
+  // REFAIRE
+  // ----------------------------------------------------------
+
+  function refaireEnregistrement() {
+    supprimerAudio();
+
+    setTimeout(() => {
+      demarrerEnregistrement();
+    }, 100);
+  }
+
+  // ----------------------------------------------------------
+  // RENDU
+  // ----------------------------------------------------------
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
+          <Mic size={18} />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-bold text-slate-800">
+                Message vocal
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Enregistrez un message vocal
+                directement depuis votre
+                microphone.
+              </p>
+            </div>
+
+            {enregistrement && (
+              <span className="inline-flex w-fit items-center gap-2 rounded-full bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-red-600" />
+                {formaterTemps(temps)}
+              </span>
+            )}
+          </div>
+
+          {/* ------------------------------------------------
+              ENREGISTREMENT
+          ------------------------------------------------ */}
+
+          {!enregistrement &&
+            !audioUrl &&
+            !audioLocalUrl && (
+              <button
+                type="button"
+                onClick={
+                  demarrerEnregistrement
+                }
+                disabled={
+                  disabled || envoi
+                }
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Mic size={17} />
+
+                Enregistrer un vocal
+              </button>
+            )}
+
+          {/* ------------------------------------------------
+              ENREGISTREMENT EN COURS
+          ------------------------------------------------ */}
+
+          {enregistrement && (
+            <div className="mt-4 flex flex-col gap-3 rounded-xl border border-red-100 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 animate-pulse items-center justify-center rounded-full bg-red-100 text-red-600">
+                  <MicOff size={19} />
+                </div>
+
+                <div>
+                  <p className="text-sm font-bold text-slate-800">
+                    Enregistrement en cours
+                  </p>
+
+                  <p className="text-xs text-slate-500">
+                    Parlez dans le microphone...
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={
+                  arreterEnregistrement
+                }
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-red-700"
+              >
+                <Square size={15} />
+
+                Arrêter
+              </button>
+            </div>
+          )}
+
+          {/* ------------------------------------------------
+              UPLOAD
+          ------------------------------------------------ */}
+
+          {envoi && (
+            <div className="mt-4 flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4">
+              <RefreshCw
+                size={18}
+                className="animate-spin text-blue-600"
+              />
+
+              <div>
+                <p className="text-sm font-bold text-blue-900">
+                  Envoi du vocal...
+                </p>
+
+                <p className="text-xs text-blue-700">
+                  Le message vocal est envoyé
+                  vers le serveur.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ------------------------------------------------
+              PREVISUALISATION LOCAL
+          ------------------------------------------------ */}
+
+          {audioLocalUrl && (
+            <div className="mt-4">
+              <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                Prévisualisation
+              </p>
+
+              <audio
+                ref={audioPreviewRef}
+                src={audioLocalUrl}
+                controls
+                className="w-full"
+              />
+            </div>
+          )}
+
+          {/* ------------------------------------------------
+              AUDIO CLOUDINARY
+          ------------------------------------------------ */}
+
+          {audioUrl &&
+            !audioLocalUrl && (
+              <div className="mt-4">
+                <LecteurAudio
+                  audioUrl={audioUrl}
+                />
+              </div>
+            )}
+
+          {/* ------------------------------------------------
+              ACTIONS AUDIO
+          ------------------------------------------------ */}
+
+          {(audioUrl ||
+            audioLocalUrl) &&
+            !enregistrement && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={
+                    refaireEnregistrement
+                  }
+                  disabled={
+                    disabled || envoi
+                  }
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                >
+                  <RotateCcw size={14} />
+
+                  Refaire
+                </button>
+
+                <button
+                  type="button"
+                  onClick={
+                    supprimerAudio
+                  }
+                  disabled={
+                    disabled || envoi
+                  }
+                  className="inline-flex items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-xs font-bold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+                >
+                  <Trash2 size={14} />
+
+                  Supprimer le vocal
+                </button>
+              </div>
+            )}
+
+          {/* ------------------------------------------------
+              MESSAGE
+          ------------------------------------------------ */}
+
+          {messageLocal && (
+            <p className="mt-3 text-xs font-semibold text-emerald-700">
+              {messageLocal}
+            </p>
+          )}
+
+          {/* ------------------------------------------------
+              ERREUR
+          ------------------------------------------------ */}
+
+          {(erreurLocale || erreur) && (
+            <div className="mt-3 flex items-start gap-2 rounded-xl border border-red-100 bg-red-50 p-3 text-xs text-red-700">
+              <AlertCircle
+                size={15}
+                className="mt-0.5 shrink-0"
+              />
+
+              <span>
+                {erreurLocale || erreur}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 // ============================================================
 // COMPOSANT PRINCIPAL
@@ -409,20 +1286,25 @@ function Communication() {
   // ETATS
   // ==========================================================
 
-  const [communications, setCommunications] = useState([]);
+  const [communications, setCommunications] =
+    useState([]);
 
-  const [chargement, setChargement] = useState(true);
+  const [chargement, setChargement] =
+    useState(true);
 
-  const [erreur, setErreur] = useState("");
+  const [erreur, setErreur] =
+    useState("");
 
-  const [message, setMessage] = useState("");
+  const [message, setMessage] =
+    useState("");
 
-  const [filtres, setFiltres] = useState({
-    actif: null,
-    type_communication: "",
-    priorite: "",
-    statut_communication: "",
-  });
+  const [filtres, setFiltres] =
+    useState({
+      actif: null,
+      type_communication: "",
+      priorite: "",
+      statut_communication: "",
+    });
 
   const [filtresOuverts, setFiltresOuverts] =
     useState(false);
@@ -460,11 +1342,14 @@ function Communication() {
     setCommunicationASupprimer,
   ] = useState(null);
 
-  const [suppressionEnCours, setSuppressionEnCours] =
-    useState(false);
+  const [
+    suppressionEnCours,
+    setSuppressionEnCours,
+  ] = useState(false);
+
 
   // ==========================================================
-  // CHARGER
+  // CHARGER COMMUNICATIONS
   // ==========================================================
 
   async function chargerCommunications() {
@@ -472,17 +1357,21 @@ function Communication() {
       setChargement(true);
       setErreur("");
 
-      const data = await getCommunications({
-        actif: filtres.actif,
-        type_communication:
-          filtres.type_communication,
-        priorite: filtres.priorite,
-        statut_communication:
-          filtres.statut_communication,
-      });
+      const data =
+        await getCommunications({
+          actif: filtres.actif,
+          type_communication:
+            filtres.type_communication,
+          priorite:
+            filtres.priorite,
+          statut_communication:
+            filtres.statut_communication,
+        });
 
       setCommunications(
-        Array.isArray(data) ? data : []
+        Array.isArray(data)
+          ? data
+          : []
       );
     } catch (error) {
       console.error(
@@ -490,25 +1379,36 @@ function Communication() {
         error
       );
 
-      if (error?.response?.status === 401) {
+      if (
+        error?.response?.status ===
+        401
+      ) {
         setErreur(
           "Votre session a expiré. Veuillez vous reconnecter."
         );
       } else if (
-        error?.response?.status === 403
+        error?.response?.status ===
+        403
       ) {
         setErreur(
           "Vous n'avez pas la permission de consulter les communications."
         );
       } else {
         setErreur(
-          extraireMessageErreur(error)
+          extraireMessageErreur(
+            error
+          )
         );
       }
     } finally {
       setChargement(false);
     }
   }
+
+
+  // ==========================================================
+  // CHARGEMENT INITIAL
+  // ==========================================================
 
   useEffect(() => {
     if (peutConsulter) {
@@ -524,57 +1424,109 @@ function Communication() {
     filtres.statut_communication,
   ]);
 
+
   // ==========================================================
   // STATISTIQUES
   // ==========================================================
 
+
   const statistiques = useMemo(() => {
     return {
-      total: communications.length,
+      total:
+        communications.length,
 
-      publiees: communications.filter(
-        (item) => item.statut === "PUBLIEE"
-      ).length,
+      publiees:
+        communications.filter(
+          (item) =>
+            item.statut ===
+            "PUBLIEE"
+        ).length,
 
-      programmees: communications.filter(
-        (item) => item.statut === "PROGRAMMEE"
-      ).length,
+      programmees:
+        communications.filter(
+          (item) =>
+            item.statut ===
+            "PROGRAMMEE"
+        ).length,
 
-      brouillons: communications.filter(
-        (item) => item.statut === "BROUILLON"
-      ).length,
+      brouillons:
+        communications.filter(
+          (item) =>
+            item.statut ===
+            "BROUILLON"
+        ).length,
 
-      expirees: communications.filter(
-        (item) => item.statut === "EXPIREE"
-      ).length,
+      expirees:
+        communications.filter(
+          (item) =>
+            item.statut ===
+            "EXPIREE"
+        ).length,
     };
   }, [communications]);
 
   // ==========================================================
-  // FORMULAIRE
+  // CHANGEMENT FORMULAIRE
   // ==========================================================
 
   function handleChange(event) {
-    const { name, value } = event.target;
+    const {
+      name,
+      value,
+    } = event.target;
 
-    setFormulaire((ancien) => ({
-      ...ancien,
-      [name]: value,
-    }));
+    setFormulaire(
+      (ancien) => ({
+        ...ancien,
+        [name]: value,
+      })
+    );
 
-    setErreursFormulaire((ancien) => ({
-      ...ancien,
-      [name]: "",
-    }));
+    setErreursFormulaire(
+      (ancien) => ({
+        ...ancien,
+        [name]: "",
+      })
+    );
 
     setErreur("");
   }
+
+
+  // ==========================================================
+  // CHANGEMENT AUDIO
+  // ==========================================================
+
+  function handleAudioChange(
+    audioUrl
+  ) {
+    setFormulaire(
+      (ancien) => ({
+        ...ancien,
+        audio_url:
+          audioUrl || null,
+      })
+    );
+
+    setErreursFormulaire(
+      (ancien) => ({
+        ...ancien,
+        contenu: "",
+        audio_url: "",
+      })
+    );
+
+    setErreur("");
+  }
+
 
   // ==========================================================
   // MODE PUBLICATION
   // ==========================================================
 
-  function handleModePublicationChange(mode) {
+  function handleModePublicationChange(
+    mode
+  ) {
     let statut = "PUBLIEE";
 
     if (mode === "PROGRAMMEE") {
@@ -585,24 +1537,35 @@ function Communication() {
       statut = "BROUILLON";
     }
 
-    setFormulaire((ancien) => ({
-      ...ancien,
-      mode_publication: mode,
-      statut,
-      actif: mode !== "BROUILLON",
-      date_publication:
-        mode === "IMMEDIATE"
-          ? ""
-          : ancien.date_publication,
-    }));
+    setFormulaire(
+      (ancien) => ({
+        ...ancien,
 
-    setErreursFormulaire((ancien) => ({
-      ...ancien,
-      date_publication: "",
-    }));
+        mode_publication:
+          mode,
+
+        statut,
+
+        actif:
+          mode !== "BROUILLON",
+
+        date_publication:
+          mode === "IMMEDIATE"
+            ? ""
+            : ancien.date_publication,
+      })
+    );
+
+    setErreursFormulaire(
+      (ancien) => ({
+        ...ancien,
+        date_publication: "",
+      })
+    );
 
     setErreur("");
   }
+
 
   // ==========================================================
   // VALIDATION
@@ -611,35 +1574,61 @@ function Communication() {
   function validerFormulaire() {
     const erreurs = {};
 
-    const titre = String(
-      formulaire.titre || ""
-    ).trim();
+    const titre =
+      String(
+        formulaire.titre || ""
+      ).trim();
 
-    const contenu = String(
-      formulaire.contenu || ""
-    ).trim();
+    const contenu =
+      String(
+        formulaire.contenu || ""
+      ).trim();
+
+    const audioUrl =
+      String(
+        formulaire.audio_url || ""
+      ).trim();
+
+    // --------------------------------------------------------
+    // TITRE
+    // --------------------------------------------------------
 
     if (!titre) {
       erreurs.titre =
         "Le titre est obligatoire.";
-    } else if (titre.length < 3) {
+    } else if (
+      titre.length < 3
+    ) {
       erreurs.titre =
         "Le titre doit contenir au moins 3 caractères.";
     }
 
-    if (!contenu) {
+    // --------------------------------------------------------
+    // TEXTE / VOCAL
+    // --------------------------------------------------------
+
+    if (!contenu && !audioUrl) {
       erreurs.contenu =
-        "Le contenu est obligatoire.";
-    } else if (contenu.length < 3) {
+        "Ajoutez un message texte ou enregistrez un message vocal.";
+    } else if (
+      contenu &&
+      contenu.length < 3
+    ) {
       erreurs.contenu =
-        "Le contenu doit contenir au moins 3 caractères.";
+        "Le contenu doit contenir au moins 3 caractères ou être laissé vide si vous utilisez uniquement un vocal.";
     }
+
+    // --------------------------------------------------------
+    // PROGRAMMATION
+    // --------------------------------------------------------
 
     if (
       formulaire.mode_publication ===
       "PROGRAMMEE"
     ) {
-      if (!formulaire.date_publication) {
+      if (
+        !formulaire.date_publication
+      ) {
         erreurs.date_publication =
           "La date et l'heure de publication sont obligatoires.";
       } else {
@@ -664,6 +1653,10 @@ function Communication() {
         }
       }
     }
+
+    // --------------------------------------------------------
+    // EXPIRATION
+    // --------------------------------------------------------
 
     if (
       formulaire.date_expiration &&
@@ -694,7 +1687,8 @@ function Communication() {
               formulaire.date_publication
             );
         } else {
-          publication = new Date();
+          publication =
+            new Date();
         }
 
         if (
@@ -707,10 +1701,16 @@ function Communication() {
       }
     }
 
-    setErreursFormulaire(erreurs);
+    setErreursFormulaire(
+      erreurs
+    );
 
-    return Object.keys(erreurs).length === 0;
+    return (
+      Object.keys(erreurs)
+        .length === 0
+    );
   }
+
 
   // ==========================================================
   // AJOUT
@@ -723,18 +1723,23 @@ function Communication() {
 
     setModeEdition(false);
 
-    setCommunicationSelectionnee(null);
+    setCommunicationSelectionnee(
+      null
+    );
 
     setFormulaire({
       ...FORMULAIRE_INITIAL,
     });
 
     setErreursFormulaire({});
+
     setErreur("");
+
     setMessage("");
 
     setModalOuverte(true);
   }
+
 
   // ==========================================================
   // MODIFICATION
@@ -754,12 +1759,18 @@ function Communication() {
     let modePublication =
       "IMMEDIATE";
 
-    if (statut === "PROGRAMMEE") {
+    if (
+      statut ===
+      "PROGRAMMEE"
+    ) {
       modePublication =
         "PROGRAMMEE";
     }
 
-    if (statut === "BROUILLON") {
+    if (
+      statut ===
+      "BROUILLON"
+    ) {
       modePublication =
         "BROUILLON";
     }
@@ -772,10 +1783,16 @@ function Communication() {
 
     setFormulaire({
       titre:
-        communication.titre || "",
+        communication.titre ||
+        "",
 
       contenu:
-        communication.contenu || "",
+        communication.contenu ||
+        "",
+
+      audio_url:
+        communication.audio_url ||
+        null,
 
       type_communication:
         communication.type_communication ||
@@ -803,17 +1820,21 @@ function Communication() {
           : "",
 
       actif:
-        communication.actif !== false,
+        communication.actif !==
+        false,
 
       statut,
     });
 
     setErreursFormulaire({});
+
     setErreur("");
+
     setMessage("");
 
     setModalOuverte(true);
   }
+
 
   // ==========================================================
   // FERMER MODAL
@@ -828,7 +1849,9 @@ function Communication() {
 
     setModeEdition(false);
 
-    setCommunicationSelectionnee(null);
+    setCommunicationSelectionnee(
+      null
+    );
 
     setFormulaire({
       ...FORMULAIRE_INITIAL,
@@ -837,14 +1860,18 @@ function Communication() {
     setErreursFormulaire({});
   }
 
+
   // ==========================================================
   // SOUMISSION
   // ==========================================================
 
-  async function handleSubmit(event) {
+  async function handleSubmit(
+    event
+  ) {
     event.preventDefault();
 
     setErreur("");
+
     setMessage("");
 
     if (!validerFormulaire()) {
@@ -854,10 +1881,14 @@ function Communication() {
     try {
       setEnregistrement(true);
 
-      const maintenant = new Date();
+      const maintenant =
+        new Date();
 
-      let statut = "PUBLIEE";
+      let statut =
+        "PUBLIEE";
+
       let actif = true;
+
       let datePublication =
         maintenant.toISOString();
 
@@ -865,15 +1896,20 @@ function Communication() {
         formulaire.mode_publication ===
         "BROUILLON"
       ) {
-        statut = "BROUILLON";
+        statut =
+          "BROUILLON";
+
         actif = false;
+
         datePublication =
           maintenant.toISOString();
       } else if (
         formulaire.mode_publication ===
         "PROGRAMMEE"
       ) {
-        statut = "PROGRAMMEE";
+        statut =
+          "PROGRAMMEE";
+
         actif = true;
 
         datePublication =
@@ -881,18 +1917,41 @@ function Communication() {
             formulaire.date_publication
           ).toISOString();
       } else {
-        statut = "PUBLIEE";
+        statut =
+          "PUBLIEE";
+
         actif = true;
+
         datePublication =
           maintenant.toISOString();
       }
+
+      const contenu =
+        String(
+          formulaire.contenu ||
+            ""
+        ).trim();
+
+      const audioUrl =
+        String(
+          formulaire.audio_url ||
+            ""
+        ).trim() || null;
 
       const donnees = {
         titre:
           formulaire.titre.trim(),
 
+        // IMPORTANT :
+        // le texte est maintenant facultatif.
         contenu:
-          formulaire.contenu.trim(),
+          contenu || null,
+
+        // IMPORTANT :
+        // le vocal est facultatif,
+        // mais texte OU vocal doit exister.
+        audio_url:
+          audioUrl,
 
         type_communication:
           formulaire.type_communication,
@@ -915,6 +1974,10 @@ function Communication() {
         actif,
       };
 
+      // ------------------------------------------------------
+      // MODIFICATION
+      // ------------------------------------------------------
+
       if (
         modeEdition &&
         communicationSelectionnee
@@ -927,17 +1990,27 @@ function Communication() {
         setMessage(
           "La communication a été modifiée avec succès."
         );
-      } else {
+      }
+
+      // ------------------------------------------------------
+      // CREATION
+      // ------------------------------------------------------
+
+      else {
         await creerCommunication(
           donnees
         );
 
-        if (statut === "PROGRAMMEE") {
+        if (
+          statut ===
+          "PROGRAMMEE"
+        ) {
           setMessage(
             "La communication a été programmée avec succès."
           );
         } else if (
-          statut === "BROUILLON"
+          statut ===
+          "BROUILLON"
         ) {
           setMessage(
             "Le brouillon a été enregistré avec succès."
@@ -958,25 +2031,32 @@ function Communication() {
         error
       );
 
-      if (error?.response?.status === 401) {
+      if (
+        error?.response?.status ===
+        401
+      ) {
         setErreur(
           "Votre session a expiré. Veuillez vous reconnecter."
         );
       } else if (
-        error?.response?.status === 403
+        error?.response?.status ===
+        403
       ) {
         setErreur(
           "Vous n'avez pas la permission d'effectuer cette action."
         );
       } else {
         setErreur(
-          extraireMessageErreur(error)
+          extraireMessageErreur(
+            error
+          )
         );
       }
     } finally {
       setEnregistrement(false);
     }
   }
+
 
   // ==========================================================
   // ACTIVER / DESACTIVER
@@ -989,9 +2069,10 @@ function Communication() {
       return;
     }
 
-    const action = communication.actif
-      ? "désactiver"
-      : "réactiver";
+    const action =
+      communication.actif
+        ? "désactiver"
+        : "réactiver";
 
     const confirmation =
       window.confirm(
@@ -1008,6 +2089,7 @@ function Communication() {
       );
 
       setErreur("");
+
       setMessage("");
 
       await modifierStatutCommunication(
@@ -1029,12 +2111,15 @@ function Communication() {
       );
 
       setErreur(
-        extraireMessageErreur(error)
+        extraireMessageErreur(
+          error
+        )
       );
     } finally {
       setActionId(null);
     }
   }
+
 
   // ==========================================================
   // ANNULER PROGRAMMATION
@@ -1062,6 +2147,7 @@ function Communication() {
       );
 
       setErreur("");
+
       setMessage("");
 
       await annulerCommunication(
@@ -1080,12 +2166,15 @@ function Communication() {
       );
 
       setErreur(
-        extraireMessageErreur(error)
+        extraireMessageErreur(
+          error
+        )
       );
     } finally {
       setActionId(null);
     }
   }
+
 
   // ==========================================================
   // SUPPRESSION
@@ -1105,6 +2194,7 @@ function Communication() {
     setModalSuppression(true);
   }
 
+
   async function confirmerSuppression() {
     if (
       !communicationASupprimer ||
@@ -1114,9 +2204,12 @@ function Communication() {
     }
 
     try {
-      setSuppressionEnCours(true);
+      setSuppressionEnCours(
+        true
+      );
 
       setErreur("");
+
       setMessage("");
 
       await supprimerCommunication(
@@ -1127,7 +2220,9 @@ function Communication() {
         "La communication a été supprimée avec succès."
       );
 
-      setModalSuppression(false);
+      setModalSuppression(
+        false
+      );
 
       setCommunicationASupprimer(
         null
@@ -1141,12 +2236,17 @@ function Communication() {
       );
 
       setErreur(
-        extraireMessageErreur(error)
+        extraireMessageErreur(
+          error
+        )
       );
     } finally {
-      setSuppressionEnCours(false);
+      setSuppressionEnCours(
+        false
+      );
     }
   }
+
 
   // ==========================================================
   // RESET FILTRES
@@ -1160,6 +2260,7 @@ function Communication() {
       statut_communication: "",
     });
   }
+
 
   // ==========================================================
   // ACCES REFUSE
@@ -1186,6 +2287,7 @@ function Communication() {
       </div>
     );
   }
+
 
   // ==========================================================
   // RENDU
@@ -1228,9 +2330,9 @@ function Communication() {
 
             <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-500 sm:text-[15px]">
               Publiez les annonces du Dahira
-              immédiatement ou programmez
-              leur diffusion à une date et une
-              heure précises.
+              avec un message texte, un message
+              vocal ou les deux. Vous pouvez
+              également programmer leur diffusion.
             </p>
 
           </div>
@@ -1242,6 +2344,7 @@ function Communication() {
               className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-slate-900/10 transition hover:-translate-y-0.5 hover:bg-emerald-900 sm:w-auto"
             >
               <Plus size={18} />
+
               Nouvelle communication
             </button>
           )}
@@ -1250,18 +2353,21 @@ function Communication() {
 
       </section>
 
+
       {/* ======================================================
           MESSAGES
       ====================================================== */}
 
       {erreur && (
         <div className="flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">
+
           <AlertCircle
             size={19}
             className="mt-0.5 shrink-0"
           />
 
           <div className="min-w-0 flex-1">
+
             <p className="font-semibold">
               Une erreur est survenue
             </p>
@@ -1269,20 +2375,26 @@ function Communication() {
             <p className="mt-1 leading-5">
               {erreur}
             </p>
+
           </div>
 
           <button
             type="button"
-            onClick={() => setErreur("")}
+            onClick={() =>
+              setErreur("")
+            }
             className="shrink-0 rounded-lg p-1 hover:bg-red-100"
           >
             <X size={16} />
           </button>
+
         </div>
       )}
 
+
       {message && (
         <div className="flex items-start gap-3 rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-700">
+
           <CheckCircle
             size={19}
             className="mt-0.5 shrink-0"
@@ -1294,13 +2406,17 @@ function Communication() {
 
           <button
             type="button"
-            onClick={() => setMessage("")}
+            onClick={() =>
+              setMessage("")
+            }
             className="shrink-0 rounded-lg p-1 hover:bg-emerald-100"
           >
             <X size={16} />
           </button>
+
         </div>
       )}
+
 
       {/* ======================================================
           STATISTIQUES
@@ -1310,40 +2426,51 @@ function Communication() {
 
         <StatistiqueCarte
           label="Total"
-          valeur={statistiques.total}
+          valeur={
+            statistiques.total
+          }
           icone={MessageSquare}
           couleur="slate"
         />
 
         <StatistiqueCarte
           label="Publiées"
-          valeur={statistiques.publiees}
+          valeur={
+            statistiques.publiees
+          }
           icone={CheckCircle}
           couleur="emerald"
         />
 
         <StatistiqueCarte
           label="Programmées"
-          valeur={statistiques.programmees}
+          valeur={
+            statistiques.programmees
+          }
           icone={CalendarClock}
           couleur="blue"
         />
 
         <StatistiqueCarte
           label="Brouillons"
-          valeur={statistiques.brouillons}
+          valeur={
+            statistiques.brouillons
+          }
           icone={FileText}
           couleur="amber"
         />
 
         <StatistiqueCarte
           label="Expirées"
-          valeur={statistiques.expirees}
+          valeur={
+            statistiques.expirees
+          }
           icone={Clock3}
           couleur="rose"
         />
 
       </section>
+
 
       {/* ======================================================
           FILTRES
@@ -1357,7 +2484,8 @@ function Communication() {
             type="button"
             onClick={() =>
               setFiltresOuverts(
-                (ancien) => !ancien
+                (ancien) =>
+                  !ancien
               )
             }
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 lg:w-auto"
@@ -1378,19 +2506,25 @@ function Communication() {
 
           <button
             type="button"
-            onClick={reinitialiserFiltres}
+            onClick={
+              reinitialiserFiltres
+            }
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 sm:w-auto"
           >
             <RefreshCw size={16} />
+
             Réinitialiser
           </button>
 
         </div>
 
+
         {filtresOuverts && (
           <div className="border-t border-slate-100 p-4 sm:p-5">
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+
+              {/* STATUT */}
 
               <div>
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">
@@ -1419,8 +2553,12 @@ function Communication() {
                   {STATUTS_COMMUNICATION.map(
                     (statut) => (
                       <option
-                        key={statut.value}
-                        value={statut.value}
+                        key={
+                          statut.value
+                        }
+                        value={
+                          statut.value
+                        }
                       >
                         {statut.label}
                       </option>
@@ -1428,6 +2566,9 @@ function Communication() {
                   )}
                 </select>
               </div>
+
+
+              {/* TYPE */}
 
               <div>
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">
@@ -1456,8 +2597,12 @@ function Communication() {
                   {TYPES_COMMUNICATION.map(
                     (type) => (
                       <option
-                        key={type.value}
-                        value={type.value}
+                        key={
+                          type.value
+                        }
+                        value={
+                          type.value
+                        }
                       >
                         {type.label}
                       </option>
@@ -1466,13 +2611,18 @@ function Communication() {
                 </select>
               </div>
 
+
+              {/* PRIORITE */}
+
               <div>
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">
                   Priorité
                 </label>
 
                 <select
-                  value={filtres.priorite}
+                  value={
+                    filtres.priorite
+                  }
                   onChange={(event) =>
                     setFiltres(
                       (ancien) => ({
@@ -1491,8 +2641,12 @@ function Communication() {
                   {PRIORITES_COMMUNICATION.map(
                     (priorite) => (
                       <option
-                        key={priorite.value}
-                        value={priorite.value}
+                        key={
+                          priorite.value
+                        }
+                        value={
+                          priorite.value
+                        }
                       >
                         {priorite.label}
                       </option>
@@ -1501,6 +2655,9 @@ function Communication() {
                 </select>
               </div>
 
+
+              {/* ACTIF */}
+
               <div>
                 <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">
                   Activation
@@ -1508,9 +2665,12 @@ function Communication() {
 
                 <select
                   value={
-                    filtres.actif === null
+                    filtres.actif ===
+                    null
                       ? ""
-                      : String(filtres.actif)
+                      : String(
+                          filtres.actif
+                        )
                   }
                   onChange={(event) => {
                     const valeur =
@@ -1520,9 +2680,11 @@ function Communication() {
                       (ancien) => ({
                         ...ancien,
                         actif:
-                          valeur === ""
+                          valeur ===
+                          ""
                             ? null
-                            : valeur === "true",
+                            : valeur ===
+                                "true",
                       })
                     );
                   }}
@@ -1548,6 +2710,7 @@ function Communication() {
 
       </section>
 
+
       {/* ======================================================
           LISTE
       ====================================================== */}
@@ -1564,12 +2727,17 @@ function Communication() {
               </h2>
 
               <p className="mt-1 text-xs text-slate-500">
-                {communications.length} communication
-                {communications.length > 1
+                {
+                  communications.length
+                }{" "}
+                communication
+                {communications.length >
+                1
                   ? "s"
                   : ""}{" "}
                 affichée
-                {communications.length > 1
+                {communications.length >
+                1
                   ? "s"
                   : ""}
               </p>
@@ -1577,7 +2745,9 @@ function Communication() {
 
             <button
               type="button"
-              onClick={chargerCommunications}
+              onClick={
+                chargerCommunications
+              }
               disabled={chargement}
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             >
@@ -1597,17 +2767,30 @@ function Communication() {
 
         </div>
 
+
+        {/* CHARGEMENT */}
+
         {chargement ? (
           <div className="flex min-h-[300px] items-center justify-center px-6">
+
             <div className="flex flex-col items-center gap-3 text-center">
+
               <span className="h-9 w-9 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-700" />
 
               <p className="text-sm font-medium text-slate-500">
                 Chargement des communications...
               </p>
+
             </div>
+
           </div>
-        ) : communications.length === 0 ? (
+        )
+
+
+        /* AUCUNE */
+
+        : communications.length ===
+          0 ? (
           <div className="flex min-h-[330px] flex-col items-center justify-center px-6 py-12 text-center">
 
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 text-slate-400">
@@ -1627,16 +2810,24 @@ function Communication() {
             {peutCreer && (
               <button
                 type="button"
-                onClick={ouvrirAjout}
+                onClick={
+                  ouvrirAjout
+                }
                 className="mt-5 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-900"
               >
                 <Plus size={17} />
+
                 Créer une communication
               </button>
             )}
 
           </div>
-        ) : (
+        )
+
+
+        /* LISTE */
+
+        : (
           <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-2">
 
             {communications.map(
@@ -1646,9 +2837,17 @@ function Communication() {
                     communication.statut
                   );
 
+                const contenu =
+                  String(
+                    communication.contenu ||
+                      ""
+                  ).trim();
+
                 return (
                   <article
-                    key={communication.id}
+                    key={
+                      communication.id
+                    }
                     className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg hover:shadow-slate-900/5"
                   >
 
@@ -1669,6 +2868,7 @@ function Communication() {
                                 : "bg-slate-300"
                       }`}
                     />
+
 
                     {/* HEADER */}
 
@@ -1701,39 +2901,92 @@ function Communication() {
                         </div>
 
                         <h3 className="mt-3 line-clamp-2 text-base font-black leading-6 text-slate-900 sm:text-lg">
-                          {communication.titre}
+                          {
+                            communication.titre
+                          }
                         </h3>
 
                       </div>
+
 
                       <div
                         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${obtenirClassesStatut(
                           communication.statut
                         )}`}
                       >
-                        <IconStatut size={18} />
+                        <IconStatut
+                          size={18}
+                        />
                       </div>
 
                     </div>
 
-                    {/* CONTENU */}
 
-                    <div className="mt-4 rounded-xl bg-slate-50 p-4">
+                    {/* TEXTE */}
 
-                      <div className="flex items-start gap-3">
+                    {contenu && (
+                      <div className="mt-4 rounded-xl bg-slate-50 p-4">
 
-                        <MessageSquare
-                          size={17}
-                          className="mt-0.5 shrink-0 text-slate-400"
+                        <div className="flex items-start gap-3">
+
+                          <MessageSquare
+                            size={17}
+                            className="mt-0.5 shrink-0 text-slate-400"
+                          />
+
+                          <p className="line-clamp-4 whitespace-pre-line text-sm leading-6 text-slate-600">
+                            {
+                              contenu
+                            }
+                          </p>
+
+                        </div>
+
+                      </div>
+                    )}
+
+
+                    {/* VOCAL */}
+
+                    {communication.audio_url && (
+                      <div className="mt-4">
+
+                        <LecteurAudio
+                          audioUrl={
+                            communication.audio_url
+                          }
                         />
 
-                        <p className="line-clamp-4 whitespace-pre-line text-sm leading-6 text-slate-600">
-                          {communication.contenu}
-                        </p>
-
                       </div>
+                    )}
+
+
+                    {/* INDICATEUR TYPE MESSAGE */}
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+
+                      {contenu && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600">
+                          <FileText
+                            size={13}
+                          />
+
+                          Texte
+                        </span>
+                      )}
+
+                      {communication.audio_url && (
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold text-emerald-700">
+                          <FileAudio
+                            size={13}
+                          />
+
+                          Vocal
+                        </span>
+                      )}
 
                     </div>
+
 
                     {/* DATES */}
 
@@ -1742,12 +2995,16 @@ function Communication() {
                       <div className="rounded-xl border border-slate-100 bg-white p-3">
 
                         <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                          <Calendar size={13} />
+
+                          <Calendar
+                            size={13}
+                          />
 
                           {communication.statut ===
                           "PROGRAMMEE"
                             ? "Publication prévue"
                             : "Publication"}
+
                         </div>
 
                         <p className="mt-1 text-xs font-semibold text-slate-700">
@@ -1758,25 +3015,33 @@ function Communication() {
 
                       </div>
 
+
                       <div className="rounded-xl border border-slate-100 bg-white p-3">
 
                         <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                          <Clock3 size={13} />
+
+                          <Clock3
+                            size={13}
+                          />
 
                           Expiration
+
                         </div>
 
                         <p className="mt-1 text-xs font-semibold text-slate-700">
+
                           {communication.date_expiration
                             ? formaterDate(
                                 communication.date_expiration
                               )
                             : "Aucune"}
+
                         </p>
 
                       </div>
 
                     </div>
+
 
                     {/* STATUT */}
 
@@ -1787,42 +3052,54 @@ function Communication() {
                           communication.statut
                         )}`}
                       >
-                        <IconStatut size={13} />
+                        <IconStatut
+                          size={13}
+                        />
 
                         {obtenirLabelStatut(
                           communication.statut
                         )}
                       </span>
 
+
                       {communication.statut ===
                         "PUBLIEE" &&
                         communication.push_envoye && (
                           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
-                            <Bell size={13} />
+                            <Bell
+                              size={13}
+                            />
 
                             Notification envoyée
                           </span>
                         )}
 
+
                       {communication.statut ===
                         "PROGRAMMEE" && (
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
-                          <CalendarClock size={13} />
+                          <CalendarClock
+                            size={13}
+                          />
 
                           En attente de publication
                         </span>
                       )}
 
+
                       {communication.statut ===
                         "ANNULEE" && (
                         <span className="inline-flex items-center gap-1.5 rounded-full border border-red-100 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700">
-                          <Ban size={13} />
+                          <Ban
+                            size={13}
+                          />
 
                           Programmation annulée
                         </span>
                       )}
 
                     </div>
+
 
                     {/* ETAT ACTIF */}
 
@@ -1846,15 +3123,19 @@ function Communication() {
 
                       </div>
 
+
                       <span className="text-[10px] font-medium text-slate-400">
+
                         {communication.date_expiration
                           ? `Expire le ${formaterDateCourte(
                               communication.date_expiration
                             )}`
                           : "Sans expiration"}
+
                       </span>
 
                     </div>
+
 
                     {/* ACTIONS */}
 
@@ -1872,10 +3153,14 @@ function Communication() {
                             }
                             className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50 sm:flex-none"
                           >
-                            <Edit size={15} />
+                            <Edit
+                              size={15}
+                            />
+
                             Modifier
                           </button>
                         )}
+
 
                         {peutModifier &&
                           communication.statut ===
@@ -1900,12 +3185,15 @@ function Communication() {
                                   className="animate-spin"
                                 />
                               ) : (
-                                <XCircle size={15} />
+                                <XCircle
+                                  size={15}
+                                />
                               )}
 
                               Annuler
                             </button>
                           )}
+
 
                         {peutModifier &&
                           communication.statut !==
@@ -1933,6 +3221,7 @@ function Communication() {
                             </button>
                           )}
 
+
                         {peutSupprimer && (
                           <button
                             type="button"
@@ -1944,7 +3233,9 @@ function Communication() {
                             className="inline-flex items-center justify-center rounded-xl border border-red-100 p-2.5 text-red-600 transition hover:bg-red-50"
                             title="Supprimer"
                           >
-                            <Trash2 size={16} />
+                            <Trash2
+                              size={16}
+                            />
                           </button>
                         )}
 
@@ -1960,6 +3251,7 @@ function Communication() {
         )}
 
       </section>
+
 
       {/* ======================================================
           MODALE CREATION / MODIFICATION
@@ -1979,14 +3271,21 @@ function Communication() {
                 <div className="flex items-center gap-3">
 
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
+
                     {modeEdition ? (
-                      <Edit size={18} />
+                      <Edit
+                        size={18}
+                      />
                     ) : (
-                      <Megaphone size={18} />
+                      <Megaphone
+                        size={18}
+                      />
                     )}
+
                   </div>
 
                   <div>
+
                     <h2 className="text-lg font-black text-slate-900">
                       {modeEdition
                         ? "Modifier la communication"
@@ -1998,16 +3297,22 @@ function Communication() {
                         ? "Modifiez les informations de cette communication."
                         : "Créez une nouvelle communication pour la Dahira."}
                     </p>
+
                   </div>
 
                 </div>
 
               </div>
 
+
               <button
                 type="button"
-                onClick={fermerModal}
-                disabled={enregistrement}
+                onClick={
+                  fermerModal
+                }
+                disabled={
+                  enregistrement
+                }
                 className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 disabled:opacity-50"
               >
                 <X size={20} />
@@ -2015,10 +3320,13 @@ function Communication() {
 
             </div>
 
+
             {/* FORMULAIRE */}
 
             <form
-              onSubmit={handleSubmit}
+              onSubmit={
+                handleSubmit
+              }
               className="flex min-h-0 flex-1 flex-col"
             >
 
@@ -2026,9 +3334,13 @@ function Communication() {
 
                 <div className="space-y-5">
 
-                  {/* TITRE */}
+
+                  {/* ==================================================
+                      TITRE
+                  ================================================== */}
 
                   <div>
+
                     <label className="mb-2 block text-sm font-bold text-slate-700">
                       Titre
                     </label>
@@ -2036,8 +3348,12 @@ function Communication() {
                     <input
                       type="text"
                       name="titre"
-                      value={formulaire.titre}
-                      onChange={handleChange}
+                      value={
+                        formulaire.titre
+                      }
+                      onChange={
+                        handleChange
+                      }
                       maxLength={200}
                       placeholder="Ex. Réunion générale de la Dahira"
                       className={`w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition focus:ring-4 focus:ring-emerald-600/10 ${
@@ -2049,24 +3365,46 @@ function Communication() {
 
                     {erreursFormulaire.titre && (
                       <p className="mt-1.5 text-xs font-medium text-red-600">
-                        {erreursFormulaire.titre}
+                        {
+                          erreursFormulaire.titre
+                        }
                       </p>
                     )}
+
                   </div>
 
-                  {/* CONTENU */}
+
+                  {/* ==================================================
+                      CONTENU TEXTE
+                  ================================================== */}
 
                   <div>
-                    <label className="mb-2 block text-sm font-bold text-slate-700">
-                      Contenu
-                    </label>
+
+                    <div className="mb-2 flex items-center justify-between gap-3">
+
+                      <label className="block text-sm font-bold text-slate-700">
+                        Contenu texte
+                        <span className="ml-1 font-normal text-slate-400">
+                          (facultatif)
+                        </span>
+                      </label>
+
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                        Texte ou vocal
+                      </span>
+
+                    </div>
 
                     <textarea
                       name="contenu"
-                      value={formulaire.contenu}
-                      onChange={handleChange}
+                      value={
+                        formulaire.contenu
+                      }
+                      onChange={
+                        handleChange
+                      }
                       rows={6}
-                      placeholder="Écrivez le contenu de la communication..."
+                      placeholder="Écrivez le contenu de la communication... Vous pouvez laisser vide si vous envoyez uniquement un vocal."
                       className={`w-full resize-y rounded-xl border bg-white px-4 py-3 text-sm leading-6 outline-none transition focus:ring-4 focus:ring-emerald-600/10 ${
                         erreursFormulaire.contenu
                           ? "border-red-300 focus:border-red-500"
@@ -2076,16 +3414,77 @@ function Communication() {
 
                     {erreursFormulaire.contenu && (
                       <p className="mt-1.5 text-xs font-medium text-red-600">
-                        {erreursFormulaire.contenu}
+                        {
+                          erreursFormulaire.contenu
+                        }
                       </p>
                     )}
+
                   </div>
 
-                  {/* TYPE / PRIORITE */}
+
+                  {/* ==================================================
+                      ENREGISTREUR VOCAL
+                  ================================================== */}
+
+                  <EnregistreurVocal
+                    audioUrl={
+                      formulaire.audio_url
+                    }
+                    onAudioChange={
+                      handleAudioChange
+                    }
+                    erreur={
+                      erreursFormulaire.audio_url
+                    }
+                    disabled={
+                      enregistrement
+                    }
+                  />
+
+
+                  {/* ==================================================
+                      INFORMATION TEXTE / VOCAL
+                  ================================================== */}
+
+                  <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+
+                    <div className="flex items-start gap-3">
+
+                      <Info
+                        size={18}
+                        className="mt-0.5 shrink-0 text-blue-600"
+                      />
+
+                      <div>
+
+                        <p className="text-sm font-bold text-blue-900">
+                          Contenu de la communication
+                        </p>
+
+                        <p className="mt-1 text-xs leading-5 text-blue-700">
+                          Vous pouvez envoyer uniquement
+                          un texte, uniquement un message
+                          vocal, ou les deux. Une
+                          communication ne peut pas être
+                          créée sans texte et sans vocal.
+                        </p>
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
+
+                  {/* ==================================================
+                      TYPE / PRIORITE
+                  ================================================== */}
 
                   <div className="grid gap-4 sm:grid-cols-2">
 
                     <div>
+
                       <label className="mb-2 block text-sm font-bold text-slate-700">
                         Type de communication
                       </label>
@@ -2095,49 +3494,74 @@ function Communication() {
                         value={
                           formulaire.type_communication
                         }
-                        onChange={handleChange}
+                        onChange={
+                          handleChange
+                        }
                         className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
                       >
                         {TYPES_COMMUNICATION.map(
                           (type) => (
                             <option
-                              key={type.value}
-                              value={type.value}
+                              key={
+                                type.value
+                              }
+                              value={
+                                type.value
+                              }
                             >
-                              {type.label}
+                              {
+                                type.label
+                              }
                             </option>
                           )
                         )}
                       </select>
+
                     </div>
 
+
                     <div>
+
                       <label className="mb-2 block text-sm font-bold text-slate-700">
                         Priorité
                       </label>
 
                       <select
                         name="priorite"
-                        value={formulaire.priorite}
-                        onChange={handleChange}
+                        value={
+                          formulaire.priorite
+                        }
+                        onChange={
+                          handleChange
+                        }
                         className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
                       >
                         {PRIORITES_COMMUNICATION.map(
                           (priorite) => (
                             <option
-                              key={priorite.value}
-                              value={priorite.value}
+                              key={
+                                priorite.value
+                              }
+                              value={
+                                priorite.value
+                              }
                             >
-                              {priorite.label}
+                              {
+                                priorite.label
+                              }
                             </option>
                           )
                         )}
                       </select>
+
                     </div>
 
                   </div>
 
-                  {/* MODE */}
+
+                  {/* ==================================================
+                      MODE PUBLICATION
+                  ================================================== */}
 
                   <div>
 
@@ -2146,6 +3570,9 @@ function Communication() {
                     </label>
 
                     <div className="grid gap-3 sm:grid-cols-3">
+
+
+                      {/* IMMEDIATE */}
 
                       <button
                         type="button"
@@ -2161,7 +3588,9 @@ function Communication() {
                             : "border-slate-200 bg-white hover:bg-slate-50"
                         }`}
                       >
+
                         <div className="flex items-center gap-2">
+
                           <Send
                             size={18}
                             className={
@@ -2175,13 +3604,18 @@ function Communication() {
                           <span className="text-sm font-bold text-slate-800">
                             Immédiate
                           </span>
+
                         </div>
 
                         <p className="mt-2 text-xs leading-5 text-slate-500">
                           Publier maintenant et
                           envoyer la notification.
                         </p>
+
                       </button>
+
+
+                      {/* PROGRAMMEE */}
 
                       <button
                         type="button"
@@ -2197,7 +3631,9 @@ function Communication() {
                             : "border-slate-200 bg-white hover:bg-slate-50"
                         }`}
                       >
+
                         <div className="flex items-center gap-2">
+
                           <CalendarClock
                             size={18}
                             className={
@@ -2211,13 +3647,18 @@ function Communication() {
                           <span className="text-sm font-bold text-slate-800">
                             Programmée
                           </span>
+
                         </div>
 
                         <p className="mt-2 text-xs leading-5 text-slate-500">
-                          Publier automatiquement à
-                          une date future.
+                          Publier automatiquement
+                          à une date future.
                         </p>
+
                       </button>
+
+
+                      {/* BROUILLON */}
 
                       <button
                         type="button"
@@ -2233,7 +3674,9 @@ function Communication() {
                             : "border-slate-200 bg-white hover:bg-slate-50"
                         }`}
                       >
+
                         <div className="flex items-center gap-2">
+
                           <FileText
                             size={18}
                             className={
@@ -2247,17 +3690,23 @@ function Communication() {
                           <span className="text-sm font-bold text-slate-800">
                             Brouillon
                           </span>
+
                         </div>
 
                         <p className="mt-2 text-xs leading-5 text-slate-500">
                           Enregistrer sans publier.
                         </p>
+
                       </button>
 
                     </div>
+
                   </div>
 
-                  {/* DATE PUBLICATION */}
+
+                  {/* ==================================================
+                      DATE PUBLICATION
+                  ================================================== */}
 
                   {formulaire.mode_publication ===
                     "PROGRAMMEE" && (
@@ -2285,9 +3734,14 @@ function Communication() {
                             min={
                               new Date()
                                 .toISOString()
-                                .slice(0, 16)
+                                .slice(
+                                  0,
+                                  16
+                                )
                             }
-                            onChange={handleChange}
+                            onChange={
+                              handleChange
+                            }
                             className={`w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:ring-4 focus:ring-blue-600/10 ${
                               erreursFormulaire.date_publication
                                 ? "border-red-300 focus:border-red-500"
@@ -2304,24 +3758,34 @@ function Communication() {
                           )}
 
                           <p className="mt-2 text-xs leading-5 text-blue-700">
-                            La communication sera publiée
-                            automatiquement lorsque cette
-                            date sera atteinte.
+                            La communication sera
+                            publiée automatiquement
+                            lorsque cette date sera
+                            atteinte.
                           </p>
 
                         </div>
+
                       </div>
+
                     </div>
                   )}
 
-                  {/* DATE EXPIRATION */}
+
+                  {/* ==================================================
+                      DATE EXPIRATION
+                  ================================================== */}
 
                   <div>
+
                     <label className="mb-2 block text-sm font-bold text-slate-700">
+
                       Date d'expiration
+
                       <span className="ml-1 font-normal text-slate-400">
                         (facultative)
                       </span>
+
                     </label>
 
                     <input
@@ -2330,7 +3794,9 @@ function Communication() {
                       value={
                         formulaire.date_expiration
                       }
-                      onChange={handleChange}
+                      onChange={
+                        handleChange
+                      }
                       className={`w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none transition focus:ring-4 focus:ring-emerald-600/10 ${
                         erreursFormulaire.date_expiration
                           ? "border-red-300 focus:border-red-500"
@@ -2348,12 +3814,16 @@ function Communication() {
 
                     <p className="mt-1.5 text-xs text-slate-500">
                       La communication passera
-                      automatiquement à l'état « Expirée »
-                      après cette date.
+                      automatiquement à l'état
+                      « Expirée » après cette date.
                     </p>
+
                   </div>
 
-                  {/* COMMUNICATION ACTIVE */}
+
+                  {/* ==================================================
+                      NOTIFICATION
+                  ================================================== */}
 
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
 
@@ -2364,16 +3834,19 @@ function Communication() {
                       </div>
 
                       <div>
+
                         <p className="text-sm font-bold text-slate-800">
                           Notification push
                         </p>
 
                         <p className="mt-1 text-xs leading-5 text-slate-500">
-                          Pour une publication immédiate ou
-                          programmée, le système enverra
-                          automatiquement la notification aux
-                          appareils enregistrés.
+                          Lors de la publication, les
+                          appareils enregistrés recevront
+                          une notification. Pour un message
+                          vocal, la notification indique
+                          qu'un message vocal est disponible.
                         </p>
+
                       </div>
 
                     </div>
@@ -2384,24 +3857,35 @@ function Communication() {
 
               </div>
 
-              {/* FOOTER */}
+
+              {/* ==================================================
+                  FOOTER
+              ================================================== */}
 
               <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-slate-100 bg-white px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
 
                 <button
                   type="button"
-                  onClick={fermerModal}
-                  disabled={enregistrement}
+                  onClick={
+                    fermerModal
+                  }
+                  disabled={
+                    enregistrement
+                  }
                   className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
                 >
                   Annuler
                 </button>
 
+
                 <button
                   type="submit"
-                  disabled={enregistrement}
+                  disabled={
+                    enregistrement
+                  }
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
                 >
+
                   {enregistrement ? (
                     <>
                       <RefreshCw
@@ -2414,24 +3898,33 @@ function Communication() {
                   ) : formulaire.mode_publication ===
                     "PROGRAMMEE" ? (
                     <>
-                      <CalendarClock size={17} />
+                      <CalendarClock
+                        size={17}
+                      />
+
                       Programmer
                     </>
                   ) : formulaire.mode_publication ===
                     "BROUILLON" ? (
                     <>
-                      <FileText size={17} />
+                      <FileText
+                        size={17}
+                      />
+
                       Enregistrer le brouillon
                     </>
                   ) : (
                     <>
-                      <Send size={17} />
+                      <Send
+                        size={17}
+                      />
 
                       {modeEdition
                         ? "Enregistrer les modifications"
                         : "Publier maintenant"}
                     </>
                   )}
+
                 </button>
 
               </div>
@@ -2439,8 +3932,10 @@ function Communication() {
             </form>
 
           </div>
+
         </div>
       )}
+
 
       {/* ======================================================
           MODALE SUPPRESSION
@@ -2465,14 +3960,34 @@ function Communication() {
               </p>
 
               <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+
                 <p className="font-bold text-slate-800">
-                  {communicationASupprimer.titre}
+                  {
+                    communicationASupprimer.titre
+                  }
                 </p>
 
-                <p className="mt-1 line-clamp-3 text-xs leading-5 text-slate-500">
-                  {communicationASupprimer.contenu}
-                </p>
+                {communicationASupprimer.contenu && (
+                  <p className="mt-1 line-clamp-3 text-xs leading-5 text-slate-500">
+                    {
+                      communicationASupprimer.contenu
+                    }
+                  </p>
+                )}
+
+                {communicationASupprimer.audio_url && (
+                  <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-emerald-700">
+                    <FileAudio
+                      size={14}
+                    />
+
+                    Cette communication contient
+                    également un message vocal.
+                  </div>
+                )}
+
               </div>
+
 
               <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
 
@@ -2501,6 +4016,7 @@ function Communication() {
                   Annuler
                 </button>
 
+
                 <button
                   type="button"
                   onClick={
@@ -2511,6 +4027,7 @@ function Communication() {
                   }
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
+
                   {suppressionEnCours ? (
                     <>
                       <RefreshCw
@@ -2522,10 +4039,14 @@ function Communication() {
                     </>
                   ) : (
                     <>
-                      <Trash2 size={17} />
+                      <Trash2
+                        size={17}
+                      />
+
                       Supprimer
                     </>
                   )}
+
                 </button>
 
               </div>
@@ -2539,5 +4060,5 @@ function Communication() {
   );
 }
 
-export default Communication;
 
+export default Communication;

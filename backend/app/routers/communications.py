@@ -1,11 +1,23 @@
-
 from datetime import datetime, timezone
+import asyncio
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import cloudinary
+import cloudinary.uploader
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.permissions import require_permission
+from app.core.config import settings
 from app.models.communication import Communication
 from app.schemas.communication import (
     CommunicationAnnulation,
@@ -30,6 +42,36 @@ router = APIRouter(
 
 
 # ============================================================
+# CONFIGURATION CLOUDINARY
+# ============================================================
+
+cloudinary.config(
+    cloud_name=settings.cloudinary_cloud_name,
+    api_key=settings.cloudinary_api_key,
+    api_secret=settings.cloudinary_api_secret,
+    secure=True,
+)
+
+
+DOSSIER_CLOUDINARY_AUDIO = "dahira/communications"
+
+# Limite actuelle du compte Cloudinary utilisée par le projet.
+TAILLE_MAX_AUDIO = 10 * 1024 * 1024
+
+
+TYPES_AUDIO_AUTORISES = {
+    "audio/webm",
+    "audio/webm;codecs=opus",
+    "audio/ogg",
+    "audio/ogg;codecs=opus",
+    "audio/mp4",
+    "audio/mpeg",
+    "audio/wav",
+    "audio/x-wav",
+}
+
+
+# ============================================================
 # STATUTS
 # ============================================================
 
@@ -38,6 +80,7 @@ STATUT_PROGRAMMEE = "PROGRAMMEE"
 STATUT_PUBLIEE = "PUBLIEE"
 STATUT_EXPIREE = "EXPIREE"
 STATUT_ANNULEE = "ANNULEE"
+
 
 STATUTS_VALIDES = {
     STATUT_BROUILLON,
@@ -56,9 +99,9 @@ def normaliser_datetime_utc(
     valeur: datetime | None,
 ) -> datetime | None:
     """
-    Convertit une date en UTC SANS timezone.
+    Convertit une date en UTC sans timezone.
 
-    Notre modèle Communication utilise actuellement :
+    Le modèle Communication utilise actuellement :
 
         DateTime
 
@@ -66,12 +109,7 @@ def normaliser_datetime_utc(
 
         DateTime(timezone=True)
 
-    Nous conservons donc des datetime naïfs représentant UTC
-    partout dans cette partie de l'application.
-
-    - None -> None
-    - datetime naïf -> considéré comme UTC
-    - datetime timezone-aware -> converti en UTC puis rendu naïf
+    On conserve donc des datetime naïfs représentant UTC.
     """
 
     if valeur is None:
@@ -90,9 +128,6 @@ def normaliser_datetime_utc(
 def maintenant_utc() -> datetime:
     """
     Retourne maintenant en UTC sous forme de datetime naïf.
-
-    Compatible avec les colonnes SQLAlchemy DateTime
-    actuellement utilisées par Communication.
     """
 
     return datetime.now(timezone.utc).replace(
@@ -111,12 +146,19 @@ def determiner_statut_creation(
     """
     Détermine automatiquement le statut d'une communication
     lors de sa création.
+
+    Règles :
+
+    - BROUILLON -> BROUILLON
+    - ANNULEE -> ANNULEE
+    - date future -> PROGRAMMEE
+    - date absente/passée -> PUBLIEE
     """
 
     maintenant = maintenant_utc()
 
     # --------------------------------------------------------
-    # Brouillon / annulation explicitement demandés
+    # Statuts explicitement demandés
     # --------------------------------------------------------
 
     if statut_demande in {
@@ -125,12 +167,16 @@ def determiner_statut_creation(
     }:
         return statut_demande
 
+    # --------------------------------------------------------
+    # Normalisation date
+    # --------------------------------------------------------
+
     date_publication = normaliser_datetime_utc(
         date_publication
     )
 
     # --------------------------------------------------------
-    # Date future = communication programmée
+    # Date future
     # --------------------------------------------------------
 
     if (
@@ -140,7 +186,7 @@ def determiner_statut_creation(
         return STATUT_PROGRAMMEE
 
     # --------------------------------------------------------
-    # Date absente ou passée = publication immédiate
+    # Publication immédiate
     # --------------------------------------------------------
 
     return STATUT_PUBLIEE
@@ -194,16 +240,12 @@ def envoyer_push_communication(
     """
     Envoie la notification Firebase pour une communication.
 
-    Utilise le véritable service Firebase du projet :
+    Le détail de l'envoi est géré par :
 
         envoyer_communication_push(communication, db)
 
-    Retourne True si l'envoi du service push s'est exécuté
-    sans lever d'exception.
-
-    Le résultat détaillé du service Firebase est affiché dans
-    les logs mais ne bloque pas la communication si aucun
-    appareil n'est enregistré.
+    Retourne True si le service d'envoi s'exécute
+    sans exception.
     """
 
     try:
@@ -229,7 +271,125 @@ def envoyer_push_communication(
 
 
 # ============================================================
-# LISTE
+# UPLOAD MESSAGE VOCAL
+# ============================================================
+
+@router.post("/audio")
+async def uploader_audio_communication(
+    fichier: UploadFile = File(...),
+    current_user=Depends(
+        require_permission("COMMUNICATION_CREER")
+    ),
+):
+    """
+    Téléverse un message vocal vers Cloudinary.
+
+    Formats autorisés :
+
+    - WebM
+    - OGG
+    - MP4
+    - MP3
+    - WAV
+
+    Taille maximale : 10 Mo.
+    """
+
+    # --------------------------------------------------------
+    # Type MIME
+    # --------------------------------------------------------
+
+    type_contenu = (
+        fichier.content_type or ""
+    ).lower().strip()
+
+    if type_contenu not in TYPES_AUDIO_AUTORISES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Format audio non autorisé. "
+                "Utilisez WebM, OGG, MP4, MP3 ou WAV."
+            ),
+        )
+
+    # --------------------------------------------------------
+    # Lecture
+    # --------------------------------------------------------
+
+    contenu = await fichier.read()
+
+    if not contenu:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Le fichier audio est vide.",
+        )
+
+    # --------------------------------------------------------
+    # Taille
+    # --------------------------------------------------------
+
+    if len(contenu) > TAILLE_MAX_AUDIO:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=(
+                "Le message vocal ne doit pas dépasser 10 Mo."
+            ),
+        )
+
+    # --------------------------------------------------------
+    # Upload Cloudinary
+    # --------------------------------------------------------
+
+    try:
+        resultat = await asyncio.to_thread(
+            cloudinary.uploader.upload,
+            contenu,
+            resource_type="video",
+            folder=DOSSIER_CLOUDINARY_AUDIO,
+            use_filename=False,
+            unique_filename=True,
+        )
+
+    except Exception as erreur:
+        print(
+            "ERREUR UPLOAD AUDIO COMMUNICATION :",
+            erreur,
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=(
+                "Impossible d'envoyer le message vocal "
+                "vers Cloudinary."
+            ),
+        ) from erreur
+
+    # --------------------------------------------------------
+    # URL Cloudinary
+    # --------------------------------------------------------
+
+    audio_url = resultat.get("secure_url")
+
+    if not audio_url:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=(
+                "Cloudinary n'a pas retourné "
+                "l'URL du message vocal."
+            ),
+        )
+
+    return {
+        "audio_url": audio_url,
+        "public_id": resultat.get("public_id"),
+        "format": resultat.get("format"),
+        "resource_type": resultat.get("resource_type"),
+        "bytes": resultat.get("bytes"),
+    }
+
+
+# ============================================================
+# LISTE DES COMMUNICATIONS
 # ============================================================
 
 @router.get(
@@ -251,7 +411,9 @@ def lister_communications(
     ),
     db: Session = Depends(get_db),
     current_user=Depends(
-        require_permission("COMMUNICATION_CONSULTER")
+        require_permission(
+            "COMMUNICATION_CONSULTER"
+        )
     ),
 ):
     """
@@ -261,7 +423,7 @@ def lister_communications(
     query = db.query(Communication)
 
     # --------------------------------------------------------
-    # Filtres
+    # Filtre actif
     # --------------------------------------------------------
 
     if actif is not None:
@@ -269,29 +431,54 @@ def lister_communications(
             Communication.actif == actif
         )
 
+    # --------------------------------------------------------
+    # Filtre type
+    # --------------------------------------------------------
+
     if type_communication:
         query = query.filter(
             Communication.type_communication
             == type_communication
         )
 
+    # --------------------------------------------------------
+    # Filtre priorité
+    # --------------------------------------------------------
+
     if priorite:
         query = query.filter(
             Communication.priorite == priorite
         )
 
+    # --------------------------------------------------------
+    # Filtre statut
+    # --------------------------------------------------------
+
     if statut_communication:
 
-        if statut_communication not in STATUTS_VALIDES:
+        statut_communication = (
+            statut_communication.upper().strip()
+        )
+
+        if (
+            statut_communication
+            not in STATUTS_VALIDES
+        ):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Statut de communication invalide.",
+                detail=(
+                    "Statut de communication invalide."
+                ),
             )
 
         query = query.filter(
             Communication.statut
             == statut_communication
         )
+
+    # --------------------------------------------------------
+    # Récupération
+    # --------------------------------------------------------
 
     communications = (
         query
@@ -336,7 +523,9 @@ def obtenir_communication(
     communication_id: int,
     db: Session = Depends(get_db),
     current_user=Depends(
-        require_permission("COMMUNICATION_CONSULTER")
+        require_permission(
+            "COMMUNICATION_CONSULTER"
+        )
     ),
 ):
     """
@@ -371,7 +560,7 @@ def obtenir_communication(
 
 
 # ============================================================
-# CRÉER
+# CRÉER UNE COMMUNICATION
 # ============================================================
 
 @router.post(
@@ -383,22 +572,50 @@ def creer_communication(
     donnees: CommunicationCreate,
     db: Session = Depends(get_db),
     current_user=Depends(
-        require_permission("COMMUNICATION_CREER")
+        require_permission(
+            "COMMUNICATION_CREER"
+        )
     ),
 ):
     """
     Crée une communication.
 
+    Une communication peut contenir :
+
+    - uniquement du texte ;
+    - uniquement un vocal ;
+    - du texte + un vocal.
+
+    Elle ne peut pas être vide.
+
     Comportement :
 
     - date future -> PROGRAMMEE
-    - date absente ou passée -> PUBLIEE
+    - date absente/passée -> PUBLIEE
     - BROUILLON -> BROUILLON
     - ANNULEE -> ANNULEE
-
-    Une notification Firebase est envoyée uniquement
-    pour une communication publiée immédiatement.
     """
+
+    # --------------------------------------------------------
+    # Vérification texte / vocal
+    # --------------------------------------------------------
+
+    contenu = (
+        donnees.contenu or ""
+    ).strip()
+
+    audio_url = (
+        donnees.audio_url or ""
+    ).strip() or None
+
+    if not contenu and not audio_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "La communication doit contenir "
+                "un message texte ou un message vocal."
+            ),
+        )
 
     # --------------------------------------------------------
     # Normalisation des dates
@@ -430,7 +647,7 @@ def creer_communication(
         )
 
     # --------------------------------------------------------
-    # Détermination du statut
+    # Détermination statut
     # --------------------------------------------------------
 
     statut = determiner_statut_creation(
@@ -451,12 +668,33 @@ def creer_communication(
 
     communication = Communication(
         titre=donnees.titre.strip(),
-        contenu=donnees.contenu.strip(),
-        type_communication=donnees.type_communication,
-        priorite=donnees.priorite,
-        date_publication=date_publication,
-        date_expiration=date_expiration,
+
+        contenu=(
+            contenu
+            if contenu
+            else None
+        ),
+
+        audio_url=audio_url,
+
+        type_communication=(
+            donnees.type_communication
+        ),
+
+        priorite=(
+            donnees.priorite
+        ),
+
+        date_publication=(
+            date_publication
+        ),
+
+        date_expiration=(
+            date_expiration
+        ),
+
         statut=statut,
+
         actif=(
             False
             if statut in {
@@ -466,6 +704,7 @@ def creer_communication(
             }
             else donnees.actif
         ),
+
         push_envoye=False,
     )
 
@@ -496,7 +735,7 @@ def creer_communication(
 
 
 # ============================================================
-# MODIFIER
+# MODIFIER UNE COMMUNICATION
 # ============================================================
 
 @router.put(
@@ -508,15 +747,39 @@ def modifier_communication(
     donnees: CommunicationUpdate,
     db: Session = Depends(get_db),
     current_user=Depends(
-        require_permission("COMMUNICATION_MODIFIER")
+        require_permission(
+            "COMMUNICATION_MODIFIER"
+        )
     ),
 ):
     """
     Modifie une communication.
 
-    Gère également le changement de date et donc
-    le passage vers PROGRAMMEE ou PUBLIEE.
+    Gère :
+
+    - texte ;
+    - vocal ;
+    - texte + vocal ;
+    - programmation ;
+    - publication ;
+    - expiration ;
+    - brouillon ;
+    - annulation.
+
+    Lors d'une modification :
+
+    - audio_url absent = ancien vocal conservé ;
+    - audio_url null = vocal supprimé ;
+    - texte absent = ancien texte conservé ;
+    - contenu null = texte supprimé.
+
+    Une communication doit toujours contenir au moins
+    un texte ou un vocal après modification.
     """
+
+    # --------------------------------------------------------
+    # Recherche
+    # --------------------------------------------------------
 
     communication = (
         db.query(Communication)
@@ -545,52 +808,112 @@ def modifier_communication(
     )
 
     ancien_statut = communication.statut
-    ancien_push_envoye = communication.push_envoye
+
+    ancien_push_envoye = (
+        communication.push_envoye
+    )
 
     # --------------------------------------------------------
     # Champs simples
     # --------------------------------------------------------
 
     if donnees.titre is not None:
-        communication.titre = donnees.titre.strip()
 
-    if donnees.contenu is not None:
-        communication.contenu = donnees.contenu.strip()
+        communication.titre = (
+            donnees.titre.strip()
+        )
+
+    # --------------------------------------------------------
+    # CONTENU
+    #
+    # Important :
+    # il faut utiliser model_fields_set.
+    #
+    # Pourquoi ?
+    #
+    # - champ absent -> on conserve le texte actuel ;
+    # - contenu=null -> on supprime explicitement le texte ;
+    # --------------------------------------------------------
+
+    if "contenu" in donnees.model_fields_set:
+
+        communication.contenu = (
+            donnees.contenu.strip()
+            if donnees.contenu
+            else None
+        )
+
+    # --------------------------------------------------------
+    # AUDIO
+    #
+    # - champ absent -> conservation du vocal actuel ;
+    # - audio_url=null -> suppression du vocal ;
+    # --------------------------------------------------------
+
+    if "audio_url" in donnees.model_fields_set:
+
+        communication.audio_url = (
+            donnees.audio_url.strip()
+            if donnees.audio_url
+            else None
+        )
+
+    # --------------------------------------------------------
+    # Type
+    # --------------------------------------------------------
 
     if donnees.type_communication is not None:
+
         communication.type_communication = (
             donnees.type_communication
         )
 
+    # --------------------------------------------------------
+    # Priorité
+    # --------------------------------------------------------
+
     if donnees.priorite is not None:
-        communication.priorite = donnees.priorite
+
+        communication.priorite = (
+            donnees.priorite
+        )
 
     # --------------------------------------------------------
     # Dates
     # --------------------------------------------------------
 
-    if donnees.date_publication is not None:
+    if "date_publication" in donnees.model_fields_set:
 
         date_publication = normaliser_datetime_utc(
             donnees.date_publication
         )
 
-    if donnees.date_expiration is not None:
+    if "date_expiration" in donnees.model_fields_set:
 
         date_expiration = normaliser_datetime_utc(
             donnees.date_expiration
         )
 
-    communication.date_publication = (
-        date_publication
-        if date_publication is not None
-        else communication.date_publication
-    )
+    # --------------------------------------------------------
+    # Date publication
+    # --------------------------------------------------------
 
-    communication.date_expiration = date_expiration
+    if date_publication is not None:
+
+        communication.date_publication = (
+            date_publication
+        )
 
     # --------------------------------------------------------
-    # Vérification des dates
+    # Date expiration
+    # --------------------------------------------------------
+
+    communication.date_expiration = (
+        date_expiration
+    )
+
+    # --------------------------------------------------------
+    # Vérification dates
     # --------------------------------------------------------
 
     if (
@@ -607,6 +930,28 @@ def modifier_communication(
         )
 
     # --------------------------------------------------------
+    # Vérification texte / vocal
+    # --------------------------------------------------------
+
+    contenu_final = (
+        communication.contenu or ""
+    ).strip()
+
+    audio_final = (
+        communication.audio_url or ""
+    ).strip()
+
+    if not contenu_final and not audio_final:
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "La communication doit contenir "
+                "un message texte ou un message vocal."
+            ),
+        )
+
+    # --------------------------------------------------------
     # Statut demandé
     # --------------------------------------------------------
 
@@ -614,10 +959,17 @@ def modifier_communication(
 
     if statut_demande is not None:
 
+        statut_demande = (
+            statut_demande.upper().strip()
+        )
+
         if statut_demande not in STATUTS_VALIDES:
+
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Statut de communication invalide.",
+                detail=(
+                    "Statut de communication invalide."
+                ),
             )
 
     # --------------------------------------------------------
@@ -638,6 +990,7 @@ def modifier_communication(
     elif statut_demande == STATUT_PROGRAMMEE:
 
         if date_publication is None:
+
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
@@ -647,6 +1000,7 @@ def modifier_communication(
             )
 
         if date_publication <= maintenant_utc():
+
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
@@ -665,9 +1019,11 @@ def modifier_communication(
 
         # Aucun statut fourni :
         # détermination automatique.
-        nouveau_statut = determiner_statut_creation(
-            date_publication,
-            None,
+        nouveau_statut = (
+            determiner_statut_creation(
+                date_publication,
+                None,
+            )
         )
 
     communication.statut = nouveau_statut
@@ -677,7 +1033,10 @@ def modifier_communication(
     # --------------------------------------------------------
 
     if donnees.actif is not None:
-        communication.actif = donnees.actif
+
+        communication.actif = (
+            donnees.actif
+        )
 
     if nouveau_statut in {
         STATUT_BROUILLON,
@@ -693,6 +1052,7 @@ def modifier_communication(
     }:
 
         if donnees.actif is None:
+
             communication.actif = True
 
     # --------------------------------------------------------
@@ -719,7 +1079,7 @@ def modifier_communication(
     db.refresh(communication)
 
     # --------------------------------------------------------
-    # Push
+    # PUSH
     # --------------------------------------------------------
 
     if doit_envoyer_push:
@@ -743,7 +1103,6 @@ def modifier_communication(
 # ACTIVER / DÉSACTIVER
 # ============================================================
 
-
 @router.patch(
     "/{communication_id}/statut",
     response_model=CommunicationResponse,
@@ -753,7 +1112,9 @@ def modifier_statut_communication(
     donnees: CommunicationStatutUpdate,
     db: Session = Depends(get_db),
     current_user=Depends(
-        require_permission("COMMUNICATION_MODIFIER")
+        require_permission(
+            "COMMUNICATION_MODIFIER"
+        )
     ),
 ):
     """
@@ -761,14 +1122,13 @@ def modifier_statut_communication(
 
     Règles :
 
-    - Une communication normale peut être activée/désactivée.
-    - Une communication ANNULEE ne peut pas être réactivée
-      par cette route.
-    - Une communication EXPIREE peut être réactivée uniquement
-      si sa date d'expiration est encore dans le futur ou si
-      aucune date d'expiration n'est définie.
-    - Lorsqu'une communication EXPIREE est réactivée,
-      son statut redevient PUBLIEE.
+    - une communication normale peut être activée/désactivée ;
+    - une communication ANNULEE ne peut pas être réactivée
+      avec cette route ;
+    - une communication EXPIREE peut être réactivée si
+      son expiration n'est plus dépassée ;
+    - lors d'une réactivation d'une communication expirée,
+      le statut devient PUBLIEE.
     """
 
     communication = (
@@ -780,6 +1140,7 @@ def modifier_statut_communication(
     )
 
     if not communication:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Communication introuvable.",
@@ -802,9 +1163,8 @@ def modifier_statut_communication(
     # RÉACTIVATION
     # ========================================================
 
-    # Une communication annulée doit passer par
-    # la modification explicite de son statut.
     if communication.statut == STATUT_ANNULEE:
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
@@ -819,16 +1179,17 @@ def modifier_statut_communication(
 
     if communication.statut == STATUT_EXPIREE:
 
-        date_expiration = normaliser_datetime_utc(
-            communication.date_expiration
+        date_expiration = (
+            normaliser_datetime_utc(
+                communication.date_expiration
+            )
         )
 
-        # Une expiration toujours passée ne peut pas
-        # être contournée simplement en activant la communication.
         if (
             date_expiration is not None
             and date_expiration <= maintenant_utc()
         ):
+
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
@@ -838,20 +1199,36 @@ def modifier_statut_communication(
                 ),
             )
 
-        # L'expiration n'est plus dépassée :
-        # la communication peut redevenir publiée.
-        communication.statut = STATUT_PUBLIEE
+        # ----------------------------------------------------
+        # Vérification contenu
+        # ----------------------------------------------------
+
+        if (
+            not (communication.contenu or "").strip()
+            and not communication.audio_url
+        ):
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "La communication doit contenir "
+                    "un message texte ou un message vocal."
+                ),
+            )
+
+        communication.statut = (
+            STATUT_PUBLIEE
+        )
+
         communication.actif = True
 
-        # Si aucun push n'a encore été envoyé pour cette
-        # nouvelle publication, il sera envoyé.
         communication.push_envoye = False
 
         db.commit()
         db.refresh(communication)
 
         # ----------------------------------------------------
-        # Push après réactivation
+        # Push
         # ----------------------------------------------------
 
         push_ok = envoyer_push_communication(
@@ -860,6 +1237,7 @@ def modifier_statut_communication(
         )
 
         if push_ok:
+
             communication.push_envoye = True
 
             db.commit()
@@ -871,13 +1249,28 @@ def modifier_statut_communication(
     # AUTRES STATUTS
     # ========================================================
 
+    # Sécurité : on vérifie quand même qu'une communication
+    # contient bien un texte ou un vocal.
+
+    if (
+        not (communication.contenu or "").strip()
+        and not communication.audio_url
+    ):
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "La communication doit contenir "
+                "un message texte ou un message vocal."
+            ),
+        )
+
     communication.actif = True
 
     db.commit()
     db.refresh(communication)
 
     return communication
-
 
 
 # ============================================================
@@ -893,7 +1286,9 @@ def annuler_communication(
     donnees: CommunicationAnnulation | None = None,
     db: Session = Depends(get_db),
     current_user=Depends(
-        require_permission("COMMUNICATION_MODIFIER")
+        require_permission(
+            "COMMUNICATION_MODIFIER"
+        )
     ),
 ):
     """
@@ -909,12 +1304,14 @@ def annuler_communication(
     )
 
     if not communication:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Communication introuvable.",
         )
 
     if communication.statut != STATUT_PROGRAMMEE:
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
@@ -923,8 +1320,12 @@ def annuler_communication(
             ),
         )
 
-    communication.statut = STATUT_ANNULEE
+    communication.statut = (
+        STATUT_ANNULEE
+    )
+
     communication.actif = False
+
     communication.push_envoye = False
 
     db.commit()
@@ -945,7 +1346,9 @@ def supprimer_communication(
     communication_id: int,
     db: Session = Depends(get_db),
     current_user=Depends(
-        require_permission("COMMUNICATION_SUPPRIMER")
+        require_permission(
+            "COMMUNICATION_SUPPRIMER"
+        )
     ),
 ):
     """
@@ -961,12 +1364,14 @@ def supprimer_communication(
     )
 
     if not communication:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Communication introuvable.",
         )
 
     db.delete(communication)
+
     db.commit()
 
     return None

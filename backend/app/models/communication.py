@@ -19,9 +19,17 @@ class Communication(Base):
         nullable=False,
     )
 
-    contenu: Mapped[str] = mapped_column(
+    # Le texte devient optionnel.
+    # Une communication peut être vocale uniquement.
+    contenu: Mapped[str | None] = mapped_column(
         Text,
-        nullable=False,
+        nullable=True,
+    )
+
+    # URL du message vocal hébergé sur Cloudinary.
+    audio_url: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
     )
 
     type_communication: Mapped[str] = mapped_column(
@@ -36,41 +44,17 @@ class Communication(Base):
         default="NORMALE",
     )
 
-    # ============================================================
-    # DATE DE PUBLICATION
-    # ============================================================
-    #
-    # Pour une communication immédiate :
-    #   date_publication = maintenant
-    #
-    # Pour une communication programmée :
-    #   date_publication = date/heure choisie
-    #
     date_publication: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
         server_default=func.now(),
     )
 
-    # ============================================================
-    # DATE D'EXPIRATION
-    # ============================================================
-
     date_expiration: Mapped[datetime | None] = mapped_column(
         DateTime,
         nullable=True,
     )
 
-    # ============================================================
-    # STATUT
-    # ============================================================
-    #
-    # BROUILLON
-    # PROGRAMMEE
-    # PUBLIEE
-    # EXPIREE
-    # ANNULEE
-    #
     statut: Mapped[str] = mapped_column(
         String(30),
         nullable=False,
@@ -78,13 +62,6 @@ class Communication(Base):
         server_default="PUBLIEE",
     )
 
-    # ============================================================
-    # ACTIVATION
-    # ============================================================
-    #
-    # Ce champ est conservé pour rester compatible avec
-    # le fonctionnement actuel de l'application.
-    #
     actif: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
@@ -92,26 +69,12 @@ class Communication(Base):
         server_default="true",
     )
 
-    # ============================================================
-    # NOTIFICATION FIREBASE
-    # ============================================================
-    #
-    # False = notification pas encore envoyée
-    # True  = notification déjà envoyée
-    #
-    # Cela permet d'éviter qu'une communication programmée
-    # envoie plusieurs fois la même notification.
-    #
     push_envoye: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
         default=False,
         server_default="false",
     )
-
-    # ============================================================
-    # DATES TECHNIQUES
-    # ============================================================
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
