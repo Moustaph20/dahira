@@ -303,11 +303,24 @@ async def uploader_audio_communication(
         fichier.content_type or ""
     ).lower().strip()
 
-    if type_contenu not in TYPES_AUDIO_AUTORISES:
+    types_audio_acceptes = {
+        "audio/webm",
+        "audio/ogg",
+        "audio/mp4",
+        "audio/mpeg",
+        "audio/wav",
+        "audio/x-wav",
+    }
+
+    if not (
+        type_contenu in types_audio_acceptes
+        or type_contenu.startswith("audio/webm")
+        or type_contenu.startswith("audio/ogg")
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                "Format audio non autorisé. "
+                f"Format audio non autorisé : {fichier.content_type}. "
                 "Utilisez WebM, OGG, MP4, MP3 ou WAV."
             ),
         )
