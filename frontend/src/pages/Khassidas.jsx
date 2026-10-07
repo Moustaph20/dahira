@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 
 import {
@@ -9,6 +8,7 @@ import {
   Download,
   Edit,
   ExternalLink,
+  FileAudio,
   FileText,
   Headphones,
   Loader2,
@@ -25,36 +25,21 @@ import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
 
 // ============================================================
-// URL AUDIO
+// OUTILS
 // ============================================================
 
 function getAudioUrl(fichier) {
-  if (!fichier) {
-    return "";
-  }
+  if (!fichier) return "";
 
-  // URL Cloudinary ou autre URL externe
-  if (
-    fichier.startsWith("http://") ||
-    fichier.startsWith("https://")
-  ) {
+  if (fichier.startsWith("http://") || fichier.startsWith("https://")) {
     return fichier;
   }
 
-  const baseURL = (
-    api.defaults.baseURL || ""
-  ).replace(/\/+$/, "");
-
-  const chemin = fichier
-    .replace(/\\/g, "/")
-    .replace(/^\/+/, "");
+  const baseURL = (api.defaults.baseURL || "").replace(/\/+$/, "");
+  const chemin = fichier.replace(/\\/g, "/").replace(/^\/+/, "");
 
   return `${baseURL}/${chemin}`;
 }
-
-// ============================================================
-// NOM DE FICHIER SÉCURISÉ
-// ============================================================
 
 function nettoyerNomFichier(nom) {
   return (
@@ -64,224 +49,144 @@ function nettoyerNomFichier(nom) {
   );
 }
 
+function ActionButton({
+  children,
+  title,
+  icon: Icon,
+  onClick,
+  disabled = false,
+  variant = "light",
+}) {
+  const variants = {
+    light:
+      "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+    green:
+      "bg-emerald-700 text-white hover:bg-emerald-800",
+    softGreen:
+      "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+    danger:
+      "border border-red-200 bg-red-50 text-red-700 hover:bg-red-100",
+  };
+
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant]}`}
+    >
+      {Icon && <Icon className="h-4 w-4" />}
+      {children}
+    </button>
+  );
+}
+
 // ============================================================
-// COMPOSANT
+// COMPOSANT PRINCIPAL
 // ============================================================
 
 export default function Khassidas() {
   const { aPermission } = useAuth();
 
-  // ==========================================================
-  // ETATS KHASSIDAS
-  // ==========================================================
-
   const [khassidas, setKhassidas] = useState([]);
   const [chargement, setChargement] = useState(true);
-
-  // Rafraîchissement silencieux
-  const [rafraichissement, setRafraichissement] =
-    useState(false);
-
+  const [rafraichissement, setRafraichissement] = useState(false);
   const [erreur, setErreur] = useState("");
   const [message, setMessage] = useState("");
+  const [khassidaOuverte, setKhassidaOuverte] = useState(null);
 
-  const [khassidaOuverte, setKhassidaOuverte] =
-    useState(null);
-
-  // ==========================================================
-  // FORMULAIRE KHASSIDA
-  // ==========================================================
-
-  const [modalKhassida, setModalKhassida] =
-    useState(false);
-
-  const [modeKhassida, setModeKhassida] =
-    useState("creation");
-
-  const [khassidaSelectionnee, setKhassidaSelectionnee] =
-    useState(null);
-
+  // KHASSIDA
+  const [modalKhassida, setModalKhassida] = useState(false);
+  const [modeKhassida, setModeKhassida] = useState("creation");
+  const [khassidaSelectionnee, setKhassidaSelectionnee] = useState(null);
   const [formKhassida, setFormKhassida] = useState({
     titre: "",
     auteur: "",
     description: "",
   });
+  const [chargementKhassida, setChargementKhassida] = useState(false);
 
-  const [chargementKhassida, setChargementKhassida] =
-    useState(false);
-
-  // ==========================================================
-  // FORMULAIRE PDF
-  // ==========================================================
-
+  // PDF
   const [modalPdf, setModalPdf] = useState(false);
   const [khassidaPdf, setKhassidaPdf] = useState(null);
   const [fichierPdf, setFichierPdf] = useState(null);
-  const [chargementPdf, setChargementPdf] =
-    useState(false);
-
-  // ==========================================================
-  // LECTEUR PDF
-  // ==========================================================
-
-  const [lecteurPdfOuvert, setLecteurPdfOuvert] =
-    useState(false);
-
+  const [chargementPdf, setChargementPdf] = useState(false);
+  const [lecteurPdfOuvert, setLecteurPdfOuvert] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState("");
-  const [chargementLecturePdf, setChargementLecturePdf] =
-    useState(false);
+  const [chargementLecturePdf, setChargementLecturePdf] = useState(false);
+  const [telechargementPdfId, setTelechargementPdfId] = useState(null);
 
-  // ==========================================================
-  // TÉLÉCHARGEMENT PDF
-  // ==========================================================
-
-  const [telechargementPdfId, setTelechargementPdfId] =
-    useState(null);
-
-  // ==========================================================
-  // FORMULAIRE AUDIO
-  // ==========================================================
-
+  // AUDIO
   const [modalAudio, setModalAudio] = useState(false);
-
-  const [modeAudio, setModeAudio] =
-    useState("creation");
-
-  const [audioSelectionne, setAudioSelectionne] =
-    useState(null);
-
-  const [khassidaAudio, setKhassidaAudio] =
-    useState(null);
-
+  const [modeAudio, setModeAudio] = useState("creation");
+  const [audioSelectionne, setAudioSelectionne] = useState(null);
+  const [khassidaAudio, setKhassidaAudio] = useState(null);
   const [tons, setTons] = useState([]);
-  const [chargementTons, setChargementTons] =
-    useState(false);
-
+  const [chargementTons, setChargementTons] = useState(false);
   const [formAudio, setFormAudio] = useState({
     ton_id: "",
     titre: "",
     description: "",
     fichier: null,
   });
-
-  const [chargementAudio, setChargementAudio] =
-    useState(false);
-
-  // ==========================================================
-  // PERMISSIONS
-  // ==========================================================
+  const [chargementAudio, setChargementAudio] = useState(false);
 
   const peutCreer = aPermission("KOUREL_CREER");
   const peutModifier = aPermission("KOUREL_MODIFIER");
   const peutSupprimer = aPermission("KOUREL_SUPPRIMER");
   const peutConsulter = aPermission("KOUREL_CONSULTER");
-  const peutGererProgramme =
-    aPermission("PROGRAMME_GERER");
-
-  // ==========================================================
-  // MESSAGE TEMPORAIRE
-  // ==========================================================
+  const peutGererProgramme = aPermission("PROGRAMME_GERER");
 
   function afficherMessage(texte) {
     setMessage(texte);
-
-    setTimeout(() => {
-      setMessage("");
-    }, 4000);
+    setTimeout(() => setMessage(""), 3500);
   }
 
-  // ==========================================================
-  // CHARGER LES KHASSIDAS
-  // ==========================================================
+  function afficherErreur(error, messageDefaut) {
+    console.error(error);
+    setErreur(error.response?.data?.detail || messageDefaut);
+  }
 
-  async function chargerKhassidas(
-    afficherLoader = true
-  ) {
-    if (afficherLoader) {
-      setChargement(true);
-    } else {
-      setRafraichissement(true);
-    }
+  async function chargerKhassidas(afficherLoader = true) {
+    if (afficherLoader) setChargement(true);
+    else setRafraichissement(true);
 
     setErreur("");
 
     try {
       const response = await api.get("/khassidas");
-
-      console.log(
-        "KHASSIDAS REÇUES :",
-        response.data
-      );
-
-      const nouvellesKhassidas =
-        Array.isArray(response.data)
-          ? response.data
-          : [];
-
-      setKhassidas(nouvellesKhassidas);
+      setKhassidas(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error(
-        "ERREUR CHARGEMENT KHASSIDAS :",
-        error
-      );
-
-      setErreur(
-        error.response?.data?.detail ||
-          "Impossible de charger les Khassidas."
-      );
+      afficherErreur(error, "Impossible de charger les Khassidas.");
     } finally {
-      if (afficherLoader) {
-        setChargement(false);
-      } else {
-        setRafraichissement(false);
-      }
+      if (afficherLoader) setChargement(false);
+      else setRafraichissement(false);
     }
   }
-
-  // ==========================================================
-  // CHARGEMENT INITIAL
-  // ==========================================================
 
   useEffect(() => {
     chargerKhassidas(true);
   }, []);
 
-  // ==========================================================
-  // NETTOYAGE BLOB URL PDF
-  // ==========================================================
-
   useEffect(() => {
     return () => {
-      if (pdfBlobUrl) {
-        URL.revokeObjectURL(pdfBlobUrl);
-      }
+      if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
     };
   }, [pdfBlobUrl]);
 
-  // ==========================================================
-  // OUVRIR / FERMER KHASSIDA
-  // ==========================================================
+  // ============================================================
+  // KHASSIDA
+  // ============================================================
 
   function toggleKhassida(id) {
-    setKhassidaOuverte((ancienne) =>
-      ancienne === id ? null : id
-    );
+    setKhassidaOuverte((ancienne) => (ancienne === id ? null : id));
   }
-
-  // ==========================================================
-  // FORMULAIRE KHASSIDA
-  // ==========================================================
 
   function ouvrirCreationKhassida() {
     setModeKhassida("creation");
     setKhassidaSelectionnee(null);
-
-    setFormKhassida({
-      titre: "",
-      auteur: "",
-      description: "",
-    });
-
+    setFormKhassida({ titre: "", auteur: "", description: "" });
     setErreur("");
     setModalKhassida(true);
   }
@@ -289,50 +194,28 @@ export default function Khassidas() {
   function ouvrirModificationKhassida(khassida) {
     setModeKhassida("modification");
     setKhassidaSelectionnee(khassida);
-
     setFormKhassida({
       titre: khassida.titre || "",
       auteur: khassida.auteur || "",
       description: khassida.description || "",
     });
-
     setErreur("");
     setModalKhassida(true);
   }
 
   function fermerModalKhassida() {
-    if (chargementKhassida) {
-      return;
-    }
-
+    if (chargementKhassida) return;
     setModalKhassida(false);
     setKhassidaSelectionnee(null);
   }
 
-  function modifierChampKhassida(e) {
-    const { name, value } = e.target;
-
-    setFormKhassida((ancien) => ({
-      ...ancien,
-      [name]: value,
-    }));
-  }
-
-  // ==========================================================
-  // CREER / MODIFIER KHASSIDA
-  // ==========================================================
-
   async function enregistrerKhassida(e) {
     e.preventDefault();
-
     setErreur("");
 
     const titre = formKhassida.titre.trim();
-
     if (!titre) {
-      setErreur(
-        "Le titre de la Khassida est obligatoire."
-      );
+      setErreur("Le titre de la Khassida est obligatoire.");
       return;
     }
 
@@ -341,97 +224,45 @@ export default function Khassidas() {
     try {
       const donnees = {
         titre,
-        auteur:
-          formKhassida.auteur.trim() || null,
-        description:
-          formKhassida.description.trim() || null,
+        auteur: formKhassida.auteur.trim() || null,
+        description: formKhassida.description.trim() || null,
       };
 
       if (modeKhassida === "creation") {
-        await api.post(
-          "/khassidas",
-          donnees
-        );
-
-        afficherMessage(
-          "Khassida ajoutée avec succès."
-        );
+        await api.post("/khassidas", donnees);
+        afficherMessage("Khassida ajoutée avec succès.");
       } else {
-        await api.put(
-          `/khassidas/${khassidaSelectionnee.id}`,
-          donnees
-        );
-
-        afficherMessage(
-          "Khassida modifiée avec succès."
-        );
+        await api.put(`/khassidas/${khassidaSelectionnee.id}`, donnees);
+        afficherMessage("Khassida modifiée avec succès.");
       }
 
       fermerModalKhassida();
-
       await chargerKhassidas(false);
     } catch (error) {
-      console.error(
-        "ERREUR KHASSIDA :",
-        error
-      );
-
-      setErreur(
-        error.response?.data?.detail ||
-          "Une erreur est survenue."
-      );
+      afficherErreur(error, "Une erreur est survenue.");
     } finally {
       setChargementKhassida(false);
     }
   }
 
-  // ==========================================================
-  // SUPPRIMER KHASSIDA
-  // ==========================================================
-
   async function supprimerKhassida(khassida) {
-    const confirmation = window.confirm(
-      `Voulez-vous vraiment supprimer la Khassida "${khassida.titre}" ?`
-    );
-
-    if (!confirmation) {
-      return;
-    }
+    if (!window.confirm(`Supprimer « ${khassida.titre} » ?`)) return;
 
     setErreur("");
 
     try {
-      await api.delete(
-        `/khassidas/${khassida.id}`
-      );
-
-      if (
-        khassidaOuverte === khassida.id
-      ) {
-        setKhassidaOuverte(null);
-      }
-
-      afficherMessage(
-        "Khassida supprimée avec succès."
-      );
-
+      await api.delete(`/khassidas/${khassida.id}`);
+      if (khassidaOuverte === khassida.id) setKhassidaOuverte(null);
+      afficherMessage("Khassida supprimée avec succès.");
       await chargerKhassidas(false);
     } catch (error) {
-      console.error(
-        "ERREUR SUPPRESSION KHASSIDA :",
-        error
-      );
-
-      setErreur(
-        error.response?.data?.detail ||
-          "Impossible de supprimer la Khassida."
-      );
+      afficherErreur(error, "Impossible de supprimer la Khassida.");
     }
   }
 
-  // ==========================================================
-  // PDF : OUVRIR MODALE
-  // ==========================================================
+  // ============================================================
+  // PDF
+  // ============================================================
 
   function ouvrirAjoutPdf(khassida) {
     setKhassidaPdf(khassida);
@@ -440,65 +271,36 @@ export default function Khassidas() {
     setModalPdf(true);
   }
 
-  // ==========================================================
-  // PDF : FERMER MODALE
-  // ==========================================================
-
   function fermerModalPdf() {
-    if (chargementPdf) {
-      return;
-    }
-
+    if (chargementPdf) return;
     setModalPdf(false);
     setKhassidaPdf(null);
     setFichierPdf(null);
   }
 
-  // ==========================================================
-  // PDF : SÉLECTION
-  // ==========================================================
-
   function selectionnerPdf(e) {
-    const fichier =
-      e.target.files?.[0] || null;
-
+    const fichier = e.target.files?.[0] || null;
     if (!fichier) {
       setFichierPdf(null);
       return;
     }
 
-    const extension =
-      fichier.name
-        ?.toLowerCase()
-        .split(".")
-        .pop();
+    const extension = fichier.name?.toLowerCase().split(".").pop();
 
-    if (
-      fichier.type !== "application/pdf" &&
-      extension !== "pdf"
-    ) {
-      setErreur(
-        "Veuillez sélectionner un fichier PDF."
-      );
+    if (fichier.type !== "application/pdf" && extension !== "pdf") {
+      setErreur("Veuillez sélectionner un fichier PDF.");
       setFichierPdf(null);
       return;
     }
 
     if (fichier.size === 0) {
-      setErreur(
-        "Le fichier PDF est vide."
-      );
+      setErreur("Le fichier PDF est vide.");
       setFichierPdf(null);
       return;
     }
 
-    if (
-      fichier.size >
-      100 * 1024 * 1024
-    ) {
-      setErreur(
-        "Le fichier PDF ne doit pas dépasser 100 MB."
-      );
+    if (fichier.size > 100 * 1024 * 1024) {
+      setErreur("Le fichier PDF ne doit pas dépasser 100 MB.");
       setFichierPdf(null);
       return;
     }
@@ -507,26 +309,17 @@ export default function Khassidas() {
     setFichierPdf(fichier);
   }
 
-  // ==========================================================
-  // PDF : UPLOAD / REMPLACEMENT
-  // ==========================================================
-
   async function enregistrerPdf(e) {
     e?.preventDefault?.();
-
     setErreur("");
 
     if (!khassidaPdf) {
-      setErreur(
-        "La Khassida est introuvable."
-      );
+      setErreur("La Khassida est introuvable.");
       return;
     }
 
     if (!fichierPdf) {
-      setErreur(
-        "Veuillez sélectionner un fichier PDF."
-      );
+      setErreur("Veuillez sélectionner un fichier PDF.");
       return;
     }
 
@@ -534,52 +327,21 @@ export default function Khassidas() {
 
     try {
       const formData = new FormData();
-
-      formData.append(
-        "fichier",
-        fichierPdf
-      );
-
-      await api.post(
-        `/khassidas/${khassidaPdf.id}/pdf`,
-        formData
-      );
-
-      afficherMessage(
-        "PDF enregistré avec succès."
-      );
-
+      formData.append("fichier", fichierPdf);
+      await api.post(`/khassidas/${khassidaPdf.id}/pdf`, formData);
+      afficherMessage("PDF enregistré avec succès.");
       fermerModalPdf();
-
       await chargerKhassidas(false);
     } catch (error) {
-      console.error(
-        "ERREUR PDF :",
-        error
-      );
-
-      setErreur(
-        error.response?.data?.detail ||
-          "Impossible d'enregistrer le PDF."
-      );
+      afficherErreur(error, "Impossible d'enregistrer le PDF.");
     } finally {
       setChargementPdf(false);
     }
   }
 
-  // ==========================================================
-  // PDF : LECTURE INTÉGRÉE
-  // ==========================================================
-
   async function lirePdf(khassida) {
-    if (!khassida?.id) {
-      return;
-    }
-
-    if (!khassida.pdf_url) {
-      setErreur(
-        "Aucun PDF n'est associé à cette Khassida."
-      );
+    if (!khassida?.id || !khassida.pdf_url) {
+      setErreur("Aucun PDF n'est associé à cette Khassida.");
       return;
     }
 
@@ -587,651 +349,276 @@ export default function Khassidas() {
     setChargementLecturePdf(true);
 
     try {
-      const response = await api.get(
-        `/khassidas/${khassida.id}/pdf/view`,
-        {
-          responseType: "blob",
-        }
-      );
+      const response = await api.get(`/khassidas/${khassida.id}/pdf/view`, {
+        responseType: "blob",
+      });
 
-      if (pdfBlobUrl) {
-        URL.revokeObjectURL(pdfBlobUrl);
-      }
+      if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
 
       const blob =
         response.data instanceof Blob
           ? response.data
-          : new Blob(
-              [response.data],
-              {
-                type: "application/pdf",
-              }
-            );
+          : new Blob([response.data], { type: "application/pdf" });
 
-      const nouvelleUrl =
-        URL.createObjectURL(blob);
-
-      setPdfBlobUrl(nouvelleUrl);
+      setPdfBlobUrl(URL.createObjectURL(blob));
       setKhassidaPdf(khassida);
       setLecteurPdfOuvert(true);
     } catch (error) {
-      console.error(
-        "ERREUR LECTURE PDF :",
-        error
-      );
-
-      setErreur(
-        error.response?.data?.detail ||
-          "Impossible d'ouvrir le PDF."
-      );
+      afficherErreur(error, "Impossible d'ouvrir le PDF.");
     } finally {
       setChargementLecturePdf(false);
     }
   }
 
-  // ==========================================================
-  // PDF : FERMER LECTEUR
-  // ==========================================================
-
   function fermerLecteurPdf() {
     setLecteurPdfOuvert(false);
-
-    if (pdfBlobUrl) {
-      URL.revokeObjectURL(pdfBlobUrl);
-    }
-
+    if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
     setPdfBlobUrl("");
     setKhassidaPdf(null);
   }
 
-  // ==========================================================
-  // PDF : OUVRIR DANS UN NOUVEL ONGLET
-  // ==========================================================
-
-  function ouvrirPdfNouvelOnglet() {
-    if (!pdfBlobUrl) {
-      return;
-    }
-
-    window.open(
-      pdfBlobUrl,
-      "_blank",
-      "noopener,noreferrer"
-    );
-  }
-
-  // ==========================================================
-  // PDF : TÉLÉCHARGER
-  // ==========================================================
-
   async function telechargerPdf(khassida) {
-    if (!khassida?.id) {
-      return;
-    }
-
-    if (!khassida.pdf_url) {
-      setErreur(
-        "Aucun PDF n'est associé à cette Khassida."
-      );
+    if (!khassida?.id || !khassida.pdf_url) {
+      setErreur("Aucun PDF n'est associé à cette Khassida.");
       return;
     }
 
     setErreur("");
-    setTelechargementPdfId(
-      khassida.id
-    );
+    setTelechargementPdfId(khassida.id);
 
     try {
       const response = await api.get(
         `/khassidas/${khassida.id}/pdf/download`,
-        {
-          responseType: "blob",
-        }
+        { responseType: "blob" }
       );
 
       const blob =
         response.data instanceof Blob
           ? response.data
-          : new Blob(
-              [response.data],
-              {
-                type: "application/pdf",
-              }
-            );
+          : new Blob([response.data], { type: "application/pdf" });
 
-      const url =
-        URL.createObjectURL(blob);
-
-      const nomFichier =
-        `${nettoyerNomFichier(
-          khassida.titre
-        )}.pdf`;
-
-      const lien =
-        document.createElement("a");
-
+      const url = URL.createObjectURL(blob);
+      const lien = document.createElement("a");
       lien.href = url;
-      lien.download = nomFichier;
-
+      lien.download = `${nettoyerNomFichier(khassida.titre)}.pdf`;
       document.body.appendChild(lien);
       lien.click();
       lien.remove();
-
       URL.revokeObjectURL(url);
 
-      afficherMessage(
-        "Téléchargement du PDF lancé."
-      );
+      afficherMessage("Téléchargement lancé.");
     } catch (error) {
-      console.error(
-        "ERREUR TELECHARGEMENT PDF :",
-        error
-      );
-
-      setErreur(
-        error.response?.data?.detail ||
-          "Impossible de télécharger le PDF."
-      );
+      afficherErreur(error, "Impossible de télécharger le PDF.");
     } finally {
       setTelechargementPdfId(null);
     }
   }
 
-  // ==========================================================
-  // PDF : SUPPRIMER
-  // ==========================================================
-
   async function supprimerPdf(khassida) {
-    const confirmation = window.confirm(
-      `Voulez-vous vraiment supprimer le PDF de "${khassida.titre}" ?`
-    );
-
-    if (!confirmation) {
+    if (!window.confirm(`Supprimer le PDF de « ${khassida.titre} » ?`)) {
       return;
     }
 
     setErreur("");
 
     try {
-      await api.delete(
-        `/khassidas/${khassida.id}/pdf`
-      );
-
-      if (
-        khassidaPdf?.id === khassida.id
-      ) {
-        fermerLecteurPdf();
-      }
-
-      afficherMessage(
-        "PDF supprimé avec succès."
-      );
-
+      await api.delete(`/khassidas/${khassida.id}/pdf`);
+      if (khassidaPdf?.id === khassida.id) fermerLecteurPdf();
+      afficherMessage("PDF supprimé avec succès.");
       await chargerKhassidas(false);
     } catch (error) {
-      console.error(
-        "ERREUR SUPPRESSION PDF :",
-        error
-      );
-
-      setErreur(
-        error.response?.data?.detail ||
-          "Impossible de supprimer le PDF."
-      );
+      afficherErreur(error, "Impossible de supprimer le PDF.");
     }
   }
 
-  // ==========================================================
-  // CHARGER LES TONS
-  // ==========================================================
+  function ouvrirPdfNouvelOnglet() {
+    if (pdfBlobUrl) window.open(pdfBlobUrl, "_blank", "noopener,noreferrer");
+  }
+
+  // ============================================================
+  // AUDIO / TONS
+  // ============================================================
 
   async function chargerTons() {
     setChargementTons(true);
 
     try {
-      const response =
-        await api.get("/tons");
-
-      console.log(
-        "TONS REÇUS :",
-        response.data
-      );
-
-      console.log(
-        "NOMBRE DE TONS :",
-        Array.isArray(response.data)
-          ? response.data.length
-          : 0
-      );
-
-      setTons(
-        Array.isArray(response.data)
-          ? response.data
-          : []
-      );
+      const response = await api.get("/tons");
+      setTons(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
-      console.error(
-        "ERREUR CHARGEMENT TONS :",
-        error
-      );
-
       setTons([]);
-
-      setErreur(
-        error.response?.data?.detail ||
-          "Impossible de charger les tons."
-      );
+      afficherErreur(error, "Impossible de charger les tons.");
     } finally {
       setChargementTons(false);
     }
   }
 
-  // ==========================================================
-  // OUVRIR AJOUT AUDIO
-  // ==========================================================
-
   async function ouvrirAjoutAudio(khassida) {
     setModeAudio("creation");
     setAudioSelectionne(null);
     setKhassidaAudio(khassida);
-
-    setFormAudio({
-      ton_id: "",
-      titre: "",
-      description: "",
-      fichier: null,
-    });
-
+    setFormAudio({ ton_id: "", titre: "", description: "", fichier: null });
     setTons([]);
     setErreur("");
     setModalAudio(true);
-
     await chargerTons();
   }
 
-  // ==========================================================
-  // OUVRIR MODIFICATION AUDIO
-  // ==========================================================
-
-  async function ouvrirModificationAudio(
-    khassida,
-    audio
-  ) {
+  async function ouvrirModificationAudio(khassida, audio) {
     setModeAudio("modification");
     setAudioSelectionne(audio);
     setKhassidaAudio(khassida);
-
     setFormAudio({
-      ton_id:
-        audio.ton?.id ||
-        audio.ton_id ||
-        "",
-
+      ton_id: audio.ton?.id || audio.ton_id || "",
       titre: audio.titre || "",
-
-      description:
-        audio.description || "",
-
+      description: audio.description || "",
       fichier: null,
     });
-
     setTons([]);
     setErreur("");
     setModalAudio(true);
-
     await chargerTons();
   }
 
-  // ==========================================================
-  // FERMER MODAL AUDIO
-  // ==========================================================
-
   function fermerModalAudio() {
-    if (chargementAudio) {
-      return;
-    }
-
+    if (chargementAudio) return;
     setModalAudio(false);
     setAudioSelectionne(null);
     setKhassidaAudio(null);
     setTons([]);
-
-    setFormAudio({
-      ton_id: "",
-      titre: "",
-      description: "",
-      fichier: null,
-    });
+    setFormAudio({ ton_id: "", titre: "", description: "", fichier: null });
   }
-
-  // ==========================================================
-  // MODIFICATION CHAMP AUDIO
-  // ==========================================================
 
   function modifierChampAudio(e) {
     const { name, value } = e.target;
-
-    setFormAudio((ancien) => ({
-      ...ancien,
-      [name]: value,
-    }));
+    setFormAudio((ancien) => ({ ...ancien, [name]: value }));
   }
-
-  // ==========================================================
-  // FICHIER AUDIO
-  // ==========================================================
 
   function selectionnerFichier(e) {
-    const fichier =
-      e.target.files?.[0] || null;
-
-    setFormAudio((ancien) => ({
-      ...ancien,
-      fichier,
-    }));
+    const fichier = e.target.files?.[0] || null;
+    setFormAudio((ancien) => ({ ...ancien, fichier }));
   }
-
-  // ==========================================================
-  // CREER / MODIFIER AUDIO
-  // ==========================================================
 
   async function enregistrerAudio(e) {
     e.preventDefault();
-
     setErreur("");
 
     if (!khassidaAudio) {
-      setErreur(
-        "La Khassida est obligatoire."
-      );
+      setErreur("La Khassida est obligatoire.");
       return;
     }
 
     if (!formAudio.ton_id) {
-      setErreur(
-        "Veuillez sélectionner un ton."
-      );
+      setErreur("Veuillez sélectionner un ton.");
       return;
     }
 
     if (!formAudio.titre.trim()) {
-      setErreur(
-        "Le titre de l'audio est obligatoire."
-      );
+      setErreur("Le titre de l'audio est obligatoire.");
       return;
     }
 
-    if (
-      modeAudio === "creation" &&
-      !formAudio.fichier
-    ) {
-      setErreur(
-        "Veuillez sélectionner un fichier audio."
-      );
+    if (modeAudio === "creation" && !formAudio.fichier) {
+      setErreur("Veuillez sélectionner un fichier audio.");
       return;
     }
 
     setChargementAudio(true);
 
     try {
-      // ======================================================
-      // CRÉATION
-      // ======================================================
+      const formData = new FormData();
+      formData.append("khassida_id", khassidaAudio.id);
+      formData.append("ton_id", formAudio.ton_id);
+      formData.append("titre", formAudio.titre.trim());
 
-      if (modeAudio === "creation") {
-        const formData =
-          new FormData();
-
-        formData.append(
-          "khassida_id",
-          khassidaAudio.id
-        );
-
-        formData.append(
-          "ton_id",
-          formAudio.ton_id
-        );
-
-        formData.append(
-          "titre",
-          formAudio.titre.trim()
-        );
-
-        if (
-          formAudio.description.trim()
-        ) {
-          formData.append(
-            "description",
-            formAudio.description.trim()
-          );
-        }
-
-        formData.append(
-          "fichier",
-          formAudio.fichier
-        );
-
-        await api.post(
-          "/audios/",
-          formData
-        );
-
-        afficherMessage(
-          "Audio ajouté avec succès."
-        );
+      if (formAudio.description.trim()) {
+        formData.append("description", formAudio.description.trim());
       }
 
-      // ======================================================
-      // MODIFICATION
-      // ======================================================
+      if (formAudio.fichier) {
+        formData.append("fichier", formAudio.fichier);
+      }
 
-      else {
-        if (!audioSelectionne?.id) {
-          throw new Error(
-            "Audio introuvable."
-          );
-        }
-
-        const formData =
-          new FormData();
-
-        formData.append(
-          "khassida_id",
-          khassidaAudio.id
-        );
-
-        formData.append(
-          "ton_id",
-          formAudio.ton_id
-        );
-
-        formData.append(
-          "titre",
-          formAudio.titre.trim()
-        );
-
-        if (
-          formAudio.description.trim()
-        ) {
-          formData.append(
-            "description",
-            formAudio.description.trim()
-          );
-        }
-
-        if (formAudio.fichier) {
-          formData.append(
-            "fichier",
-            formAudio.fichier
-          );
-        }
-
-        await api.put(
-          `/audios/${audioSelectionne.id}`,
-          formData
-        );
-
-        afficherMessage(
-          "Audio modifié avec succès."
-        );
+      if (modeAudio === "creation") {
+        await api.post("/audios/", formData);
+        afficherMessage("Audio ajouté avec succès.");
+      } else {
+        if (!audioSelectionne?.id) throw new Error("Audio introuvable.");
+        await api.put(`/audios/${audioSelectionne.id}`, formData);
+        afficherMessage("Audio modifié avec succès.");
       }
 
       fermerModalAudio();
-
       await chargerKhassidas(false);
     } catch (error) {
-      console.error(
-        "ERREUR AUDIO :",
-        error
-      );
-
-      setErreur(
-        error.response?.data?.detail ||
-          error.message ||
-          "Impossible d'enregistrer l'audio."
-      );
+      afficherErreur(error, "Impossible d'enregistrer l'audio.");
     } finally {
       setChargementAudio(false);
     }
   }
 
-  // ==========================================================
-  // SUPPRIMER AUDIO
-  // ==========================================================
-
   async function supprimerAudio(audio) {
-    const confirmation =
-      window.confirm(
-        `Voulez-vous vraiment supprimer l'audio "${audio.titre}" ?`
-      );
-
-    if (!confirmation) {
-      return;
-    }
+    if (!window.confirm(`Supprimer « ${audio.titre} » ?`)) return;
 
     setErreur("");
 
     try {
-      await api.delete(
-        `/audios/${audio.id}`
-      );
-
-      afficherMessage(
-        "Audio supprimé avec succès."
-      );
-
+      await api.delete(`/audios/${audio.id}`);
+      afficherMessage("Audio supprimé avec succès.");
       await chargerKhassidas(false);
     } catch (error) {
-      console.error(
-        "ERREUR SUPPRESSION AUDIO :",
-        error
-      );
-
-      setErreur(
-        error.response?.data?.detail ||
-          "Impossible de supprimer l'audio."
-      );
+      afficherErreur(error, "Impossible de supprimer l'audio.");
     }
   }
 
-  // ==========================================================
-  // CHARGEMENT INITIAL
-  // ==========================================================
+  // ============================================================
+  // CHARGEMENT
+  // ============================================================
 
   if (chargement) {
     return (
-      <div className="min-h-screen bg-slate-50 p-6">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex min-h-[300px] items-center justify-center">
-            <div className="text-center">
-              <Loader2 className="mx-auto h-10 w-10 animate-spin text-emerald-700" />
-
-              <p className="mt-4 text-sm text-slate-500">
-                Chargement des Khassidas...
-              </p>
-            </div>
+      <div className="min-h-screen bg-slate-50 p-4 sm:p-6">
+        <div className="mx-auto flex min-h-[400px] max-w-6xl items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="mx-auto h-10 w-10 animate-spin text-emerald-700" />
+            <p className="mt-3 text-sm text-slate-500">Chargement...</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // ==========================================================
-  // INTERFACE
-  // ==========================================================
-
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
+    <div className="min-h-screen bg-slate-50 p-4 sm:p-6">
       <div className="mx-auto max-w-6xl">
-
-        {/* ====================================================
-            MESSAGE SUCCÈS
-        ==================================================== */}
-
+        {/* MESSAGES */}
         {message && (
-          <div className="mb-6 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-800">
-            <CheckCircle2 className="h-5 w-5 shrink-0" />
-
-            <p className="text-sm font-medium">
-              {message}
-            </p>
+          <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-medium text-emerald-800">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            {message}
           </div>
         )}
 
-        {/* ====================================================
-            ERREUR
-        ==================================================== */}
-
         {erreur && (
-          <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">
-            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-
-            <div className="flex-1">
-              <p className="text-sm font-medium">
-                {erreur}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setErreur("")}
-              className="text-red-500 hover:text-red-700"
-            >
-              <X className="h-5 w-5" />
+          <div className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span className="flex-1">{erreur}</span>
+            <button type="button" onClick={() => setErreur("")}>
+              <X className="h-4 w-4" />
             </button>
           </div>
         )}
 
-        {/* ====================================================
-            RAFRAÎCHISSEMENT
-        ==================================================== */}
-
-        {rafraichissement && (
-          <div className="mb-4 flex items-center gap-2 text-xs text-slate-500">
-            <Loader2 className="h-4 w-4 animate-spin" />
-
-            Actualisation des Khassidas...
-          </div>
-        )}
-
-        {/* ====================================================
-            EN-TÊTE
-        ==================================================== */}
-
-        <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        {/* EN-TÊTE */}
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-              <Music className="h-6 w-6" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+              <Music className="h-5 w-5" />
             </div>
-
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">
-                Khassidas
-              </h1>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Gestion des Khassidas, tons, PDF et audios.
+              <h1 className="text-2xl font-bold text-slate-900">Khassidas</h1>
+              <p className="text-sm text-slate-500">
+                Khassidas, PDF et audios
               </p>
             </div>
           </div>
@@ -1240,528 +627,312 @@ export default function Khassidas() {
             <button
               type="button"
               onClick={ouvrirCreationKhassida}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800"
             >
-              <Plus className="h-5 w-5" />
-
-              Ajouter une Khassida
+              <Plus className="h-4 w-4" />
+              Nouvelle Khassida
             </button>
           )}
         </div>
 
-        {/* ====================================================
-            AUCUNE KHASSIDA
-        ==================================================== */}
+        {rafraichissement && (
+          <div className="mb-4 flex items-center gap-2 text-xs text-slate-500">
+            <Loader2 className="h-4 w-4 animate-spin" /> Actualisation...
+          </div>
+        )}
 
+        {/* LISTE */}
         {khassidas.length === 0 ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center">
-
-            <Music className="mx-auto h-12 w-12 text-slate-300" />
-
-            <h2 className="mt-4 font-semibold text-slate-700">
+            <Music className="mx-auto h-10 w-10 text-slate-300" />
+            <h2 className="mt-3 font-semibold text-slate-700">
               Aucune Khassida
             </h2>
-
             <p className="mt-1 text-sm text-slate-500">
-              Aucune Khassida disponible pour le moment.
+              Commencez par ajouter une Khassida.
             </p>
-
             {peutCreer && (
               <button
                 type="button"
                 onClick={ouvrirCreationKhassida}
-                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800"
+                className="mt-4 inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white"
               >
                 <Plus className="h-4 w-4" />
-
-                Ajouter une Khassida
+                Ajouter
               </button>
             )}
           </div>
         ) : (
-          <div className="space-y-4">
-
+          <div className="space-y-3">
             {khassidas.map((khassida) => {
-              const audios =
-                Array.isArray(
-                  khassida.audios
-                )
-                  ? khassida.audios.filter(
-                      (audio) =>
-                        audio.actif !== false
-                    )
-                  : [];
+              const audios = Array.isArray(khassida.audios)
+                ? khassida.audios.filter((audio) => audio.actif !== false)
+                : [];
 
-              const ouverte =
-                khassidaOuverte ===
-                khassida.id;
-
+              const ouverte = khassidaOuverte === khassida.id;
               const telechargementEnCours =
-                telechargementPdfId ===
-                khassida.id;
+                telechargementPdfId === khassida.id;
 
               return (
                 <div
                   key={khassida.id}
                   className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
                 >
-
-                  {/* ========================================
-                      EN-TÊTE KHASSIDA
-                  ======================================== */}
-
-                  <div className="flex flex-col gap-4 p-5">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-
+                  {/* LIGNE PRINCIPALE */}
+                  <div className="p-4 sm:p-5">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                       <button
                         type="button"
-                        onClick={() =>
-                          toggleKhassida(
-                            khassida.id
-                          )
-                        }
-                        className="flex min-w-0 flex-1 items-center gap-4 text-left"
+                        onClick={() => toggleKhassida(khassida.id)}
+                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
                       >
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
-                          <Music className="h-6 w-6" />
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                          <Music className="h-5 w-5" />
                         </div>
 
-                        <div className="min-w-0">
-                          <h2 className="truncate text-lg font-semibold text-slate-900">
-                            {khassida.titre}
-                          </h2>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="truncate text-base font-semibold text-slate-900">
+                              {khassida.titre}
+                            </h2>
+                            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                              {audios.length} audio{audios.length > 1 ? "s" : ""}
+                            </span>
+                            {khassida.pdf_url && (
+                              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                                PDF
+                              </span>
+                            )}
+                          </div>
 
-                          {khassida.auteur && (
-                            <p className="mt-1 text-sm text-slate-500">
-                              Auteur :{" "}
-                              {khassida.auteur}
-                            </p>
-                          )}
-
-                          {khassida.description && (
-                            <p className="mt-1 text-sm text-slate-500">
-                              {khassida.description}
-                            </p>
-                          )}
+                          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-slate-500">
+                            {khassida.auteur && <span>{khassida.auteur}</span>}
+                            {khassida.description && (
+                              <span className="truncate">{khassida.description}</span>
+                            )}
+                          </div>
                         </div>
+
+                        {ouverte ? (
+                          <ChevronUp className="h-5 w-5 shrink-0 text-slate-400" />
+                        ) : (
+                          <ChevronDown className="h-5 w-5 shrink-0 text-slate-400" />
+                        )}
                       </button>
 
-                      {/* ======================================
-                          ACTIONS PRINCIPALES
-                      ====================================== */}
+                      {/* ACTIONS RÉDUITES */}
+                      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                        {peutConsulter && khassida.pdf_url && (
+                          <ActionButton
+                            icon={
+                              chargementLecturePdf &&
+                              khassidaPdf?.id === khassida.id
+                                ? Loader2
+                                : FileText
+                            }
+                            onClick={() => lirePdf(khassida)}
+                            disabled={
+                              chargementLecturePdf &&
+                              khassidaPdf?.id === khassida.id
+                            }
+                            variant="softGreen"
+                          >
+                            Lire PDF
+                          </ActionButton>
+                        )}
 
-                      <div className="flex flex-wrap items-center gap-2">
+                        {peutModifier && (
+                          <ActionButton
+                            icon={Edit}
+                            title="Modifier"
+                            onClick={() => ouvrirModificationKhassida(khassida)}
+                          >
+                            Modifier
+                          </ActionButton>
+                        )}
 
-                        {/* PDF */}
+                        {peutSupprimer && (
+                          <ActionButton
+                            icon={Trash2}
+                            title="Supprimer"
+                            onClick={() => supprimerKhassida(khassida)}
+                            variant="danger"
+                          >
+                            Supprimer
+                          </ActionButton>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
-                        {khassida.pdf_url ? (
-                          <>
-                            
+                  {/* CONTENU OUVERT */}
+                  {ouverte && (
+                    <div className="border-t border-slate-200 bg-slate-50 p-4 sm:p-5">
+                      {/* PDF */}
+                      {peutConsulter || peutModifier ? (
+                        <div className="mb-5 rounded-xl border border-slate-200 bg-white p-4">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700">
+                                <FileText className="h-4 w-4" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold text-slate-800">
+                                  Document PDF
+                                </p>
+                                <p className="text-xs text-slate-500">
+                                  {khassida.pdf_url
+                                    ? "PDF disponible"
+                                    : "Aucun PDF"}
+                                </p>
+                              </div>
+                            </div>
 
-                            {peutConsulter && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  lirePdf(
-                                    khassida
-                                  )
-                                }
-                                disabled={
-                                  chargementLecturePdf &&
-                                  khassidaPdf?.id ===
-                                    khassida.id
-                                }
-                                className="inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                {chargementLecturePdf &&
-                                khassidaPdf?.id ===
-                                  khassida.id ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <FileText className="h-4 w-4" />
-                                )}
-
-                                Lire
-                              </button>
-                            )}
-
-                            {peutConsulter && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  telechargerPdf(
-                                    khassida
-                                  )
-                                }
-                                disabled={
-                                  telechargementEnCours
-                                }
-                                className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
-                              >
-                                {telechargementEnCours ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Download className="h-4 w-4" />
-                                )}
-
-                                Télécharger
-                              </button>
-                            )}
-
-                            {peutModifier && (
-                              <>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    ouvrirAjoutPdf(
-                                      khassida
-                                    )
-                                  }
-                                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-emerald-700"
-                                  title="Remplacer le PDF"
+                            <div className="flex flex-wrap gap-2">
+                              {peutConsulter && khassida.pdf_url && (
+                                <ActionButton
+                                  icon={FileText}
+                                  onClick={() => lirePdf(khassida)}
+                                  variant="softGreen"
                                 >
-                                  <Upload className="h-4 w-4" />
-                                </button>
+                                  Lire
+                                </ActionButton>
+                              )}
 
+                              {peutConsulter && khassida.pdf_url && (
+                                <ActionButton
+                                  icon={
+                                    telechargementEnCours ? Loader2 : Download
+                                  }
+                                  onClick={() => telechargerPdf(khassida)}
+                                  disabled={telechargementEnCours}
+                                >
+                                  Télécharger
+                                </ActionButton>
+                              )}
+
+                              {peutModifier && (
+                                <ActionButton
+                                  icon={Upload}
+                                  onClick={() => ouvrirAjoutPdf(khassida)}
+                                >
+                                  {khassida.pdf_url ? "Remplacer" : "Ajouter"}
+                                </ActionButton>
+                              )}
+
+                              {peutModifier && khassida.pdf_url && (
                                 <button
                                   type="button"
-                                  onClick={() =>
-                                    supprimerPdf(
-                                      khassida
-                                    )
-                                  }
-                                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-red-50 hover:text-red-600"
                                   title="Supprimer le PDF"
+                                  onClick={() => supprimerPdf(khassida)}
+                                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </button>
-                              </>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
-                              Aucun PDF
-                            </span>
-
-                            {peutModifier && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  ouvrirAjoutPdf(
-                                    khassida
-                                  )
-                                }
-                                className="inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
-                              >
-                                <Upload className="h-4 w-4" />
-                                Ajouter PDF
-                              </button>
-                            )}
-                          </>
-                        )}
-
-                        {/* AUDIOS */}
-
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-                          {audios.length}{" "}
-                          {audios.length > 1
-                            ? "audios"
-                            : "audio"}
-                        </span>
-
-                        {/* MODIFIER KHASSIDA */}
-
-                        {peutModifier && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              ouvrirModificationKhassida(
-                                khassida
-                              )
-                            }
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-emerald-700"
-                            title="Modifier la Khassida"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                        )}
-
-                        {/* SUPPRIMER KHASSIDA */}
-
-                        {peutSupprimer && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              supprimerKhassida(
-                                khassida
-                              )
-                            }
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-red-50 hover:text-red-600"
-                            title="Supprimer la Khassida"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
-
-                        {/* OUVRIR / FERMER */}
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            toggleKhassida(
-                              khassida.id
-                            )
-                          }
-                          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100"
-                          title={
-                            ouverte
-                              ? "Réduire"
-                              : "Afficher les audios"
-                          }
-                        >
-                          {ouverte ? (
-                            <ChevronUp className="h-5 w-5" />
-                          ) : (
-                            <ChevronDown className="h-5 w-5" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* ======================================
-                        ACTIONS PDF COMPLÉMENTAIRES
-                    ====================================== */}
-
-                    {khassida.pdf_url &&
-                      peutConsulter && (
-                        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              lirePdf(
-                                khassida
-                              )
-                            }
-                            className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
-                          >
-                            <FileText className="h-4 w-4" />
-                            Lire le Khassida
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              telechargerPdf(
-                                khassida
-                              )
-                            }
-                            disabled={
-                              telechargementEnCours
-                            }
-                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {telechargementEnCours ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Download className="h-4 w-4" />
-                            )}
-
-                            Télécharger le PDF
-                          </button>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      )}
-                  </div>
+                      ) : null}
 
-                  {/* ==========================================
-                      CONTENU
-                  ========================================== */}
-
-                  {ouverte && (
-                    <div className="border-t border-slate-200 bg-slate-50 p-5">
-
-                      {/* ======================================
-                          BOUTON AJOUT AUDIO
-                      ====================================== */}
-
-                      <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-
-                        <div>
-                          <h3 className="font-semibold text-slate-800">
-                            Audios
-                          </h3>
-
-                          <p className="text-sm text-slate-500">
-                            Les différents tons et fichiers audio de cette Khassida.
-                          </p>
-                        </div>
-
-                        {peutGererProgramme && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              ouvrirAjoutAudio(
-                                khassida
-                              )
-                            }
-                            className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800"
-                          >
-                            <Upload className="h-4 w-4" />
-
-                            Ajouter un audio
-                          </button>
-                        )}
-                      </div>
-
-                      {/* ======================================
-                          AUCUN AUDIO
-                      ====================================== */}
-
-                      {audios.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
-
-                          <Headphones className="mx-auto h-10 w-10 text-slate-300" />
-
-                          <p className="mt-3 text-sm text-slate-500">
-                            Aucun audio associé à cette Khassida.
-                          </p>
+                      {/* AUDIOS */}
+                      <div>
+                        <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <h3 className="font-semibold text-slate-800">Audios</h3>
+                            <p className="text-xs text-slate-500">
+                              Écoutez les différents tons associés.
+                            </p>
+                          </div>
 
                           {peutGererProgramme && (
                             <button
                               type="button"
-                              onClick={() =>
-                                ouvrirAjoutAudio(
-                                  khassida
-                                )
-                              }
-                              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800"
+                              onClick={() => ouvrirAjoutAudio(khassida)}
+                              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800"
                             >
                               <Plus className="h-4 w-4" />
-
-                              Ajouter le premier audio
+                              Ajouter un audio
                             </button>
                           )}
                         </div>
-                      ) : (
-                        <div className="space-y-4">
 
-                          {audios.map(
-                            (audio, index) => {
-                              const ton =
-                                audio.ton;
+                        {audios.length === 0 ? (
+                          <div className="rounded-xl border border-dashed border-slate-300 bg-white p-7 text-center">
+                            <Headphones className="mx-auto h-8 w-8 text-slate-300" />
+                            <p className="mt-2 text-sm text-slate-500">
+                              Aucun audio pour cette Khassida.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {audios.map((audio, index) => (
+                              <div
+                                key={audio.id}
+                                className="rounded-xl border border-slate-200 bg-white p-4"
+                              >
+                                <div className="mb-3 flex items-start gap-3">
+                                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                                    <Headphones className="h-4 w-4" />
+                                  </div>
 
-                              return (
-                                <div
-                                  key={
-                                    audio.id
-                                  }
-                                  className="rounded-xl border border-slate-200 bg-white p-5"
-                                >
-                                  <div className="flex flex-col gap-4">
-
-                                    {/* INFORMATIONS */}
-
-                                    <div className="flex items-start gap-3">
-
-                                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                                        <Headphones className="h-5 w-5" />
-                                      </div>
-
-                                      <div className="min-w-0 flex-1">
-
-                                        <div className="flex flex-wrap items-center gap-2">
-
-                                          <h4 className="font-semibold text-slate-900">
-                                            {audio.titre ||
-                                              `Audio ${
-                                                index +
-                                                1
-                                              }`}
-                                          </h4>
-
-                                          {ton && (
-                                            <span className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
-                                              Ton :{" "}
-                                              {
-                                                ton.nom
-                                              }
-                                            </span>
-                                          )}
-                                        </div>
-
-                                        {audio.description && (
-                                          <p className="mt-1 text-sm text-slate-500">
-                                            {
-                                              audio.description
-                                            }
-                                          </p>
-                                        )}
-                                      </div>
-
-                                      {/* ACTIONS AUDIO */}
-
-                                      {peutGererProgramme && (
-                                        <div className="flex shrink-0 items-center gap-1">
-
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              ouvrirModificationAudio(
-                                                khassida,
-                                                audio
-                                              )
-                                            }
-                                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-emerald-700"
-                                            title="Modifier l'audio"
-                                          >
-                                            <Pencil className="h-4 w-4" />
-                                          </button>
-
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              supprimerAudio(
-                                                audio
-                                              )
-                                            }
-                                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600"
-                                            title="Supprimer l'audio"
-                                          >
-                                            <Trash2 className="h-4 w-4" />
-                                          </button>
-                                        </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <h4 className="font-semibold text-slate-900">
+                                        {audio.titre || `Audio ${index + 1}`}
+                                      </h4>
+                                      {audio.ton && (
+                                        <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
+                                          {audio.ton.nom}
+                                        </span>
                                       )}
                                     </div>
-
-                                    {/* LECTEUR AUDIO */}
-
-                                    <div className="rounded-xl bg-slate-50 p-3">
-
-                                      <div className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-500">
-                                        <Headphones className="h-4 w-4" />
-
-                                        Écouter l'audio
-                                      </div>
-
-                                      <audio
-                                        controls
-                                        preload="metadata"
-                                        className="w-full"
-                                        src={getAudioUrl(
-                                          audio.fichier
-                                        )}
-                                      >
-                                        Votre navigateur ne supporte pas la lecture audio.
-                                      </audio>
-                                    </div>
+                                    {audio.description && (
+                                      <p className="mt-1 text-xs text-slate-500">
+                                        {audio.description}
+                                      </p>
+                                    )}
                                   </div>
+
+                                  {peutGererProgramme && (
+                                    <div className="flex shrink-0 gap-1">
+                                      <button
+                                        type="button"
+                                        title="Modifier l'audio"
+                                        onClick={() =>
+                                          ouvrirModificationAudio(khassida, audio)
+                                        }
+                                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-emerald-700"
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        title="Supprimer l'audio"
+                                        onClick={() => supprimerAudio(audio)}
+                                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
-                              );
-                            }
-                          )}
-                        </div>
-                      )}
+
+                                <div className="rounded-lg bg-slate-50 p-3">
+                                  <audio
+                                    controls
+                                    preload="metadata"
+                                    className="w-full"
+                                    src={getAudioUrl(audio.fichier)}
+                                  >
+                                    Votre navigateur ne supporte pas la lecture audio.
+                                  </audio>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1774,146 +945,105 @@ export default function Khassidas() {
       {/* ========================================================
           MODAL KHASSIDA
       ======================================================== */}
-
       {modalKhassida && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-
           <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
-
             <div className="flex items-center justify-between border-b border-slate-200 p-5">
-
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
-                  {modeKhassida ===
-                  "creation"
-                    ? "Ajouter une Khassida"
+                  {modeKhassida === "creation"
+                    ? "Nouvelle Khassida"
                     : "Modifier la Khassida"}
                 </h2>
-
                 <p className="mt-1 text-sm text-slate-500">
-                  Renseignez les informations de la Khassida.
+                  Remplissez uniquement les informations utiles.
                 </p>
               </div>
-
               <button
                 type="button"
-                onClick={
-                  fermerModalKhassida
-                }
-                disabled={
-                  chargementKhassida
-                }
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={fermerModalKhassida}
+                disabled={chargementKhassida}
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form
-              onSubmit={
-                enregistrerKhassida
-              }
-              className="space-y-5 p-5"
-            >
+            <form onSubmit={enregistrerKhassida} className="space-y-4 p-5">
               <div>
-
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   Titre *
                 </label>
-
                 <input
                   type="text"
                   name="titre"
-                  value={
-                    formKhassida.titre
+                  value={formKhassida.titre}
+                  onChange={(e) =>
+                    setFormKhassida((ancien) => ({
+                      ...ancien,
+                      titre: e.target.value,
+                    }))
                   }
-                  onChange={
-                    modifierChampKhassida
-                  }
-                  placeholder="Ex : Al Bourda"
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                   required
                 />
               </div>
 
               <div>
-
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   Auteur
                 </label>
-
                 <input
                   type="text"
                   name="auteur"
-                  value={
-                    formKhassida.auteur
+                  value={formKhassida.auteur}
+                  onChange={(e) =>
+                    setFormKhassida((ancien) => ({
+                      ...ancien,
+                      auteur: e.target.value,
+                    }))
                   }
-                  onChange={
-                    modifierChampKhassida
-                  }
-                  placeholder="Nom de l'auteur"
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                 />
               </div>
 
               <div>
-
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   Description
                 </label>
-
                 <textarea
-                  name="description"
-                  value={
-                    formKhassida.description
+                  rows={3}
+                  value={formKhassida.description}
+                  onChange={(e) =>
+                    setFormKhassida((ancien) => ({
+                      ...ancien,
+                      description: e.target.value,
+                    }))
                   }
-                  onChange={
-                    modifierChampKhassida
-                  }
-                  rows={4}
-                  placeholder="Description..."
-                  className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                  className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                 />
               </div>
 
-              {erreur && (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                  {erreur}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
-
+              <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
                 <button
                   type="button"
-                  onClick={
-                    fermerModalKhassida
-                  }
-                  disabled={
-                    chargementKhassida
-                  }
+                  onClick={fermerModalKhassida}
+                  disabled={chargementKhassida}
                   className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                 >
                   Annuler
                 </button>
-
                 <button
                   type="submit"
-                  disabled={
-                    chargementKhassida
-                  }
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={chargementKhassida}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
                 >
                   {chargementKhassida ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Save className="h-4 w-4" />
                   )}
-
-                  {modeKhassida ===
-                  "creation"
-                    ? "Ajouter"
-                    : "Enregistrer"}
+                  {modeKhassida === "creation" ? "Ajouter" : "Enregistrer"}
                 </button>
               </div>
             </form>
@@ -1924,151 +1054,80 @@ export default function Khassidas() {
       {/* ========================================================
           MODAL PDF
       ======================================================== */}
-
       {modalPdf && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
-
             <div className="flex items-center justify-between border-b border-slate-200 p-5">
-
               <div>
-
                 <div className="flex items-center gap-2">
                   <FileText className="h-5 w-5 text-emerald-700" />
-
                   <h2 className="text-lg font-bold text-slate-900">
-                    {khassidaPdf?.pdf_url
-                      ? "Remplacer le PDF"
-                      : "Ajouter le PDF"}
+                    {khassidaPdf?.pdf_url ? "Remplacer le PDF" : "Ajouter le PDF"}
                   </h2>
                 </div>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  {khassidaPdf?.titre}
-                </p>
+                <p className="mt-1 text-sm text-slate-500">{khassidaPdf?.titre}</p>
               </div>
-
               <button
                 type="button"
-                onClick={
-                  fermerModalPdf
-                }
-                disabled={
-                  chargementPdf
-                }
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={fermerModalPdf}
+                disabled={chargementPdf}
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form
-              onSubmit={enregistrerPdf}
-              className="space-y-5 p-5"
-            >
-
+            <form onSubmit={enregistrerPdf} className="space-y-4 p-5">
               <div>
-
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   Fichier PDF *
                 </label>
-
                 <input
                   type="file"
                   accept=".pdf,application/pdf"
-                  onChange={
-                    selectionnerPdf
-                  }
-                  className="block w-full cursor-pointer rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-600"
+                  onChange={selectionnerPdf}
+                  className="block w-full rounded-xl border border-slate-300 bg-white p-3 text-sm"
                   required
                 />
-
                 <p className="mt-2 text-xs text-slate-500">
-                  Format accepté : PDF — taille maximale : 100 MB.
+                  PDF uniquement · 100 MB maximum.
                 </p>
               </div>
 
               {fichierPdf && (
-                <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-
-                  <FileText className="h-5 w-5 shrink-0 text-emerald-700" />
-
-                  <div className="min-w-0 flex-1">
-
+                <div className="flex items-center gap-3 rounded-xl bg-emerald-50 p-3">
+                  <FileText className="h-5 w-5 text-emerald-700" />
+                  <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-emerald-800">
                       {fichierPdf.name}
                     </p>
-
-                    <p className="mt-1 text-xs text-emerald-700">
-                      {(
-                        fichierPdf.size /
-                        (1024 * 1024)
-                      ).toFixed(2)}{" "}
-                      MB
+                    <p className="text-xs text-emerald-700">
+                      {(fichierPdf.size / (1024 * 1024)).toFixed(2)} MB
                     </p>
                   </div>
                 </div>
               )}
 
-              {khassidaPdf?.pdf_url && (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-
-                  <div className="flex items-center gap-2">
-
-                    <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-
-                    <div>
-                      <p className="text-sm font-semibold text-slate-800">
-                        Un PDF est déjà associé
-                      </p>
-
-                      <p className="text-xs text-slate-500">
-                        Le nouveau fichier remplacera le PDF actuel.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {erreur && (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                  {erreur}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
-
+              <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
                 <button
                   type="button"
-                  onClick={
-                    fermerModalPdf
-                  }
-                  disabled={
-                    chargementPdf
-                  }
-                  className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={fermerModalPdf}
+                  disabled={chargementPdf}
+                  className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700"
                 >
                   Annuler
                 </button>
-
                 <button
                   type="submit"
-                  disabled={
-                    chargementPdf ||
-                    !fichierPdf
-                  }
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={chargementPdf || !fichierPdf}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
                 >
                   {chargementPdf ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Upload className="h-4 w-4" />
                   )}
-
-                  {khassidaPdf?.pdf_url
-                    ? "Remplacer"
-                    : "Ajouter"}
+                  {khassidaPdf?.pdf_url ? "Remplacer" : "Ajouter"}
                 </button>
               </div>
             </form>
@@ -2077,335 +1136,208 @@ export default function Khassidas() {
       )}
 
       {/* ========================================================
-          LECTEUR PDF INTÉGRÉ
+          LECTEUR PDF
       ======================================================== */}
-
-      {lecteurPdfOuvert &&
-        pdfBlobUrl && (
-          <div className="fixed inset-0 z-[60] bg-black/70 p-3 sm:p-5">
-
-            <div className="mx-auto flex h-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-
-              {/* HEADER */}
-
-              <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3 sm:px-5">
-
-                <div className="flex min-w-0 items-center gap-3">
-
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
-                    <FileText className="h-5 w-5" />
-                  </div>
-
-                  <div className="min-w-0">
-
-                    <h2 className="truncate font-bold text-slate-900">
-                      {khassidaPdf?.titre ||
-                        "Khassida"}
-                    </h2>
-
-                    <p className="text-xs text-slate-500">
-                      Lecture du PDF
-                    </p>
-                  </div>
+      {lecteurPdfOuvert && pdfBlobUrl && (
+        <div className="fixed inset-0 z-[60] bg-black/70 p-3 sm:p-5">
+          <div className="mx-auto flex h-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-4 py-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+                  <FileText className="h-4 w-4" />
                 </div>
-
-                <div className="flex shrink-0 items-center gap-1">
-
-                  <button
-                    type="button"
-                    onClick={
-                      ouvrirPdfNouvelOnglet
-                    }
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-emerald-700"
-                    title="Ouvrir dans un nouvel onglet"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                  </button>
-
-                  {khassidaPdf &&
-                    peutConsulter && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          telechargerPdf(
-                            khassidaPdf
-                          )
-                        }
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-emerald-700"
-                        title="Télécharger"
-                      >
-                        <Download className="h-4 w-4" />
-                      </button>
-                    )}
-
-                  <button
-                    type="button"
-                    onClick={
-                      fermerLecteurPdf
-                    }
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600"
-                    title="Fermer"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
+                <div className="min-w-0">
+                  <h2 className="truncate font-bold text-slate-900">
+                    {khassidaPdf?.titre || "Khassida"}
+                  </h2>
+                  <p className="text-xs text-slate-500">Lecture du PDF</p>
                 </div>
               </div>
 
-              {/* PDF */}
-
-              <div className="min-h-0 flex-1 bg-slate-200">
-
-                <iframe
-                  src={pdfBlobUrl}
-                  title={
-                    khassidaPdf?.titre ||
-                    "Lecture PDF"
-                  }
-                  className="h-full w-full border-0"
-                />
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={ouvrirPdfNouvelOnglet}
+                  title="Nouvel onglet"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </button>
+                {khassidaPdf && peutConsulter && (
+                  <button
+                    type="button"
+                    onClick={() => telechargerPdf(khassidaPdf)}
+                    title="Télécharger"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+                  >
+                    <Download className="h-4 w-4" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={fermerLecteurPdf}
+                  title="Fermer"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
             </div>
+
+            <div className="min-h-0 flex-1 bg-slate-200">
+              <iframe
+                src={pdfBlobUrl}
+                title={khassidaPdf?.titre || "Lecture PDF"}
+                className="h-full w-full border-0"
+              />
+            </div>
           </div>
-        )}
+        </div>
+      )}
 
       {/* ========================================================
           MODAL AUDIO
       ======================================================== */}
-
       {modalAudio && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-
           <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
-
             <div className="flex items-center justify-between border-b border-slate-200 p-5">
-
               <div>
-
-                <h2 className="text-lg font-bold text-slate-900">
-                  {modeAudio ===
-                  "creation"
-                    ? "Ajouter un audio"
-                    : "Modifier l'audio"}
-                </h2>
-
+                <div className="flex items-center gap-2">
+                  <FileAudio className="h-5 w-5 text-emerald-700" />
+                  <h2 className="text-lg font-bold text-slate-900">
+                    {modeAudio === "creation" ? "Ajouter un audio" : "Modifier l'audio"}
+                  </h2>
+                </div>
                 <p className="mt-1 text-sm text-slate-500">
                   {khassidaAudio?.titre}
                 </p>
               </div>
-
               <button
                 type="button"
-                onClick={
-                  fermerModalAudio
-                }
-                disabled={
-                  chargementAudio
-                }
-                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={fermerModalAudio}
+                disabled={chargementAudio}
+                className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <form
-              onSubmit={
-                enregistrerAudio
-              }
-              className="space-y-5 p-5"
-            >
-
-              {/* TON */}
-
+            <form onSubmit={enregistrerAudio} className="space-y-4 p-5">
               <div>
-
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   Ton *
                 </label>
-
                 {chargementTons ? (
                   <div className="flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-500">
-
                     <Loader2 className="h-4 w-4 animate-spin" />
-
                     Chargement des tons...
                   </div>
                 ) : (
                   <select
                     name="ton_id"
-                    value={
-                      formAudio.ton_id
-                    }
-                    onChange={
-                      modifierChampAudio
-                    }
+                    value={formAudio.ton_id}
+                    onChange={modifierChampAudio}
                     className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                     required
                   >
-                    <option value="">
-                      Sélectionner un ton
-                    </option>
-
-                    {tons.map(
-                      (ton) => (
-                        <option
-                          key={ton.id}
-                          value={ton.id}
-                        >
-                          {ton.nom}
-                        </option>
-                      )
-                    )}
+                    <option value="">Sélectionner un ton</option>
+                    {tons.map((ton) => (
+                      <option key={ton.id} value={ton.id}>
+                        {ton.nom}
+                      </option>
+                    ))}
                   </select>
                 )}
-
-                {!chargementTons &&
-                  tons.length === 0 && (
-                    <p className="mt-2 text-xs text-amber-600">
-                      Aucun ton disponible. Vérifiez que des tons actifs existent dans la base de données.
-                    </p>
-                  )}
+                {!chargementTons && tons.length === 0 && (
+                  <p className="mt-2 text-xs text-amber-600">
+                    Aucun ton disponible.
+                  </p>
+                )}
               </div>
 
-              {/* TITRE */}
-
               <div>
-
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Titre de l'audio *
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  Titre *
                 </label>
-
                 <input
                   type="text"
                   name="titre"
-                  value={
-                    formAudio.titre
-                  }
-                  onChange={
-                    modifierChampAudio
-                  }
+                  value={formAudio.titre}
+                  onChange={modifierChampAudio}
                   placeholder="Ex : Ton Baye Fall"
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                   required
                 />
               </div>
 
-              {/* DESCRIPTION */}
-
               <div>
-
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
                   Description
                 </label>
-
                 <textarea
                   name="description"
-                  value={
-                    formAudio.description
-                  }
-                  onChange={
-                    modifierChampAudio
-                  }
-                  rows={3}
-                  placeholder="Description de l'audio..."
+                  rows={2}
+                  value={formAudio.description}
+                  onChange={modifierChampAudio}
                   className="w-full resize-none rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
                 />
               </div>
 
-              {/* FICHIER */}
-
               <div>
-
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  {modeAudio ===
-                  "creation"
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  {modeAudio === "creation"
                     ? "Fichier audio *"
                     : "Nouveau fichier audio"}
                 </label>
-
                 <input
                   type="file"
                   accept=".mp3,.wav,.m4a,.ogg,audio/mpeg,audio/wav,audio/mp4,audio/ogg"
-                  onChange={
-                    selectionnerFichier
-                  }
-                  className="block w-full cursor-pointer rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-600"
-                  required={
-                    modeAudio ===
-                    "creation"
-                  }
+                  onChange={selectionnerFichier}
+                  className="block w-full rounded-xl border border-slate-300 bg-white p-3 text-sm"
+                  required={modeAudio === "creation"}
                 />
-
                 <p className="mt-2 text-xs text-slate-500">
-                  Formats acceptés : MP3, WAV, M4A et OGG.
+                  MP3, WAV, M4A ou OGG.
                 </p>
               </div>
 
-              {/* APERÇU AUDIO EXISTANT */}
-
-              {modeAudio ===
-                "modification" &&
-                audioSelectionne?.fichier && (
-                  <div className="rounded-xl bg-slate-50 p-4">
-
-                    <p className="mb-2 text-xs font-medium text-slate-500">
-                      Audio actuel
-                    </p>
-
-                    <audio
-                      controls
-                      preload="metadata"
-                      className="w-full"
-                      src={getAudioUrl(
-                        audioSelectionne.fichier
-                      )}
-                    />
-                  </div>
-                )}
-
-              {erreur && (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                  {erreur}
+              {modeAudio === "modification" && audioSelectionne?.fichier && (
+                <div className="rounded-xl bg-slate-50 p-3">
+                  <p className="mb-2 text-xs font-medium text-slate-500">
+                    Audio actuel
+                  </p>
+                  <audio
+                    controls
+                    preload="metadata"
+                    className="w-full"
+                    src={getAudioUrl(audioSelectionne.fichier)}
+                  />
                 </div>
               )}
 
-              {/* BOUTONS */}
-
-              <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
-
+              <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
                 <button
                   type="button"
-                  onClick={
-                    fermerModalAudio
-                  }
-                  disabled={
-                    chargementAudio
-                  }
-                  className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={fermerModalAudio}
+                  disabled={chargementAudio}
+                  className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700"
                 >
                   Annuler
                 </button>
-
                 <button
                   type="submit"
-                  disabled={
-                    chargementAudio ||
-                    chargementTons
-                  }
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={chargementAudio || chargementTons}
+                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50"
                 >
                   {chargementAudio ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : modeAudio ===
-                    "creation" ? (
+                  ) : modeAudio === "creation" ? (
                     <Upload className="h-4 w-4" />
                   ) : (
                     <Save className="h-4 w-4" />
                   )}
-
-                  {modeAudio ===
-                  "creation"
-                    ? "Ajouter l'audio"
-                    : "Enregistrer"}
+                  {modeAudio === "creation" ? "Ajouter" : "Enregistrer"}
                 </button>
               </div>
             </form>
