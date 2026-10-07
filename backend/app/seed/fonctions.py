@@ -157,6 +157,7 @@ FONCTIONS = {
             "PAIEMENT_CREER",
             "PAIEMENT_CONSULTER",
             "COMMUNICATION_CONSULTER",
+            "COMMUNICATION_CREER",
             "PROFIL_MODIFIER",
             "FINANCE_CONSULTER",
             "DASHBOARD_CONSULTER",
