@@ -366,7 +366,9 @@ function SectionTitre({
         {Icon && (
           <Icon
             size={13}
-            className={couleurs[couleur] || couleurs.emerald}
+            className={
+              couleurs[couleur] || couleurs.emerald
+            }
           />
         )}
 
@@ -447,7 +449,6 @@ function Layout() {
       ? utilisateur.kourels
       : [];
   }, [utilisateur]);
-
 
   const estMembreKourel =
     utilisateur?.est_membre_kourel === true ||
@@ -1319,9 +1320,7 @@ function Layout() {
           </div>
 
 
-          {/* ===================================================
-              PROFIL
-          =================================================== */}
+          {/* PROFIL */}
 
           <button
             type="button"
@@ -1503,9 +1502,7 @@ function Layout() {
           "
         >
 
-          {/* ===================================================
-              ADMINISTRATION
-          =================================================== */}
+          {/* ADMINISTRATION */}
 
           {navigationAdministrationFiltre.length > 0 && (
             <div className="mb-7">
@@ -1539,9 +1536,7 @@ function Layout() {
           )}
 
 
-          {/* ===================================================
-              MEMBRES
-          =================================================== */}
+          {/* MEMBRES */}
 
           {navigationMembresFiltre.length > 0 && (
             <div className="mb-7">
@@ -1575,9 +1570,7 @@ function Layout() {
           )}
 
 
-          {/* ===================================================
-              TABLEAU DE BORD
-          =================================================== */}
+          {/* TABLEAU DE BORD */}
 
           {navigationDashboardFiltre.length > 0 && (
             <div className="mb-7">
@@ -1611,9 +1604,7 @@ function Layout() {
           )}
 
 
-          {/* ===================================================
-              FINANCES
-          =================================================== */}
+          {/* FINANCES */}
 
           {navigationFinancesFiltre.length > 0 && (
             <div className="mb-7">
@@ -1647,9 +1638,7 @@ function Layout() {
           )}
 
 
-          {/* ===================================================
-              ACTIVITÉS
-          =================================================== */}
+          {/* ACTIVITÉS */}
 
           {navigationActivitesFiltre.length > 0 && (
             <div className="mb-7">
@@ -1683,9 +1672,7 @@ function Layout() {
           )}
 
 
-          {/* ===================================================
-              COMMUNICATION
-          =================================================== */}
+          {/* COMMUNICATION */}
 
           {navigationCommunicationFiltre.length > 0 && (
             <div className="mb-7">
@@ -1719,9 +1706,7 @@ function Layout() {
           )}
 
 
-          {/* ===================================================
-              RELATIONS EXTÉRIEURES
-          =================================================== */}
+          {/* RELATIONS EXTÉRIEURES */}
 
           {navigationRelationsFiltre.length > 0 && (
             <div className="mb-7">
@@ -1755,9 +1740,7 @@ function Layout() {
           )}
 
 
-          {/* ===================================================
-              ESPACE KOUREL
-          =================================================== */}
+          {/* ESPACE KOUREL */}
 
           {estMembreKourel &&
             navigationKourelFiltre.length > 0 && (
@@ -1800,9 +1783,7 @@ function Layout() {
             )}
 
 
-          {/* ===================================================
-              NOTIFICATIONS
-          =================================================== */}
+          {/* NOTIFICATIONS */}
 
           {navigationNotificationsFiltre.length > 0 && (
             <div className="mb-4">
@@ -1836,9 +1817,7 @@ function Layout() {
           )}
 
 
-          {/* ===================================================
-              AUCUN RÉSULTAT
-          =================================================== */}
+          {/* AUCUN RÉSULTAT */}
 
           {aucunResultat && (
             <div
@@ -2064,12 +2043,19 @@ function Layout() {
 
       {/* =========================================================
           CONTENU PRINCIPAL
+
+          IMPORTANT :
+          PAS DE z-10 ICI.
+
+          Le Outlet contient notamment les modales de MonKourel.
+          Un z-index sur <main> crée un contexte d'empilement qui
+          peut empêcher une modale fixed de passer au-dessus du
+          reste de l'application.
       ========================================================= */}
 
       <main
         className="
           relative
-          z-10
           min-h-screen
           lg:ml-[290px]
         "
@@ -2470,8 +2456,6 @@ function Layout() {
 
         {/* =======================================================
             CONTENU
-            IMPORTANT :
-            Le principe de scroll existant est conservé.
         ======================================================= */}
 
         <div
