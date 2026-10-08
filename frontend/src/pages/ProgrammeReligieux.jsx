@@ -580,106 +580,45 @@ export default function ProgrammeReligieux() {
   }
 
   async function chargerProgramme(programmeId) {
-  if (!programmeId) return;
+    if (!programmeId) return;
 
-  setChargementProgramme(true);
-  setErreur("");
+    setChargementProgramme(true);
+    setErreur("");
 
-  try {
-    // ============================================================
-    // 1. CHARGER LE PROGRAMME
-    // ============================================================
-
-    const response = await api.get(
-      `/programmes-religieux/${programmeId}`
-    );
-
-    const programme = response.data;
-
-    setProgrammeSelectionne(programme);
-
-    // ============================================================
-    // 2. RÉCUPÉRER LES RÉPÉTITIONS
-    // ============================================================
-
-    const repetitionsProgramme = Array.isArray(
-      programme?.repetitions
-    )
-      ? programme.repetitions
-      : [];
-
-    // ============================================================
-    // 3. CHARGER LES KHASSIDAS DE CHAQUE RÉPÉTITION
-    //    SANS PERDRE LES INFORMATIONS DE LA RÉPÉTITION
-    // ============================================================
-
-    const repetitionsAvecKhassidas = await Promise.all(
-      repetitionsProgramme.map(async (repetition) => {
-        let khassidas = [];
-
-        try {
-          const responseKhassidas = await api.get(
-            `/programmes-religieux/${programmeId}/repetitions/${repetition.id}/khassidas`
-          );
-
-          if (Array.isArray(responseKhassidas.data)) {
-            khassidas = responseKhassidas.data;
-          }
-        } catch (error) {
-          console.error(
-            `Erreur chargement Khassidas de la répétition ${repetition.id} :`,
-            error
-          );
-        }
-
-        // On conserve toutes les informations originales
-        // de la répétition et on ajoute les Khassidas.
-        return {
-          ...repetition,
-
-          // Informations de la répétition
-          date_repetition: repetition.date_repetition,
-          heure_debut: repetition.heure_debut,
-          heure_fin: repetition.heure_fin,
-          lieu: repetition.lieu,
-
-          // Khassidas associées
-          khassidas,
-        };
-      })
-    );
-
-    // ============================================================
-    // 4. ENREGISTRER LES RÉPÉTITIONS
-    // ============================================================
-
-    setRepetitions(repetitionsAvecKhassidas);
-
-    // ============================================================
-    // 5. CHARGER LES DÉCLAMATIONS
-    // ============================================================
-
-    if (Array.isArray(programme?.declamations)) {
-      setDeclamations(programme.declamations);
-    } else {
-      setDeclamations(
-        extraireKhassidasDeclamation(programme)
+    try {
+      const response = await api.get(
+        `/programmes-religieux/${programmeId}`
       );
-    }
-  } catch (error) {
-    console.error(
-      "Erreur chargement programme :",
-      error
-    );
 
-    afficherErreur(
-      error,
-      "Impossible de charger le programme."
-    );
-  } finally {
-    setChargementProgramme(false);
+      const programme = response.data;
+
+      setProgrammeSelectionne(programme);
+
+      setRepetitions(
+        Array.isArray(programme?.repetitions)
+          ? programme.repetitions
+          : []
+      );
+
+      if (Array.isArray(programme?.declamations)) {
+        setDeclamations(
+          programme.declamations
+        );
+      } else {
+        setDeclamations(
+          extraireKhassidasDeclamation(programme)
+        );
+      }
+    } catch (error) {
+      afficherErreur(
+        error,
+        "Impossible de charger le programme."
+      );
+    } finally {
+      setChargementProgramme(false);
+    }
   }
-}
+
   useEffect(() => {
     if (peutConsulter) {
       chargerProgrammes(true);
