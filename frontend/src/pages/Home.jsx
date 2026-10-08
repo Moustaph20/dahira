@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -16,7 +15,6 @@ import {
   Star,
   X,
 } from "lucide-react";
-
 import guideImage from "../assets/guide.jpg";
 import api from "../api/client";
 
@@ -117,7 +115,13 @@ function SectionHeading({
   center = false,
 }) {
   return (
-    <div className={center ? "mx-auto max-w-3xl text-center" : "max-w-3xl"}>
+    <div
+      className={
+        center
+          ? "mx-auto max-w-3xl text-center"
+          : "max-w-3xl"
+      }
+    >
       <div
         className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.28em] text-emerald-700 ${
           center ? "justify-center" : ""
@@ -157,13 +161,19 @@ export default function Home() {
   const [rappelIndex, setRappelIndex] = useState(0);
   const [heureActuelle, setHeureActuelle] = useState(new Date());
 
+  // Galerie : 6 médias affichés au départ
+  const [nombreMediasAffiches, setNombreMediasAffiches] =
+    useState(6);
+
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 35);
 
     handleScroll();
+
     window.addEventListener("scroll", handleScroll);
 
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () =>
+      window.removeEventListener("scroll", handleScroll);
   }, []);
 
   useEffect(() => {
@@ -222,8 +232,15 @@ export default function Home() {
       try {
         const aujourdHui = new Date();
 
-        const jour = String(aujourdHui.getDate()).padStart(2, "0");
-        const mois = String(aujourdHui.getMonth() + 1).padStart(2, "0");
+        const jour = String(aujourdHui.getDate()).padStart(
+          2,
+          "0"
+        );
+
+        const mois = String(
+          aujourdHui.getMonth() + 1
+        ).padStart(2, "0");
+
         const annee = aujourdHui.getFullYear();
 
         const url =
@@ -245,7 +262,10 @@ export default function Home() {
         setHoraires(data?.data?.timings || null);
         setErreurHoraires(false);
       } catch (error) {
-        console.error("Erreur horaires de prière :", error);
+        console.error(
+          "Erreur horaires de prière :",
+          error
+        );
 
         if (actif) setErreurHoraires(true);
       }
@@ -296,9 +316,10 @@ export default function Home() {
     };
   }, [horaires, heureActuelle]);
 
+  // Galerie visible : 6 au départ, puis +6 à chaque clic
   const galerieVisible = useMemo(
-    () => galerie.slice(0, 6),
-    [galerie]
+    () => galerie.slice(0, nombreMediasAffiches),
+    [galerie, nombreMediasAffiches]
   );
 
   function construireUrlMedia(url) {
@@ -316,7 +337,9 @@ export default function Home() {
       ""
     );
 
-    const chemin = url.startsWith("/") ? url : `/${url}`;
+    const chemin = url.startsWith("/")
+      ? url
+      : `/${url}`;
 
     return `${baseUrl}${chemin}`;
   }
@@ -543,7 +566,9 @@ export default function Home() {
             <button
               type="button"
               onClick={() =>
-                setMenuOuvert((ancien) => !ancien)
+                setMenuOuvert(
+                  (ancien) => !ancien
+                )
               }
               className={`rounded-xl p-2 md:hidden ${
                 scrolled
@@ -618,7 +643,10 @@ export default function Home() {
         <div className="relative z-10 flex min-h-[100svh] items-center justify-center px-5 pb-20 pt-28">
           <div className="w-full max-w-5xl text-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[.06] px-4 py-2 text-[9px] font-bold uppercase tracking-[.32em] text-white/70 backdrop-blur-xl">
-              <Sparkles size={13} className="text-[#d6ac47]" />
+              <Sparkles
+                size={13}
+                className="text-[#d6ac47]"
+              />
               Dahira Mawahibou Naafih
             </div>
 
@@ -710,12 +738,15 @@ export default function Home() {
                   </div>
 
                   <div className="mt-5 text-5xl font-black tracking-tight sm:text-6xl">
-                    {prochainePriere?.heure || "--:--"}
+                    {prochainePriere?.heure ||
+                      "--:--"}
                   </div>
 
                   <div className="mt-2 text-xl font-bold">
                     {prochainePriere
-                      ? PRIERE_NOMS[prochainePriere.nom] ||
+                      ? PRIERE_NOMS[
+                          prochainePriere.nom
+                        ] ||
                         prochainePriere.nom
                       : "Prochaine prière"}
                   </div>
@@ -779,7 +810,8 @@ export default function Home() {
                         </div>
 
                         <div className="mt-2 text-xl font-black text-emerald-950">
-                          {horaires?.[nom] || "--:--"}
+                          {horaires?.[nom] ||
+                            "--:--"}
                         </div>
                       </div>
                     ))}
@@ -949,16 +981,12 @@ export default function Home() {
                   Troisième fils de Serigne Abdou Khadre MBACKE qui fut le
                   4e Khalif Général des Mourides, est l’actuel Imam de
                   Massalikoul Djinan pour toutes les prières des EID.
-
                   <br />
                   <br />
-
                   Grand cultivateur, il a de nombreux “talibés” apprenants
                   du saint Coran sous sa responsabilité.
-
                   <br />
                   <br />
-
                   Le nom de MAWAHIBOU NAFIH FI MADA IHI CHAFIH (LES DONS DU
                   PROFITABLE DANS LES PANEGYRIQUES DE L’INTERCESSEUR) a été
                   choisi pour ces dahiras organisés en fédération.
@@ -994,7 +1022,10 @@ export default function Home() {
                   <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-[#d6ac47]/10 transition-transform duration-500 group-hover:scale-150" />
 
                   <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-950 text-lg font-black text-[#d6ac47]">
-                    {String(index + 1).padStart(2, "0")}
+                    {String(index + 1).padStart(
+                      2,
+                      "0"
+                    )}
                   </div>
 
                   <h3 className="mt-7 text-xl font-black text-emerald-950">
@@ -1100,100 +1131,126 @@ export default function Home() {
           </Reveal>
 
           {galerieVisible.length > 0 ? (
-            <div className="mt-12 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
-              {galerieVisible.map((element, index) => {
-                const mediaUrl =
-                  element.url ||
-                  element.image_url ||
-                  element.media_url ||
-                  element.fichier_url;
+            <>
+              <div className="mt-12 grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-3">
+                {galerieVisible.map((element, index) => {
+                  const mediaUrl =
+                    element.url ||
+                    element.image_url ||
+                    element.media_url ||
+                    element.fichier_url;
 
-                const url = construireUrlMedia(mediaUrl);
+                  const url =
+                    construireUrlMedia(mediaUrl);
 
-                const type =
-                  element.type_media ||
-                  element.type ||
-                  "";
+                  const type =
+                    element.type_media ||
+                    element.type ||
+                    "";
 
-                const estVideo =
-                  type === "video" ||
-                  type === "VIDÉO" ||
-                  type === "VIDEO";
+                  const estVideo =
+                    type === "video" ||
+                    type === "VIDÉO" ||
+                    type === "VIDEO";
 
-                return (
-                  <Reveal
-                    key={
-                      element.id ||
-                      `${url}-${index}`
-                    }
-                    delay={index * 70}
-                    className={
-                      index === 0
-                        ? "lg:row-span-2"
-                        : ""
-                    }
-                  >
-                    <div
-                      className={`group relative overflow-hidden rounded-[1.7rem] bg-slate-100 shadow-sm ${
+                  return (
+                    <Reveal
+                      key={
+                        element.id ||
+                        `${url}-${index}`
+                      }
+                      delay={index * 70}
+                      className={
                         index === 0
-                          ? "lg:h-full"
+                          ? "lg:row-span-2"
                           : ""
-                      }`}
+                      }
                     >
-                      {url ? (
-                        estVideo ? (
-                          <video
-                            src={url}
-                            controls
-                            preload="metadata"
-                            playsInline
-                            className={`w-full object-cover ${
-                              index === 0
-                                ? "aspect-[4/3] h-full lg:aspect-auto"
-                                : "aspect-square lg:aspect-[4/3]"
-                            }`}
-                          />
-                        ) : (
-                          <img
-                            src={url}
-                            alt={
-                              element.titre ||
-                              "Galerie du Dahira"
-                            }
-                            loading="lazy"
-                            className={`w-full object-cover transition duration-700 group-hover:scale-105 ${
-                              index === 0
-                                ? "aspect-[4/3] h-full lg:aspect-auto"
-                                : "aspect-square lg:aspect-[4/3]"
-                            }`}
-                          />
-                        )
-                      ) : (
-                        <div className="flex aspect-square items-center justify-center text-sm text-slate-400">
-                          Média indisponible
-                        </div>
-                      )}
-
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-
-                      <div className="pointer-events-none absolute bottom-4 left-4 right-4 translate-y-3 opacity-0 transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100">
-                        <div className="flex items-center gap-2 text-sm font-bold text-white">
-                          {estVideo && (
-                            <Play
-                              size={14}
-                              fill="currentColor"
+                      <div
+                        className={`group relative overflow-hidden rounded-[1.7rem] bg-slate-100 shadow-sm ${
+                          index === 0
+                            ? "lg:h-full"
+                            : ""
+                        }`}
+                      >
+                        {url ? (
+                          estVideo ? (
+                            <video
+                              src={url}
+                              controls
+                              preload="metadata"
+                              playsInline
+                              className={`w-full object-cover ${
+                                index === 0
+                                  ? "aspect-[4/3] h-full lg:aspect-auto"
+                                  : "aspect-square lg:aspect-[4/3]"
+                              }`}
                             />
-                          )}
+                          ) : (
+                            <img
+                              src={url}
+                              alt={
+                                element.titre ||
+                                "Galerie du Dahira"
+                              }
+                              loading="lazy"
+                              className={`w-full object-cover transition duration-700 group-hover:scale-105 ${
+                                index === 0
+                                  ? "aspect-[4/3] h-full lg:aspect-auto"
+                                  : "aspect-square lg:aspect-[4/3]"
+                              }`}
+                            />
+                          )
+                        ) : (
+                          <div className="flex aspect-square items-center justify-center text-sm text-slate-400">
+                            Média indisponible
+                          </div>
+                        )}
 
-                          {element.titre ||
-                            "Moment partagé"}
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+
+                        <div className="pointer-events-none absolute bottom-4 left-4 right-4 translate-y-3 opacity-0 transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100">
+                          <div className="flex items-center gap-2 text-sm font-bold text-white">
+                            {estVideo && (
+                              <Play
+                                size={14}
+                                fill="currentColor"
+                              />
+                            )}
+
+                            {element.titre ||
+                              "Moment partagé"}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Reveal>
-                );
-              })}
-            </div>
+                    </Reveal>
+                  );
+                })}
+              </div>
+
+              {/* VOIR PLUS */}
+              {galerie.length >
+                nombreMediasAffiches && (
+                <div className="mt-10 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setNombreMediasAffiches(
+                        (ancien) => ancien + 6
+                      )
+                    }
+                    className="group inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-3 text-xs font-black uppercase tracking-[0.16em] text-emerald-900 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-200 hover:bg-emerald-50 hover:shadow-md"
+                  >
+                    Voir plus
+
+                    <ArrowDown
+                      size={15}
+                      className="transition-transform duration-300 group-hover:translate-y-0.5"
+                    />
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="mt-12 rounded-[2rem] border border-dashed border-slate-200 bg-white p-14 text-center">
               <Star
@@ -1210,93 +1267,98 @@ export default function Home() {
       </section>
 
       {/* CONTACT */}
-      <section id="contact" className="px-5 pb-24 sm:pb-32">
-  <Reveal>
-    <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[2.5rem] bg-[#d6ac47] px-7 py-12 sm:px-14 sm:py-16">
-      <div className="absolute -right-28 -top-28 h-80 w-80 rounded-full bg-white/20 blur-3xl" />
-      <div className="absolute -bottom-24 -left-20 h-64 w-64 rounded-full bg-emerald-900/10 blur-3xl" />
+      <section
+        id="contact"
+        className="px-5 pb-24 sm:pb-32"
+      >
+        <Reveal>
+          <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[2.5rem] bg-[#d6ac47] px-7 py-12 sm:px-14 sm:py-16">
+            <div className="absolute -right-28 -top-28 h-80 w-80 rounded-full bg-white/20 blur-3xl" />
 
-      <div className="relative z-10 grid gap-10 lg:grid-cols-[1fr_360px] lg:items-center">
-        {/* Texte */}
-        <div>
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.25em] text-emerald-950/55">
-            <MapPin size={14} />
-            Castors — Dakar
+            <div className="absolute -bottom-24 -left-20 h-64 w-64 rounded-full bg-emerald-900/10 blur-3xl" />
+
+            <div className="relative z-10 grid gap-10 lg:grid-cols-[1fr_360px] lg:items-center">
+              {/* Texte */}
+              <div>
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.25em] text-emerald-950/55">
+                  <MapPin size={14} />
+                  Castors — Dakar
+                </div>
+
+                <h2 className="mt-4 text-4xl font-black tracking-tight text-emerald-950 sm:text-5xl">
+                  Restons connectés.
+                </h2>
+
+                <p className="mt-4 max-w-lg text-sm leading-7 text-emerald-950/65">
+                  Une question, une information ou simplement besoin d'échanger
+                  avec le Dahira ? Vous pouvez contacter directement le Dieuwrigne.
+                </p>
+
+                <div className="mt-7">
+                  <Link
+                    to="/login"
+                    className="group inline-flex items-center justify-center gap-3 rounded-2xl bg-emerald-950 px-7 py-4 font-black text-white shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+                  >
+                    Rejoindre mon espace
+
+                    <ArrowRight
+                      size={18}
+                      className="transition-transform group-hover:translate-x-1"
+                    />
+                  </Link>
+                </div>
+              </div>
+
+              {/* Contact Dieuwrigne */}
+              <div className="rounded-[2rem] bg-white/95 p-6 shadow-xl backdrop-blur-sm">
+                <div className="text-[10px] font-black uppercase tracking-[.22em] text-emerald-950/45">
+                  Contact
+                </div>
+
+                <div className="mt-3">
+                  <h3 className="text-2xl font-black text-emerald-950">
+                    Babacar Pierre Diallo
+                  </h3>
+
+                  <p className="mt-1 text-sm font-semibold text-emerald-950/55">
+                    Dieuwrigne
+                  </p>
+                </div>
+
+                <div className="mt-5 rounded-2xl bg-[#f8f5ec] px-4 py-3">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-emerald-950/40">
+                    Téléphone
+                  </p>
+
+                  <p className="mt-1 text-lg font-black tracking-wide text-emerald-950">
+                    78 923 27 51
+                  </p>
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <a
+                    href="tel:+221789232751"
+                    className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-950 px-4 py-3 text-sm font-black text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
+                  >
+                    <Phone size={17} />
+                    Appeler
+                  </a>
+
+                  <a
+                    href="https://wa.me/221789232751"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 rounded-2xl bg-[#f1e3bd] px-4 py-3 text-sm font-black text-emerald-950 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
+                  >
+                    <MessageCircle size={17} />
+                    WhatsApp
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
-
-          <h2 className="mt-4 text-4xl font-black tracking-tight text-emerald-950 sm:text-5xl">
-            Restons connectés.
-          </h2>
-
-          <p className="mt-4 max-w-lg text-sm leading-7 text-emerald-950/65">
-            Une question, une information ou simplement besoin d'échanger
-            avec le Dahira ? Vous pouvez contacter directement le Dieuwrigne.
-          </p>
-
-          <div className="mt-7">
-            <Link
-              to="/login"
-              className="group inline-flex items-center justify-center gap-3 rounded-2xl bg-emerald-950 px-7 py-4 font-black text-white shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
-            >
-              Rejoindre mon espace
-              <ArrowRight
-                size={18}
-                className="transition-transform group-hover:translate-x-1"
-              />
-            </Link>
-          </div>
-        </div>
-
-        {/* Contact Dieuwrigne */}
-        <div className="rounded-[2rem] bg-white/95 p-6 shadow-xl backdrop-blur-sm">
-          <div className="text-[10px] font-black uppercase tracking-[.22em] text-emerald-950/45">
-            Contact
-          </div>
-
-          <div className="mt-3">
-            <h3 className="text-2xl font-black text-emerald-950">
-              Babacar Pierre Diallo
-            </h3>
-
-            <p className="mt-1 text-sm font-semibold text-emerald-950/55">
-              Dieuwrigne
-            </p>
-          </div>
-
-          <div className="mt-5 rounded-2xl bg-[#f8f5ec] px-4 py-3">
-            <p className="text-[10px] font-black uppercase tracking-wider text-emerald-950/40">
-              Téléphone
-            </p>
-
-            <p className="mt-1 text-lg font-black tracking-wide text-emerald-950">
-              78 923 27 51
-            </p>
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <a
-              href="tel:+221789232751"
-              className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-950 px-4 py-3 text-sm font-black text-white transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
-            >
-              <Phone size={17} />
-              Appeler
-            </a>
-
-            <a
-              href="https://wa.me/221789232751"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 rounded-2xl bg-[#f1e3bd] px-4 py-3 text-sm font-black text-emerald-950 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg"
-            >
-              <MessageCircle size={17} />
-              WhatsApp
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </Reveal>
-</section>
+        </Reveal>
+      </section>
 
       {/* FOOTER */}
       <footer className="bg-emerald-950 px-5 py-12 text-white">
