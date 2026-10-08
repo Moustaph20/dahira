@@ -858,65 +858,7 @@ export default function Finances() {
         </div>
       </div>
 
-      {peutConsulterCotisations && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">
-                Cotisations et versements des membres
-              </h2>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Les montants encaissés correspondent uniquement à
-                l'argent réellement reçu.
-              </p>
-            </div>
-
-            <Receipt className="h-6 w-6 text-slate-400" />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="rounded-xl bg-slate-50 p-4">
-              <p className="text-sm text-slate-500">
-                Cotisations prévues
-              </p>
-
-              <p className="mt-1 text-xl font-bold text-slate-900">
-                {formatMontant(
-                  totalCotisationsPrevues
-                )}{" "}
-                FCFA
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-emerald-50 p-4">
-              <p className="text-sm text-emerald-700">
-                Cotisations et versements encaissés
-              </p>
-
-              <p className="mt-1 text-xl font-bold text-emerald-800">
-                {formatMontant(
-                  totalPaiementsCotisations
-                )}{" "}
-                FCFA
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-amber-50 p-4">
-              <p className="text-sm text-amber-700">
-                Reste à encaisser
-              </p>
-
-              <p className="mt-1 text-xl font-bold text-amber-800">
-                {formatMontant(
-                  totalResteAEncaisser
-                )}{" "}
-                FCFA
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      
 
       {(peutCreerDepense ||
         peutCreerAide) && (
