@@ -8,7 +8,13 @@ on:
   workflow_dispatch:
     inputs:
       rappel_exceptionnel:
-        description: "Envoyer exceptionnellement les rappels aujourd'hui"
+        description: "Créer les rappels exceptionnels du jour"
+        required: false
+        type: boolean
+        default: false
+
+      renvoyer_push_existants:
+        description: "Réessayer l'envoi push des 34 rappels existants"
         required: false
         type: boolean
         default: false
@@ -37,7 +43,8 @@ jobs:
         run: |
           printf '%s' "$FIREBASE_CREDENTIALS_JSON" > backend/firebase-credentials.json
 
-      - name: Envoyer les rappels de cotisation
+      - name: Envoyer les rappels habituels ou exceptionnels
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.renvoyer_push_existants) }}
         working-directory: backend
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -45,6 +52,15 @@ jobs:
           RAPPEL_EXCEPTIONNEL: ${{ github.event_name == 'workflow_dispatch' && inputs.rappel_exceptionnel || false }}
         run: |
           python -m app.scripts.rappels_cotisations
+
+      - name: Reprendre les notifications push existantes
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.renvoyer_push_existants }}
+        working-directory: backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          FIREBASE_CREDENTIALS_PATH: ./firebase-credentials.json
+        run: |
+          python -m app.scripts.renvoyer_push_rappels_cotisations --envoyer
 
       - name: Supprimer les credentials Firebase
         if: always()
