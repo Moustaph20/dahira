@@ -1,3 +1,5 @@
+
+import os
 from datetime import date
 from decimal import Decimal
 
@@ -11,6 +13,10 @@ from app.models.utilisateur import Utilisateur
 from app.services.notification_service import creer_notification
 from app.services.notifications_push import envoyer_notification_push
 
+
+# ============================================================
+# CONFIGURATION DES RAPPELS
+# ============================================================
 
 JOURS_RAPPEL_COTISATION = {5, 10, 20}
 
@@ -119,6 +125,7 @@ def creer_rappel_cotisation(
     try:
         db.commit()
         db.refresh(notification)
+
     except Exception as error:
         db.rollback()
 
@@ -137,6 +144,7 @@ def creer_rappel_cotisation(
             notification=notification,
             db=db,
         )
+
     except Exception as error:
         print(
             "ERREUR PUSH RAPPEL COTISATION :",
@@ -166,13 +174,31 @@ def creer_rappel_cotisation(
 def envoyer_rappels_cotisations(
     db: Session,
     aujourd_hui: date | None = None,
+    rappel_exceptionnel: bool = False,
 ) -> dict:
     aujourd_hui = aujourd_hui or date.today()
 
     jour = aujourd_hui.day
     mois, annee = obtenir_mois_annee(aujourd_hui)
 
-    if jour not in JOURS_RAPPEL_COTISATION:
+    # Le mode exceptionnel est réservé au lancement manuel.
+    # Il ne modifie pas les jours de rappel habituels.
+    rappel_exceptionnel = (
+        rappel_exceptionnel
+        or os.getenv("RAPPEL_EXCEPTIONNEL", "false").lower()
+        == "true"
+    )
+
+    if rappel_exceptionnel:
+        print(
+            "MODE EXCEPTIONNEL ACTIVÉ : "
+            "la restriction du calendrier est ignorée."
+        )
+
+    if (
+        jour not in JOURS_RAPPEL_COTISATION
+        and not rappel_exceptionnel
+    ):
         return {
             "execute": True,
             "jour": jour,
@@ -211,7 +237,6 @@ def envoyer_rappels_cotisations(
     details = []
 
     for cotisation in cotisations:
-
         reste = calculer_reste_cotisation(cotisation)
 
         if reste <= 0:

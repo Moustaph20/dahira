@@ -1,3 +1,4 @@
+
 name: Rappels automatiques des cotisations
 
 on:
@@ -5,6 +6,12 @@ on:
     - cron: "15 11 * * *"
 
   workflow_dispatch:
+    inputs:
+      rappel_exceptionnel:
+        description: "Envoyer exceptionnellement les rappels aujourd'hui"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   rappels-cotisations:
@@ -35,6 +42,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           FIREBASE_CREDENTIALS_PATH: ./firebase-credentials.json
+          RAPPEL_EXCEPTIONNEL: ${{ github.event_name == 'workflow_dispatch' && inputs.rappel_exceptionnel || false }}
         run: |
           python -m app.scripts.rappels_cotisations
 
