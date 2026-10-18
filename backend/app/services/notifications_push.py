@@ -1,4 +1,3 @@
-# app/services/notifications_push.py
 
 from firebase_admin import messaging
 from sqlalchemy.orm import Session
@@ -88,8 +87,7 @@ def envoyer_communication_push(
     db: Session,
 ) -> dict:
     """
-    Envoie une communication à tous les appareils actifs
-    enregistrés pour les notifications push.
+    Envoie une communication à tous les appareils actifs.
 
     Compatible avec :
         - communication texte uniquement
@@ -97,18 +95,11 @@ def envoyer_communication_push(
         - communication texte + vocal
 
     Pour un message vocal seul, le corps de la notification
-    devient :
+    devient : "Nouveau message vocal disponible."
 
-        "Nouveau message vocal disponible."
-
-    Le fichier audio n'est jamais joué automatiquement par
-    Firebase. L'URL audio est transmise dans les données FCM
-    afin que l'application puisse ouvrir la communication.
+    L'URL audio est transmise dans les données FCM afin que
+    l'application puisse ouvrir la communication.
     """
-
-    # --------------------------------------------------------
-    # RÉCUPÉRER LES APPAREILS ACTIFS
-    # --------------------------------------------------------
 
     appareils = (
         db.query(AppareilNotification)
@@ -155,16 +146,12 @@ def envoyer_communication_push(
 
     donnees = {
         "type": "communication",
-        "communication_id": str(
-            communication.id
-        ),
+        "communication_id": str(communication.id),
         "type_communication": str(
-            communication.type_communication
-            or ""
+            communication.type_communication or ""
         ),
         "priorite": str(
-            communication.priorite
-            or "NORMALE"
+            communication.priorite or "NORMALE"
         ),
         "has_audio": (
             "true"
@@ -172,10 +159,6 @@ def envoyer_communication_push(
             else "false"
         ),
     }
-
-    # --------------------------------------------------------
-    # URL AUDIO
-    # --------------------------------------------------------
 
     if communication.audio_url:
         donnees["audio_url"] = str(
@@ -192,22 +175,13 @@ def envoyer_communication_push(
         TAILLE_LOT_FCM,
     ):
         lot = appareils[
-            debut : debut + TAILLE_LOT_FCM
+            debut:debut + TAILLE_LOT_FCM
         ]
-
-        # ----------------------------------------------------
-        # IMPORTANT :
-        # On garde uniquement les appareils possédant un token.
-        #
-        # Il faut conserver la même liste pour associer
-        # correctement la réponse Firebase à l'appareil.
-        # ----------------------------------------------------
 
         appareils_avec_token = [
             appareil
             for appareil in lot
-            if appareil.token
-            and appareil.actif
+            if appareil.token and appareil.actif
         ]
 
         tokens = [
@@ -218,11 +192,7 @@ def envoyer_communication_push(
         if not tokens:
             continue
 
-        # ----------------------------------------------------
-        # MESSAGE FIREBASE
-        # ----------------------------------------------------
-
-        message = messaging.MulticastMessage(
+        message_firebase = messaging.MulticastMessage(
             notification=messaging.Notification(
                 title=communication.titre,
                 body=corps_notification,
@@ -231,28 +201,17 @@ def envoyer_communication_push(
             tokens=tokens,
         )
 
-        # ----------------------------------------------------
-        # ENVOI
-        # ----------------------------------------------------
-
         try:
-            reponse = (
-                messaging.send_each_for_multicast(
-                    message
-                )
+            reponse = messaging.send_each_for_multicast(
+                message_firebase
             )
 
-            total_envoyes += (
-                reponse.success_count
-            )
+            total_envoyes += reponse.success_count
+            total_echecs += reponse.failure_count
 
-            total_echecs += (
-                reponse.failure_count
-            )
-
-            # ------------------------------------------------
-            # TRAITER CHAQUE RÉPONSE
-            # ------------------------------------------------
+            # ----------------------------------------------
+            # TRAITER CHAQUE RÉPONSE FIREBASE
+            # ----------------------------------------------
 
             for index, resultat in enumerate(
                 reponse.responses
@@ -260,11 +219,7 @@ def envoyer_communication_push(
                 if resultat.success:
                     continue
 
-                # Même index que dans `tokens`
-                appareil = (
-                    appareils_avec_token[index]
-                )
-
+                appareil = appareils_avec_token[index]
                 exception = resultat.exception
 
                 if exception:
@@ -278,10 +233,6 @@ def envoyer_communication_push(
                         exception,
                     )
 
-            # ------------------------------------------------
-            # SAUVEGARDER LES TOKENS DÉSACTIVÉS
-            # ------------------------------------------------
-
             db.commit()
 
         except Exception as erreur:
@@ -292,20 +243,10 @@ def envoyer_communication_push(
 
             total_echecs += len(tokens)
 
-            # ------------------------------------------------
-            # IMPORTANT :
-            # On évite de faire échouer toute la transaction
-            # de l'application à cause de Firebase.
-            # ------------------------------------------------
-
             try:
                 db.rollback()
             except Exception:
                 pass
-
-    # --------------------------------------------------------
-    # RÉSULTAT
-    # --------------------------------------------------------
 
     return {
         "envoyes": total_envoyes,
@@ -325,8 +266,7 @@ def envoyer_notification_push(
     """
     Envoie une notification à l'utilisateur concerné.
 
-    La relation est :
-
+    Relations :
         Notification.utilisateur_id
                 ↓
         Utilisateur.id
@@ -336,17 +276,23 @@ def envoyer_notification_push(
         AppareilNotification.membre_id
                 ↓
         AppareilNotification.token
+
+    Utilise les champs réels du modèle Notification :
+        - titre
+        - message
+        - type
+        - route
+        - utilisateur_id
     """
 
     # --------------------------------------------------------
-    # RÉCUPÉRER L'UTILISATEUR
+    # 1. RÉCUPÉRER L'UTILISATEUR
     # --------------------------------------------------------
 
     utilisateur = (
         db.query(Utilisateur)
         .filter(
-            Utilisateur.id
-            == notification.utilisateur_id
+            Utilisateur.id == notification.utilisateur_id
         )
         .first()
     )
@@ -359,7 +305,7 @@ def envoyer_notification_push(
         }
 
     # --------------------------------------------------------
-    # L'UTILISATEUR DOIT ÊTRE ACTIF
+    # 2. VÉRIFIER QUE L'UTILISATEUR EST ACTIF
     # --------------------------------------------------------
 
     if not utilisateur.actif:
@@ -370,7 +316,7 @@ def envoyer_notification_push(
         }
 
     # --------------------------------------------------------
-    # L'UTILISATEUR DOIT ÊTRE ASSOCIÉ À UN MEMBRE
+    # 3. VÉRIFIER L'ASSOCIATION À UN MEMBRE
     # --------------------------------------------------------
 
     if not utilisateur.membre_id:
@@ -381,7 +327,7 @@ def envoyer_notification_push(
         }
 
     # --------------------------------------------------------
-    # RÉCUPÉRER LES APPAREILS DU MEMBRE
+    # 4. RÉCUPÉRER LES APPAREILS ACTIFS DU MEMBRE
     # --------------------------------------------------------
 
     appareils = (
@@ -402,14 +348,13 @@ def envoyer_notification_push(
         }
 
     # --------------------------------------------------------
-    # GARDER LES APPAREILS AVEC TOKEN
+    # 5. GARDER LES APPAREILS AVEC UN TOKEN
     # --------------------------------------------------------
 
     appareils_avec_token = [
         appareil
         for appareil in appareils
-        if appareil.token
-        and appareil.actif
+        if appareil.token and appareil.actif
     ]
 
     tokens = [
@@ -425,7 +370,7 @@ def envoyer_notification_push(
         }
 
     # --------------------------------------------------------
-    # CONTENU
+    # 6. UTILISER LES CHAMPS RÉELS DU MODÈLE
     # --------------------------------------------------------
 
     titre = (
@@ -434,90 +379,57 @@ def envoyer_notification_push(
         else "Dahira"
     )
 
-    contenu = (
-        str(notification.contenu)
-        if notification.contenu
+    corps = (
+        str(notification.message).strip()
+        if notification.message
         else "Vous avez une nouvelle notification."
     )
 
-    # --------------------------------------------------------
-    # TYPE
-    # --------------------------------------------------------
-
-    type_notification = getattr(
-        notification,
-        "type_notification",
-        None,
+    type_notification = (
+        str(notification.type)
+        if notification.type
+        else "NOTIFICATION"
     )
 
-    if not type_notification:
-        type_notification = "NOTIFICATION"
-
     # --------------------------------------------------------
-    # PRIORITÉ
-    # --------------------------------------------------------
-
-    priorite = getattr(
-        notification,
-        "priorite",
-        None,
-    )
-
-    if not priorite:
-        priorite = "NORMALE"
-
-    # --------------------------------------------------------
-    # DONNÉES FCM
+    # 7. PRÉPARER LES DONNÉES FIREBASE
     # --------------------------------------------------------
 
     donnees = {
         "type": "notification",
-        "notification_id": str(
-            notification.id
-        ),
-        "type_notification": str(
-            type_notification
-        ),
-        "priorite": str(
-            priorite
-        ),
+        "notification_id": str(notification.id),
+        "type_notification": type_notification,
+        "route": str(notification.route or ""),
     }
 
     # --------------------------------------------------------
-    # MESSAGE FIREBASE
+    # 8. CONSTRUIRE LE MESSAGE FIREBASE
     # --------------------------------------------------------
 
-    message = messaging.MulticastMessage(
+    message_firebase = messaging.MulticastMessage(
         notification=messaging.Notification(
             title=titre,
-            body=contenu,
+            body=corps,
         ),
         data=donnees,
         tokens=tokens,
     )
 
     # --------------------------------------------------------
-    # ENVOI
+    # 9. ENVOYER LA NOTIFICATION
     # --------------------------------------------------------
 
     try:
-        reponse = (
-            messaging.send_each_for_multicast(
-                message
-            )
+        reponse = messaging.send_each_for_multicast(
+            message_firebase
         )
 
-        total_envoyes = (
-            reponse.success_count
-        )
+        total_envoyes = reponse.success_count
+        total_echecs = reponse.failure_count
 
-        total_echecs = (
-            reponse.failure_count
-        )
-
-        # ----------------------------------------------------
+        # ----------------------------------------------
         # TRAITER LES TOKENS INVALIDES
-        # ----------------------------------------------------
+        # ----------------------------------------------
 
         for index, resultat in enumerate(
             reponse.responses
@@ -525,10 +437,7 @@ def envoyer_notification_push(
             if resultat.success:
                 continue
 
-            appareil = (
-                appareils_avec_token[index]
-            )
-
+            appareil = appareils_avec_token[index]
             exception = resultat.exception
 
             if exception:
@@ -542,17 +451,24 @@ def envoyer_notification_push(
                     exception,
                 )
 
-        # ----------------------------------------------------
+        # ----------------------------------------------
         # SAUVEGARDER LES MODIFICATIONS
-        # ----------------------------------------------------
+        # ----------------------------------------------
 
         db.commit()
 
-        return {
+        resultat = {
             "envoyes": total_envoyes,
             "echecs": total_echecs,
             "appareils": len(appareils),
         }
+
+        print(
+            "RÉSULTAT PUSH NOTIFICATION :",
+            resultat,
+        )
+
+        return resultat
 
     except Exception as erreur:
         print(
